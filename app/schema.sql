@@ -301,3 +301,11 @@ CREATE TABLE IF NOT EXISTS profile_visits (
     PRIMARY KEY (visited_id, visitor_id)
 );
 CREATE INDEX IF NOT EXISTS idx_visits ON profile_visits(visited_id, visited_at DESC);
+
+-- Файлы (фото) внутри базы — используется, если MEDIA_STORAGE=db
+CREATE TABLE IF NOT EXISTS media_files (
+    path         TEXT PRIMARY KEY,
+    content_type TEXT NOT NULL,
+    data         BLOB NOT NULL,
+    created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);

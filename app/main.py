@@ -6,11 +6,11 @@ from contextlib import asynccontextmanager
 from starlette.applications import Starlette
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse
+from starlette.responses import FileResponse, JSONResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from . import config, db
+from . import config, db, media
 from .api import auth_routes, communities, events, messages, misc, people_extra, posts, stories, users
 from .security import load_extra_banned
 from .web import ApiError, load_session
@@ -94,6 +94,17 @@ async def spa(request: Request):
     return FileResponse(config.STATIC_DIR / "index.html", headers={"Cache-Control": "no-cache"})
 
 
+async def uploads(request: Request):
+    """Раздача загруженных фото (из папки или из базы). Имена файлов случайные и не меняются — кэшируем надолго."""
+    rel = request.path_params["path"]
+    if ".." in rel or rel.startswith("/"):
+        return JSONResponse({"error": "Не найдено"}, status_code=404)
+    data = media.read_file(rel)
+    if data is None:
+        return Response(status_code=404)
+    return Response(data, media_type="image/webp", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+
+
 async def health(request: Request):
     db.value("SELECT 1")
     return JSONResponse({"status": "ok"})
@@ -128,7 +139,7 @@ routes = [
     *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
     *stories.routes, *communities.routes, *events.routes, *people_extra.routes,
     Mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static"),
-    Mount("/uploads", StaticFiles(directory=config.UPLOAD_DIR, check_dir=False), name="uploads"),
+    Route("/uploads/{path:path}", uploads, methods=["GET", "HEAD"]),
     Route("/{path:path}", spa, methods=["GET"]),
 ]
 

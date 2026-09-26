@@ -84,7 +84,7 @@ async def list_events(request: Request):
         where = "e.id IN (SELECT event_id FROM event_members WHERE user_id = :v) OR e.creator_id = :v"
         order, extra = "e.starts_at DESC", "AND coalesce(e.ends_at, e.starts_at) < :now"
     else:
-        where = "1"
+        where = "TRUE"
         order, extra = "e.starts_at", "AND coalesce(e.ends_at, e.starts_at) >= :now"
     rows = db.all(f"SELECT e.* FROM events e WHERE ({where}) {extra} AND {_visible_sql()} ORDER BY {order} LIMIT 50", params)
     return JSONResponse({"items": _view(rows, v)})

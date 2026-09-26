@@ -25,7 +25,9 @@ def _bool(name: str, default: bool) -> bool:
 
 
 APP_NAME = os.environ.get("APP_NAME", "Круг")
-APP_URL = os.environ.get("APP_URL", "http://localhost:8000").rstrip("/")
+# На Render адрес сервиса приходит в RENDER_EXTERNAL_URL
+APP_URL = os.environ.get("APP_URL") or os.environ.get("RENDER_EXTERNAL_URL") or "http://localhost:8000"
+APP_URL = APP_URL.rstrip("/")
 DEBUG = _bool("DEBUG", True)
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR / "data"))
@@ -46,6 +48,9 @@ SMTP_USER = os.environ.get("SMTP_USER", "")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 SMTP_FROM = os.environ.get("SMTP_FROM", "Круг <no-reply@krug.local>")
 SMTP_TLS = _bool("SMTP_TLS", True)
+
+# Где хранить фото: disk (папка UPLOAD_DIR) или db (в самой базе — для хостинга без постоянного диска)
+MEDIA_STORAGE = os.environ.get("MEDIA_STORAGE", "disk").lower()
 
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "10"))
 MAX_PHOTOS_PER_POST = 10

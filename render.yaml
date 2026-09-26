@@ -1,0 +1,16 @@
+# Blueprint для Render (https://render.com/docs/blueprint-spec).
+# Бесплатный вариант: сайт на Render Free, база и фото — в PostgreSQL (например, Supabase Free).
+services:
+  - type: web
+    name: krug
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL        # строка подключения к PostgreSQL (пулер Supabase, режим session, порт 5432)
+        sync: false
+      - key: MEDIA_STORAGE       # фото храним в базе: у бесплатного Render нет постоянного диска
+        value: db
+      - key: DB_AUTO_SCHEMA      # схему в Supabase применяем миграцией (см. README)
+        value: "0"

@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from PIL import Image, ImageDraw, ImageFilter
 
 from app import config, db
-from app.media import _process
+from app.media import process_and_store as _process
 from app.security import extract_hashtags, extract_mentions, hash_password
 
 random.seed(7)
@@ -347,7 +347,7 @@ def reset():
         for suffix in ("", "-wal", "-shm"):
             p = config.DB_PATH.with_name(config.DB_PATH.name + suffix)
             p.unlink(missing_ok=True)
-    if config.UPLOAD_DIR.exists():
+    if config.UPLOAD_DIR.exists() and config.MEDIA_STORAGE != "db":
         shutil.rmtree(config.UPLOAD_DIR)
     config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 

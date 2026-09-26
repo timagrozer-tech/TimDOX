@@ -10,7 +10,7 @@ FRIEND_IDS_SQL = """SELECT CASE WHEN requester_id = :v THEN addressee_id ELSE re
 
 def is_friend_sql(other: str) -> str:
     return (f"EXISTS (SELECT 1 FROM friendships f WHERE f.status = 'accepted' "
-            f"AND f.user_low = min(:v, {other}) AND f.user_high = max(:v, {other}))")
+            f"AND f.user_low = least(:v, {other}) AND f.user_high = greatest(:v, {other}))")
 
 
 def not_blocked_sql(other: str) -> str:
@@ -45,7 +45,7 @@ def friend_ids(uid: int) -> list[int]:
 
 def are_friends(a: int, b: int) -> bool:
     return bool(db.value(
-        "SELECT 1 FROM friendships WHERE status='accepted' AND user_low=min(?,?) AND user_high=max(?,?)",
+        "SELECT 1 FROM friendships WHERE status='accepted' AND user_low=least(?,?) AND user_high=greatest(?,?)",
         (a, b, a, b)))
 
 
@@ -76,7 +76,7 @@ def cards_by_ids(ids) -> dict[int, dict]:
 def relation(viewer: int, target: int) -> dict:
     if viewer == target:
         return {"status": "self", "following": False, "follows_you": False, "blocked_by_me": False, "blocked_me": False}
-    fr = db.one("SELECT requester_id, status FROM friendships WHERE user_low=min(?,?) AND user_high=max(?,?)",
+    fr = db.one("SELECT requester_id, status FROM friendships WHERE user_low=least(?,?) AND user_high=greatest(?,?)",
                 (viewer, target, viewer, target))
     if not fr:
         status = "none"

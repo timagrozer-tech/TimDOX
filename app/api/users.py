@@ -137,7 +137,7 @@ async def friend_request(request: Request):
     uid = _target(request)
     if social.blocked_between(v, uid):
         raise ApiError(403, "Действие недоступно")
-    fr = db.one("SELECT * FROM friendships WHERE user_low=min(?,?) AND user_high=max(?,?)", (v, uid, v, uid))
+    fr = db.one("SELECT * FROM friendships WHERE user_low=least(?,?) AND user_high=greatest(?,?)", (v, uid, v, uid))
     if fr and fr["status"] == "pending" and fr["addressee_id"] == v:
         return await _accept(v, uid)
     if not fr:
@@ -171,7 +171,7 @@ async def friend_remove(request: Request):
     """Отменить заявку, отклонить входящую или удалить из друзей."""
     v = request.state.user["id"]
     uid = _target(request)
-    fr = db.one("SELECT * FROM friendships WHERE user_low=min(?,?) AND user_high=max(?,?)", (v, uid, v, uid))
+    fr = db.one("SELECT * FROM friendships WHERE user_low=least(?,?) AND user_high=greatest(?,?)", (v, uid, v, uid))
     if fr:
         db.run("DELETE FROM friendships WHERE id=?", (fr["id"],))
         if fr["status"] == "accepted" or fr["requester_id"] == v:
@@ -207,7 +207,7 @@ async def block(request: Request):
     if request.method == "POST":
         with db.tx() as c:
             c.execute("INSERT OR IGNORE INTO blocks (blocker_id, blocked_id) VALUES (?,?)", (v, uid))
-            c.execute("DELETE FROM friendships WHERE user_low=min(?,?) AND user_high=max(?,?)", (v, uid, v, uid))
+            c.execute("DELETE FROM friendships WHERE user_low=least(?,?) AND user_high=greatest(?,?)", (v, uid, v, uid))
             c.execute("DELETE FROM follows WHERE (follower_id=? AND followee_id=?) OR (follower_id=? AND followee_id=?)",
                       (v, uid, uid, v))
     else:
@@ -247,7 +247,7 @@ async def suggestions(request: Request):
         FROM profiles p LEFT JOIN fof ON fof.uid = p.user_id
         WHERE p.user_id != :v
           AND p.user_id NOT IN (SELECT * FROM mine)
-          AND NOT EXISTS (SELECT 1 FROM friendships f2 WHERE f2.user_low=min(:v,p.user_id) AND f2.user_high=max(:v,p.user_id))
+          AND NOT EXISTS (SELECT 1 FROM friendships f2 WHERE f2.user_low=least(:v,p.user_id) AND f2.user_high=greatest(:v,p.user_id))
           AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id=:v AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=:v))
         ORDER BY mutual DESC,
                  (p.school != '' AND p.school = :school AND p.school_year IS :syear) DESC,

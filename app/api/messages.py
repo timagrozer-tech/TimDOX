@@ -263,7 +263,7 @@ async def mark_read(request: Request):
     conv = path_int(request)
     _member(conv, v)
     last = db.value("SELECT max(id) FROM messages WHERE conversation_id=?", (conv,)) or 0
-    db.run("UPDATE conversation_members SET last_read_id=max(last_read_id, ?) WHERE conversation_id=? AND user_id=?",
+    db.run("UPDATE conversation_members SET last_read_id=greatest(last_read_id, ?) WHERE conversation_id=? AND user_id=?",
            (last, conv, v))
     for uid in member_ids(conv):
         if uid != v:

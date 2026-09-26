@@ -2,7 +2,6 @@
 import io
 import secrets
 from datetime import datetime
-from pathlib import Path
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 from starlette.concurrency import run_in_threadpool
@@ -55,19 +54,48 @@ def _process(data: bytes, kind: str) -> dict:
         thumb.thumbnail((thumb_side, thumb_side), Image.LANCZOS)
 
     sub = datetime.now().strftime("%Y/%m")
-    folder = config.UPLOAD_DIR / sub
-    folder.mkdir(parents=True, exist_ok=True)
     name = secrets.token_hex(12)
-    main_path = folder / f"{name}.webp"
-    thumb_path = folder / f"{name}_t.webp"
-    img.save(main_path, "WEBP", quality=84, method=4)
-    thumb.save(thumb_path, "WEBP", quality=78, method=4)
+    main_buf, thumb_buf = io.BytesIO(), io.BytesIO()
+    img.save(main_buf, "WEBP", quality=84, method=4)
+    thumb.save(thumb_buf, "WEBP", quality=78, method=4)
     return {
         "path": f"/uploads/{sub}/{name}.webp",
         "thumb": f"/uploads/{sub}/{name}_t.webp",
         "width": img.width,
         "height": img.height,
+        "_files": {f"{sub}/{name}.webp": main_buf.getvalue(), f"{sub}/{name}_t.webp": thumb_buf.getvalue()},
     }
+
+
+# ---------------------------------------------------------------- Хранилище файлов
+# disk — папка UPLOAD_DIR (по умолчанию); db — таблица media_files (бесплатный хостинг без диска)
+def _store(result: dict) -> dict:
+    files = result.pop("_files")
+    for rel, data in files.items():
+        if config.MEDIA_STORAGE == "db":
+            from . import db
+            db.run("INSERT INTO media_files (path, content_type, data) VALUES (?, 'image/webp', ?)", (rel, data))
+        else:
+            target = config.UPLOAD_DIR / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+    return result
+
+
+def process_and_store(data: bytes, kind: str) -> dict:
+    """Синхронный вариант для скриптов (seed)."""
+    return _store(_process(data, kind))
+
+
+def read_file(rel: str) -> bytes | None:
+    if config.MEDIA_STORAGE == "db":
+        from . import db
+        row = db.one("SELECT data FROM media_files WHERE path=?", (rel,))
+        return bytes(row["data"]) if row else None
+    p = (config.UPLOAD_DIR / rel).resolve()
+    if config.UPLOAD_DIR.resolve() in p.parents and p.is_file():
+        return p.read_bytes()
+    return None
 
 
 async def save_upload(upload, kind: str) -> dict:
@@ -79,15 +107,21 @@ async def save_upload(upload, kind: str) -> dict:
         raise ApiError(413, f"Файл больше {config.MAX_UPLOAD_MB} МБ")
     if not data:
         raise ApiError(400, "Пустой файл")
-    return await run_in_threadpool(_process, data, kind)
+    result = await run_in_threadpool(_process, data, kind)  # тяжёлая обработка — в отдельном потоке
+    return _store(result)                                   # запись в хранилище — в основном потоке
 
 
 def delete_files(*urls: str | None) -> None:
     for url in urls:
         if not url or not url.startswith("/uploads/"):
             continue
-        p = (config.UPLOAD_DIR / url[len("/uploads/"):]).resolve()
-        if config.UPLOAD_DIR.resolve() in p.parents:
-            p.unlink(missing_ok=True)
-            if not p.stem.endswith("_t"):
-                p.with_name(p.stem + "_t.webp").unlink(missing_ok=True)
+        rel = url[len("/uploads/"):]
+        rels = [rel] if rel.endswith("_t.webp") else [rel, rel[:-5] + "_t.webp"]
+        if config.MEDIA_STORAGE == "db":
+            from . import db
+            db.run(f"DELETE FROM media_files WHERE path IN ({db.placeholders(rels)})", tuple(rels))
+            continue
+        for r in rels:
+            p = (config.UPLOAD_DIR / r).resolve()
+            if config.UPLOAD_DIR.resolve() in p.parents:
+                p.unlink(missing_ok=True)
