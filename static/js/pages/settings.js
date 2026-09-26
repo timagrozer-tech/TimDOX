@@ -172,7 +172,7 @@ export async function settingsPage() {
       type: "button", onclick: async () => {
         try { await api.post("/api/auth/logout-all"); toast("Вы вышли на всех других устройствах", { icon: "check" }); } catch (e) { toastError(e); }
       },
-    }, icon("logout", "sm"), "Выйти на других устройствах"), h("div.spacer"), h("button.btn.primary", { type: "submit" }, "Сменить пароль")));
+    }, icon("logout", "sm"), "Выйти на других устройствах"), h("div.spacer"), h("button.btn.orange", { type: "submit" }, icon("lock", "sm"), "Сменить пароль")));
   pwForm.addEventListener("submit", (e) => {
     e.preventDefault();
     busy(pwForm.querySelector("[type=submit]"), async () => {

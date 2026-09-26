@@ -7,7 +7,7 @@ import {
   PALETTES, BACKGROUNDS, FONTS, SHAPES, PRESETS, applyLook, currentLook, currentBgImage, paletteOf, paletteFromColor,
 } from "../look.js";
 
-const PREVIEW_TEXT = "АаБбКругОрбитаРассветОкеанЛесСакураПолночьНеонГрафитКлассикаManropeInterNunitoRubikMontserratComfortaaТехноСистемный";
+const PREVIEW_TEXT = "АаБбВвКругОрбитаРассветОкеанЛесСакураПолночьНеонГрафитКлассикаНебоЗакатКиберпанкКофейняКоролевскаяТетрадьСпортЯнтарьМинимализмКнигаРукописьКистьюРусскийстильТехноСистемныйManropeInterNunitoRubikMontserratComfortaaRobotoOpenSansUbuntuExo2Philosopher";
 
 function loadPreviewFonts() {
   if (document.getElementById("look-preview-fonts")) return;

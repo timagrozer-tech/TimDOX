@@ -106,7 +106,7 @@ export function postCard(input, opts = {}) {
     }
     const menuBtn = h("button.btn.ghost.icon-only.sm", { type: "button", "aria-label": "Действия с записью", "aria-haspopup": "menu" }, icon("more"));
     menuBtn.addEventListener("click", () => openPostMenu(menuBtn, p));
-    nodes.push(head(p, menuBtn), ...body(p, opts), quoteCard(p.quote), stats(p), actions(p));
+    nodes.push(head(p, menuBtn), ...body(p, opts), quoteCard(p.quote), actions(p));
     wrapper.replaceChildren(...nodes.filter(Boolean));
     if (commentsBox) wrapper.append(commentsBox);
   }
@@ -117,20 +117,6 @@ export function postCard(input, opts = {}) {
     render();
   }
 
-  // ---- статистика
-  function stats(p) {
-    const types = Object.entries(p.reactions.counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
-    const left = p.reactions.total
-      ? h("button", { type: "button", onclick: () => showReactors(p), "aria-label": `Реакции: ${p.reactions.total}` },
-        h("span.emoji-stack", types.map(([t]) => h("span", REACTION[t]?.emoji))), p.reactions.total)
-      : null;
-    const right = [];
-    if (p.comments_count) right.push(h("button", { type: "button", onclick: () => toggleComments(p) }, pl(p.comments_count, ["комментарий", "комментария", "комментариев"])));
-    if (p.reposts_count) right.push(h("span", pl(p.reposts_count, ["репост", "репоста", "репостов"])));
-    if (!left && !right.length) return h("div", { style: { height: "4px" } });
-    return h("div.post-stats", left, h("div.spacer"), right);
-  }
-
   // ---- кнопки действий
   function actions(p) {
     const mine = p.reactions.mine;
@@ -138,7 +124,8 @@ export function postCard(input, opts = {}) {
     const reactBtn = h(`button.action${mine ? ".on." + mine : ""}`, {
       type: "button", "aria-pressed": String(!!mine), "aria-haspopup": "true",
       title: "Нажмите — «Нравится». Удерживайте или наведите — другие реакции",
-    }, r ? h("span.emoji", r.emoji) : icon("thumb"), h("span", r ? r.label : "Нравится"));
+      "aria-label": `${r ? r.label : "Нравится"}${p.reactions.total ? ` · ${p.reactions.total}` : ""}`,
+    }, r ? h("span.emoji", r.emoji) : icon("thumb"), p.reactions.total ? h("span.count", String(p.reactions.total)) : null);
     const wrap = h("div.react-wrap", reactBtn);
     let picker = null, hoverTimer = null, pressTimer = null, suppressClick = false;
 
@@ -170,8 +157,13 @@ export function postCard(input, opts = {}) {
       setReaction(p, mine ? null : "like", reactBtn);
     });
 
-    const commentBtn = h("button.action", { type: "button", onclick: () => toggleComments(p) }, icon("comment"), h("span", "Комментарий"));
-    const repostBtn = h(`button.action${p.reposted ? ".reposted" : ""}`, { type: "button", "aria-haspopup": "menu" }, icon("repeat"), h("span", "Репост"));
+    const commentBtn = h("button.action", { type: "button", onclick: () => toggleComments(p), title: "Комментарии", "aria-label": `Комментарии${p.comments_count ? ` · ${p.comments_count}` : ""}` },
+      icon("comment"), p.comments_count ? h("span.count", String(p.comments_count)) : null);
+    const repostBtn = h(`button.action${p.reposted ? ".reposted" : ""}`, { type: "button", "aria-haspopup": "menu", title: "Поделиться", "aria-label": `Поделиться${p.reposts_count ? ` · ${p.reposts_count}` : ""}` },
+      icon("repeat"), p.reposts_count ? h("span.count", String(p.reposts_count)) : null);
+    const types = Object.entries(p.reactions.counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    const whoBtn = p.reactions.total ? h("button.reactors", { type: "button", onclick: () => showReactors(p), title: "Кто отреагировал", "aria-label": "Кто отреагировал" },
+      h("span.emoji-stack", types.map(([t]) => h("span", REACTION[t]?.emoji)))) : null;
     repostBtn.addEventListener("click", () => {
       if (p.visibility !== "public" || p.community?.is_private) return toast("Поделиться можно только публичной записью");
       showMenu(repostBtn, [
@@ -194,7 +186,7 @@ export function postCard(input, opts = {}) {
         } catch (e) { toastError(e); }
       },
     }, icon("bookmark"));
-    return h("div.post-actions", wrap, commentBtn, repostBtn, h("div", { style: { flex: "0 0 52px" } }, bmBtn));
+    return h("div.post-actions", wrap, commentBtn, repostBtn, whoBtn, h("div.spacer"), bmBtn);
   }
 
   async function setReaction(p, type, anchor) {

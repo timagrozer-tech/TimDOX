@@ -24,8 +24,8 @@ export async function feedPage({ path, query }) {
   setTitle(explore ? "Обзор" : "Лента");
 
   const tabs = h("div.card", h("div.tabs", { role: "tablist" },
-    h("a", { href: "/", role: "tab", "aria-selected": String(!explore) }, icon("home", "sm"), "Друзья и подписки"),
-    h("a", { href: "/explore", role: "tab", "aria-selected": String(explore) }, icon("compass", "sm"), "Обзор")),
+    h("a", { href: "/explore", role: "tab", "aria-selected": String(explore) }, icon("compass", "sm"), "Обзор"),
+    h("a", { href: "/", role: "tab", "aria-selected": String(!explore) }, icon("home", "sm"), "Друзья и подписки")),
   composer({ placeholder: `Что у вас нового, ${state.me.name.split(" ")[0]}?` }));
 
   const feedCard = h("div.card.feed");

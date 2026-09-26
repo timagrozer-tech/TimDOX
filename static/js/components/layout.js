@@ -18,7 +18,6 @@ const NAV = [
   { href: "/communities", icon: "community", label: "Сообщества", match: (p) => p.startsWith("/communities") || p.startsWith("/c/") },
   { href: "/events", icon: "calendar", label: "Мероприятия", badge: "events", match: (p) => p.startsWith("/events") },
   { href: "/guests", icon: "eye", label: "Гости", badge: "guests", match: (p) => p === "/guests" },
-  { href: "/search", icon: "search", label: "Поиск", match: (p) => p.startsWith("/search") || p.startsWith("/tag/") },
   { href: "/bookmarks", icon: "bookmark", label: "Закладки", match: (p) => p === "/bookmarks" },
   { href: "/settings", icon: "settings", label: "Настройки", match: (p) => p.startsWith("/settings") },
 ];
@@ -47,23 +46,18 @@ function sidebar() {
   const nav = h("nav.nav", { "aria-label": "Основное меню" },
     NAV.map((item) => h("a", { href: hrefOf(item), dataset: { nav: item.label }, title: item.label },
       icon(item.icon), h("span", item.label), item.badge ? badge(item.badge) : null)));
-  const userBox = h("div.row", { style: { gap: "4px" } },
-    h("a.sidebar-user.grow", { href: `/u/${state.me.username}` },
-      avatar(state.me, "", { presence: false }),
-      h("div.grow", h("div.name", state.me.name), h("div.handle", `@${state.me.username}`))),
-  );
-  const moreBtn = h("button.btn.ghost.icon-only", { type: "button", "aria-label": "Ещё", "aria-haspopup": "menu" }, icon("more"));
-  moreBtn.addEventListener("click", () => showMenu(moreBtn, [
-    { label: "Настройки", icon: "settings", onClick: () => navigate("/settings") },
-    { label: "Выйти", icon: "logout", danger: true, onClick: logout },
-  ]));
+  const search = h("form.side-search", { role: "search", onsubmit: (e) => {
+    e.preventDefault();
+    const q = e.target.q.value.trim();
+    navigate(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
+  } },
+  h("a.side-search-icon", { href: "/search", "aria-label": "Поиск", title: "Поиск", dataset: { nav: "Поиск" } }, icon("search")),
+  h("input", { name: "q", type: "search", placeholder: "Поиск", "aria-label": "Поиск людей, записей и #тегов", autocomplete: "off" }));
   return h("aside.sidebar", { "aria-label": "Навигация" },
     logo(),
+    search,
     nav,
-    h("button.btn.accent.create-btn", { type: "button", onclick: () => openComposerModal(), title: "Создать запись", "aria-label": "Создать запись" }, icon("plus"), h("span.create-label", "Создать запись")),
-    h("div.spacer"),
-    h("div.row", { style: { justifyContent: "center", flexWrap: "wrap" } }, themeToggle(), moreBtn),
-    userBox);
+    h("button.btn.accent.create-btn", { type: "button", onclick: () => openComposerModal(), title: "Создать запись", "aria-label": "Создать запись" }, icon("plus"), h("span.create-label", "Создать запись")));
 }
 
 function mobileMenu(btn) {
@@ -104,8 +98,6 @@ function widget(title, iconName, content, link) {
 }
 
 async function fillAside(aside) {
-  const search = h("form.search-box", { role: "search", onsubmit: (e) => { e.preventDefault(); const q = e.target.q.value.trim(); if (q) navigate(`/search?q=${encodeURIComponent(q)}`); } },
-    icon("search"), h("input.input", { name: "q", type: "search", placeholder: "Поиск людей, записей, #тегов", "aria-label": "Поиск" }));
   const online = h("div.online-strip", h("div.skeleton", { style: { height: "36px", width: "100%" } }));
   const trends = h("div", h("div.skeleton", { style: { height: "80px" } }));
   const sugg = h("div.mini-people", h("div.skeleton", { style: { height: "80px" } }));
@@ -113,7 +105,6 @@ async function fillAside(aside) {
   const eventsWidget = widget("Ближайшие мероприятия", "calendar", events, h("a", { href: "/events" }, "Все"));
   const onlineTitle = h("span", "Друзья онлайн");
   aside.replaceChildren(
-    search,
     widget(onlineTitle, "users", online),
     eventsWidget,
     widget("Актуальное", "trend", trends),
@@ -197,7 +188,7 @@ export function setActive(path, wide = false) {
   document.body.classList.toggle("wide", wide);
   document.querySelectorAll("[data-nav]").forEach((a) => {
     const item = NAV.find((n) => n.label === a.dataset.nav);
-    const active = item ? item.match(path) : false;
+    const active = item ? item.match(path) : a.dataset.nav === "Поиск" ? (path.startsWith("/search") || path.startsWith("/tag/")) : false;
     a.classList.toggle("active", active);
     if (active) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   });

@@ -89,8 +89,11 @@ export function showMenu(anchor, items) {
   closeMenu();
   const menu = h("div.menu", { role: "menu" },
     items.filter(Boolean).map((it) => it === "-" ? h("hr") :
-      h(`button${it.danger ? ".danger" : ""}`, { type: "button", role: "menuitem", onclick: () => { closeMenu(); it.onClick(); } },
-        it.icon ? icon(it.icon) : null, it.label)));
+      h(`button${it.danger ? ".danger" : ""}${it.checked ? ".checked" : ""}`, { type: "button", role: it.checked != null ? "menuitemradio" : "menuitem", "aria-checked": it.checked != null ? String(!!it.checked) : null, onclick: () => { closeMenu(); it.onClick(); } },
+        it.icon ? icon(it.icon) : null,
+        it.hint ? h("span.mi-text", h("span", it.label), h("small", it.hint)) : it.label,
+        it.checked ? h("span.mi-check", icon("check", "sm")) : null)));
+  if (items.some((it) => it && it.hint)) menu.classList.add("rich");
   document.body.append(menu);
   const r = anchor.getBoundingClientRect();
   const mw = menu.offsetWidth, mh = menu.offsetHeight;

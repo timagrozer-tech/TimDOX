@@ -1,19 +1,18 @@
 // Форма создания записи: текст, до 10 фото с описаниями, видимость, цитата.
 import { api, state, emit } from "../api.js";
 import { h, icon, avatar, autosize } from "../dom.js";
-import { toast, toastError, busy, modal, promptDialog } from "../ui.js";
+import { toast, toastError, busy, modal, promptDialog, showMenu } from "../ui.js";
 
 const MAX_LEN = 5000;
 const MAX_PHOTOS = 10;
 export const VISIBILITY = {
-  public: { label: "Все", icon: "globe", hint: "Видно всем" },
-  friends: { label: "Друзья", icon: "users", hint: "Только друзьям" },
-  only_me: { label: "Только я", icon: "lock", hint: "Только вам" },
+  public: { label: "Все", icon: "globe", hint: "Запись видят все" },
+  friends: { label: "Друзья", icon: "users", hint: "Только ваши друзья" },
+  only_me: { label: "Только я", icon: "lock", hint: "Черновик для себя" },
 };
 
 export function visibilitySelect(value) {
-  return h("select.vis-select", { "aria-label": "Кто видит запись" },
-    Object.entries(VISIBILITY).map(([k, v]) => h("option", { value: k, selected: k === value }, `${v.label}`)));
+  return audienceSelect(value, { withCircles: false });
 }
 
 let circlesCache = null;
@@ -24,17 +23,34 @@ export async function loadCircles(force = false) {
   return circlesCache;
 }
 
-/** Выбор аудитории: Все / Друзья / круги / Только я. value: "public" | "friends" | "only_me" | "circle:ID" */
-export function audienceSelect(value) {
-  const sel = h("select.vis-select", { "aria-label": "Кто видит запись" },
-    h("option", { value: "public", selected: value === "public" }, "Все"),
-    h("option", { value: "friends", selected: value === "friends" }, "Друзья"),
-    h("option", { value: "only_me", selected: value === "only_me" }, "Только я"));
-  loadCircles().then((circles) => {
-    if (!circles.length) return;
-    sel.append(h("optgroup", { label: "Круги" }, circles.map((c) => h("option", { value: `circle:${c.id}` }, `○ ${c.name}`))));
+/** Выбор аудитории: красивая кнопка-«пилюля» с меню. value: "public" | "friends" | "only_me" | "circle:ID" */
+export function audienceSelect(value, { withCircles = true } = {}) {
+  let current = value;
+  let circles = [];
+  const btn = h("button.audience-btn", { type: "button", "aria-haspopup": "menu", "aria-label": "Кто видит запись" });
+  const labelOf = (v) => {
+    if (v.startsWith("circle:")) {
+      const c = circles.find((x) => `circle:${x.id}` === v);
+      return { label: c ? c.name : "Круг", icon: "target" };
+    }
+    return VISIBILITY[v] || VISIBILITY.public;
+  };
+  const paint = () => {
+    const v = labelOf(current);
+    btn.replaceChildren(icon(v.icon === "target" ? "users" : v.icon, "sm"), h("span", v.label), h("span.chev", "▾"));
+    btn.dataset.value = current;
+  };
+  btn.addEventListener("click", () => {
+    const pick = (v) => { current = v; paint(); };
+    showMenu(btn, [
+      ...Object.entries(VISIBILITY).map(([k, v]) => ({ label: v.label, hint: v.hint, icon: v.icon, checked: current === k, onClick: () => pick(k) })),
+      ...(circles.length ? ["-", ...circles.map((c) => ({ label: `Круг «${c.name}»`, hint: `${c.members?.length || 0} чел.`, icon: "users", checked: current === `circle:${c.id}`, onClick: () => pick(`circle:${c.id}`) }))] : []),
+    ]);
   });
-  return sel;
+  Object.defineProperty(btn, "value", { get: () => current, set: (v) => { current = v; paint(); } });
+  if (withCircles) loadCircles().then((c) => { circles = c; paint(); });
+  paint();
+  return btn;
 }
 
 export function composer({ placeholder = "Что у вас нового?", quote = null, compact = false, onPosted, community = null } = {}) {

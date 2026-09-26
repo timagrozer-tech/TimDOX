@@ -21,14 +21,33 @@ async function createGroup() {
   } catch (e) { toastError(e); }
 }
 
+const EMOJI = ["😀", "😂", "🥰", "😍", "😎", "🤔", "😅", "😭", "😡", "👍", "👎", "👏", "🙏", "💪", "🔥", "❤️", "💔", "🎉", "✨", "⭐", "🌸", "☕", "🍕", "🎂", "⚽", "🎵", "📷", "✈️", "🏔", "🌊", "🐱", "🐶"];
+function openEmoji(anchor, onPick) {
+  document.querySelector(".emoji-pop")?.remove();
+  const pop = h("div.emoji-pop", { role: "dialog", "aria-label": "Эмодзи" },
+    EMOJI.map((e) => h("button", { type: "button", "aria-label": e, onclick: () => onPick(e) }, e)));
+  anchor.closest(".chat-form").append(pop);
+  const close = (ev) => {
+    if (ev.type === "keydown" && ev.key !== "Escape") return;
+    if (ev.type === "mousedown" && (pop.contains(ev.target) || anchor.contains(ev.target))) return;
+    pop.remove();
+    document.removeEventListener("mousedown", close);
+    document.removeEventListener("keydown", close);
+  };
+  setTimeout(() => { document.addEventListener("mousedown", close); document.addEventListener("keydown", close); });
+}
+
 export async function messagesPage({ params }) {
   setTitle("Сообщения");
   const activeId = params.id ? Number(params.id) : null;
   const layout = h(`div.card.chat-layout${activeId ? ".has-chat" : ""}`);
   const listEl = h("div", { role: "list" });
+  const filterInput = h("input", { type: "search", placeholder: "Найти диалог", "aria-label": "Найти диалог" });
+  filterInput.addEventListener("input", () => drawList());
   const listPane = h("div.chat-list", h("div.chat-list-head.row",
     h("h1", { style: { fontSize: "20px" } }, "Сообщения"), h("div.spacer"),
-    h("button.btn.soft.sm", { type: "button", onclick: createGroup, title: "Создать беседу" }, icon("users", "sm"), "Беседа")), listEl);
+    h("button.btn.soft.sm.icon-only", { type: "button", onclick: createGroup, title: "Создать беседу", "aria-label": "Создать беседу" }, icon("plus", "sm"))),
+    h("label.chat-filter", icon("search", "sm"), filterInput), listEl);
   const chatPane = h("section.chat", { "aria-label": "Переписка" });
   layout.append(listPane, chatPane);
 
@@ -55,7 +74,9 @@ export async function messagesPage({ params }) {
         h("p", "Откройте профиль друга и нажмите «Написать»."), h("a.btn.soft.sm", { href: "/friends" }, "К списку друзей")));
       return;
     }
-    listEl.replaceChildren(...convs.map(convItem));
+    const q = filterInput.value.trim().toLowerCase();
+    const shown = q ? convs.filter((c) => c.title.toLowerCase().includes(q)) : convs;
+    listEl.replaceChildren(...(shown.length ? shown.map(convItem) : [h("p.muted.card-pad", "Ничего не нашлось")]));
   }
   async function loadList() {
     try {
@@ -81,7 +102,15 @@ export async function messagesPage({ params }) {
     const ta = h("textarea", { rows: 1, placeholder: conv.can_write ? "Напишите сообщение…" : "Вы не можете написать этому пользователю", maxlength: 4000, disabled: !conv.can_write, "aria-label": "Текст сообщения" });
     const fit = autosize(ta);
     const send = h("button.btn.primary.icon-only", { type: "submit", "aria-label": "Отправить", disabled: !conv.can_write }, icon("send"));
-    const form = h("form.chat-form", ta, send);
+    const emojiBtn = h("button.btn.ghost.icon-only.emoji-btn", { type: "button", "aria-label": "Эмодзи", title: "Эмодзи", disabled: !conv.can_write }, "😊");
+    emojiBtn.addEventListener("click", () => openEmoji(emojiBtn, (em) => {
+      const pos = ta.selectionStart ?? ta.value.length;
+      ta.value = ta.value.slice(0, pos) + em + ta.value.slice(ta.selectionEnd ?? pos);
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = pos + em.length;
+      fit();
+    }));
+    const form = h("form.chat-form", h("div.chat-input", emojiBtn, ta, send));
     const groupMenu = isGroup ? h("button.btn.ghost.icon-only", { type: "button", "aria-label": "Настройки беседы", "aria-haspopup": "menu" }, icon("more")) : null;
     groupMenu?.addEventListener("click", () => showMenu(groupMenu, [
       { label: "Участники", icon: "users", onClick: showMembers },
@@ -121,7 +150,9 @@ export async function messagesPage({ params }) {
       try { await api.post(`/api/conversations/${id}/leave`); toast("Вы покинули беседу"); convs = convs.filter((c) => c.id !== id); navigate("/messages"); } catch (e) { toastError(e); }
     }
 
-    function msgNode(m, prev) {
+    const sameGroup = (a, b) => a && b && a.sender_id === b.sender_id && a.kind !== "system" && b.kind !== "system"
+      && dayLabel(a.created_at) === dayLabel(b.created_at);
+    function msgNode(m, prev, next) {
       const mine = m.sender_id === state.me.id;
       const nodes = [];
       if (!prev || dayLabel(prev.created_at) !== dayLabel(m.created_at)) nodes.push(h("div.day-sep", dayLabel(m.created_at)));
@@ -132,7 +163,8 @@ export async function messagesPage({ params }) {
         nodes.push(h("div.msg-sender", snd ? avatar(snd, "xs", { presence: false }) : null, snd ? snd.name : "Участник"));
       }
       const meta = h("span.m-meta", hm(new Date(m.created_at)), mine ? icon(m.pending ? "check" : (m.id <= chat.otherRead ? "checks" : "check")) : null);
-      const bubble = h(`div.msg${mine ? ".mine" : ""}${first ? ".first" : ""}${m.pending ? ".pending" : ""}`, { dataset: { id: m.id } });
+      const last = !sameGroup(m, next);
+      const bubble = h(`div.msg${mine ? ".mine" : ""}${first ? ".first" : ""}${last ? ".last" : ""}${m.pending ? ".pending" : ""}`, { dataset: { id: m.id, sender: m.sender_id } });
       bubble.append(...richText(m.text).childNodes, meta);
       if (mine) bubble.title = m.pending ? "Отправляется…" : (m.id <= chat.otherRead ? "Прочитано" : "Доставлено");
       nodes.push(bubble);
@@ -142,7 +174,7 @@ export async function messagesPage({ params }) {
       const nodes = [];
       if (chat.hasMore) nodes.push(h("button.btn.ghost.sm", { type: "button", style: { alignSelf: "center" }, onclick: loadOlder }, "Показать ранние сообщения"));
       if (!chat.messages.length) nodes.push(h("div.chat-empty", h("div.empty", convAvatar(conv, "lg"), h("h3", conv.title), h("p", "Напишите первое сообщение 👋"))));
-      chat.messages.forEach((m, i) => nodes.push(...msgNode(m, chat.messages[i - 1])));
+      chat.messages.forEach((m, i) => nodes.push(...msgNode(m, chat.messages[i - 1], chat.messages[i + 1])));
       body.replaceChildren(...nodes);
       if (keepBottomOffset != null) body.scrollTop = body.scrollHeight - keepBottomOffset;
       else body.scrollTop = body.scrollHeight;
@@ -167,7 +199,8 @@ export async function messagesPage({ params }) {
       const prev = chat.messages.at(-1);
       chat.messages.push(m);
       body.querySelector(".chat-empty")?.remove();
-      body.append(...msgNode(m, prev));
+      if (sameGroup(prev, m)) body.querySelector(`.msg[data-id="${prev.id}"]`)?.classList.remove("last");
+      body.append(...msgNode(m, prev, null));
       if (stick) body.scrollTop = body.scrollHeight;
     };
     chat.refreshTicks = () => {

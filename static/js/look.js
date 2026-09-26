@@ -12,6 +12,12 @@ export const PALETTES = {
   lavender: { name: "Лаванда",    pl: "#7c3aed", pd: "#c4b5fd", al: "#db2777", ad: "#f9a8d4", c: ["#8b5cf6", "#f0abfc", "#818cf8", "#c4b5fd"] },
   midnight: { name: "Полночь",    pl: "#3730a3", pd: "#818cf8", al: "#0891b2", ad: "#67e8f9", c: ["#4338ca", "#06b6d4", "#312e81", "#a5b4fc"] },
   graphite: { name: "Графит",     pl: "#334155", pd: "#cbd5e1", al: "#475569", ad: "#94a3b8", c: ["#64748b", "#94a3b8", "#475569", "#cbd5e1"] },
+  sky:      { name: "Небо",       pl: "#0369a1", pd: "#7dd3fc", al: "#4f46e5", ad: "#a5b4fc", c: ["#38bdf8", "#818cf8", "#bae6fd", "#60a5fa"] },
+  sunset:   { name: "Закат",      pl: "#c2410c", pd: "#fdba74", al: "#be123c", ad: "#fda4af", c: ["#f97316", "#f43f5e", "#facc15", "#fb923c"] },
+  amber:    { name: "Янтарь",     pl: "#a16207", pd: "#fcd34d", al: "#9a3412", ad: "#fdba74", c: ["#f59e0b", "#fbbf24", "#ea580c", "#fde68a"] },
+  coffee:   { name: "Кофе",       pl: "#7c4a2d", pd: "#d6a77a", al: "#9a3412", ad: "#e7b98c", c: ["#a16207", "#b45309", "#78350f", "#e7c9a9"] },
+  cyber:    { name: "Киберпанк",  pl: "#a21caf", pd: "#f0abfc", al: "#0e7490", ad: "#22d3ee", c: ["#d946ef", "#06b6d4", "#facc15", "#f472b6"] },
+  royal:    { name: "Королевский", pl: "#4338ca", pd: "#a5b4fc", al: "#a16207", ad: "#fcd34d", c: ["#4f46e5", "#eab308", "#312e81", "#c7d2fe"] },
 };
 
 export const BACKGROUNDS = {
@@ -34,6 +40,16 @@ export const FONTS = {
   comfortaa:  { name: "Comfortaa",   body: "Nunito",         display: "Comfortaa",        q: "Nunito:wght@400;600;700;800&family=Comfortaa:wght@500;600;700" },
   serif:      { name: "Классика",    body: "PT Serif",       display: "Playfair Display", q: "PT+Serif:wght@400;700&family=Playfair+Display:wght@500;600;700" },
   mono:       { name: "Техно",       body: "Inter",          display: "JetBrains Mono",   q: "Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700" },
+  roboto:     { name: "Roboto",      body: "Roboto",         display: "Roboto",           q: "Roboto:wght@400;500;700;900" },
+  opensans:   { name: "Open Sans",   body: "Open Sans",      display: "Open Sans",        q: "Open+Sans:wght@400;500;600;700;800" },
+  ubuntu:     { name: "Ubuntu",      body: "Ubuntu",         display: "Ubuntu",           q: "Ubuntu:wght@400;500;700" },
+  exo:        { name: "Exo 2",       body: "Exo 2",          display: "Exo 2",            q: "Exo+2:wght@400;500;600;700;800" },
+  oswald:     { name: "Спорт",       body: "Roboto",         display: "Oswald",           q: "Roboto:wght@400;500;700&family=Oswald:wght@500;600;700" },
+  lora:       { name: "Книга",       body: "Lora",           display: "Lora",             q: "Lora:wght@400;500;600;700" },
+  philosopher:{ name: "Philosopher", body: "Philosopher",    display: "Philosopher",      q: "Philosopher:wght@400;700" },
+  caveat:     { name: "Рукопись",    body: "Nunito",         display: "Caveat",           q: "Nunito:wght@400;600;700;800&family=Caveat:wght@600;700", dsize: 1.25 },
+  pacifico:   { name: "Кистью",      body: "Rubik",          display: "Pacifico",         q: "Rubik:wght@400;500;600;700&family=Pacifico", dw: 400 },
+  russo:      { name: "Русский стиль", body: "Roboto",       display: "Russo One",        q: "Roboto:wght@400;500;700&family=Russo+One", dw: 400 },
   system:     { name: "Системный",   body: null,             display: null,               q: null },
 };
 
@@ -50,6 +66,15 @@ export const PRESETS = {
   neon:     { name: "Неон",     palette: "mint",     bg: "orbit",    font: "mono",       shape: "sharp",  mode: "dark" },
   graphite: { name: "Графит",   palette: "graphite", bg: "plain",    font: "inter",      shape: "sharp",  mode: "light" },
   classic:  { name: "Классика", palette: "ruby",     bg: "gradient", font: "serif",      shape: "medium", mode: "light" },
+  sky:      { name: "Небо",     palette: "sky",      bg: "aurora",   font: "opensans",   shape: "soft",   mode: "light" },
+  sunset:   { name: "Закат",    palette: "sunset",   bg: "gradient", font: "pacifico",   shape: "soft",   mode: "dark" },
+  cyber:    { name: "Киберпанк", palette: "cyber",   bg: "orbit",    font: "russo",      shape: "sharp",  mode: "dark" },
+  coffee:   { name: "Кофейня",  palette: "coffee",   bg: "pattern",  font: "lora",       shape: "medium", mode: "light" },
+  royal:    { name: "Королевская", palette: "royal", bg: "stars",    font: "philosopher", shape: "medium", mode: "dark" },
+  notebook: { name: "Тетрадь",  palette: "sky",      bg: "pattern",  font: "caveat",     shape: "soft",   mode: "light" },
+  sport:    { name: "Спорт",    palette: "ruby",     bg: "plain",    font: "oswald",     shape: "sharp",  mode: "dark" },
+  amber:    { name: "Янтарь",   palette: "amber",    bg: "aurora",   font: "exo",        shape: "medium", mode: "light" },
+  minimal:  { name: "Минимализм", palette: "graphite", bg: "plain",  font: "ubuntu",     shape: "medium", mode: "dark" },
 };
 
 export const DEFAULT_LOOK = { preset: "orbit", palette: "violet", custom: null, bg: "orbit", dim: 35, blur: 0, font: "manrope", shape: "soft" };
@@ -147,6 +172,8 @@ export function applyLook(look, image = bgImage) {
   } else {
     vars["--font"] = vars["--font-display"] = `system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif`;
   }
+  vars["--display-weight"] = String(f.dw || 650);
+  vars["--display-scale"] = String(f.dsize || 1);
   const root = document.documentElement;
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
   root.dataset.bg = bg;
