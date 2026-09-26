@@ -400,12 +400,26 @@ footer a svg{width:18px;height:18px;}
 .paper table{border-collapse:collapse;width:100%;font-size:.9em;}
 .paper th,.paper td{border:1px solid #b9bdcc;padding:6px 9px;white-space:normal;text-align:left;}
 .paper th{background:#eceef5;font-weight:700;position:static;color:inherit;font-size:1em;}
-.paper td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.paper td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .paper tbody tr:hover td,.paper tr:hover td{background:transparent;}
 .paper ol{margin:0 0 10px;padding-left:24px;}
 .paper.business{font-family:'Times New Roman',Times,serif;font-size:15.5px;}
 .paper.business p:not(.subtitle):not(.date){text-indent:1.25cm;}
 #printArea{display:none;}
+.paper figure.chart{margin:14px 0 16px;text-align:center;}
+.paper figure.chart img{max-width:100%;height:auto;display:block;margin:0 auto;}
+.paper figure.chart figcaption{font-size:.9em;margin-top:6px;}
+.chk-bad{background:rgba(255,184,77,.38);border-bottom:2px solid #f59e0b;border-radius:3px;padding:0 2px;cursor:help;}
+.check-badge{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:14px;font-size:13.5px;margin-bottom:12px;border:1px solid var(--line);animation:rise .4s ease both;}
+.check-badge[hidden]{display:none;}
+.check-badge .ic{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700;margin-top:1px;}
+.check-badge.ok{background:rgba(46,230,166,.1);}
+.check-badge.ok .ic{background:#1fb56c;}
+.check-badge.warn{background:rgba(255,184,77,.13);}
+.check-badge.warn .ic{background:#f59e0b;}
+.check-badge small{display:block;color:var(--muted);font-size:12.5px;}
+.files-hint{font-size:12.5px;color:var(--faint);margin-top:8px;}
+#printArea .chk-bad{background:none;border:0;padding:0;}
 @media print{
   @page{size:A4;margin:20mm 15mm 20mm 30mm;}
   html,body{background:#fff!important;}
@@ -539,12 +553,13 @@ footer a svg{width:18px;height:18px;}
       <div class="drop" id="drop" role="button" tabindex="0" aria-label="Выбрать Excel-файл">
         <div class="drop-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V5M12 5l-4 4M12 5l4 4"/><path d="M5 16v2a2 2 0 002 2h10a2 2 0 002-2v-2"/></svg></div>
         <b>Перетащите файл или нажмите</b>
-        <span>.xlsx, .xls, .csv</span>
-        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+        <span>.xlsx, .xls, .csv · можно несколько файлов сразу</span>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" multiple>
       </div>
       <div class="demo-row" id="demoRow"><button class="link-btn" id="demoBtn">Нет файла под рукой? <b>Попробуйте на примере →</b></button></div>
       <div id="result"></div>
       <div id="statsBox"></div>
+      <input type="file" id="fileInputAdd" accept=".xlsx,.xls,.csv" multiple>
       <div id="commentBox" style="display:none">
         <div class="section-label"><span>На что обратить внимание</span><span class="hint">необязательно</span></div>
         <div class="with-mic"><textarea class="field" id="fileComment" placeholder="Например: главное — лист «Итоги», сравни с прошлым месяцем"></textarea><button class="mic" id="commentMic" aria-label="Надиктовать голосом" title="Надиктовать"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></button></div>
@@ -620,6 +635,7 @@ footer a svg{width:18px;height:18px;}
           <div class="set-row"><label>Оформление Word</label><div class="seg" data-set="style"><button data-v="business">Деловое · Times 14</button><button data-v="modern">Современное · Calibri 11</button></div></div>
           <div class="set-row switches">
             <label class="switch"><input type="checkbox" data-toggle="tables"><span></span>Таблицы с цифрами</label>
+            <label class="switch"><input type="checkbox" data-toggle="chart"><span></span>Диаграмма</label>
             <label class="switch"><input type="checkbox" data-toggle="pageNums"><span></span>Номера страниц</label>
             <label class="switch"><input type="checkbox" data-toggle="date"><span></span>Дата внизу</label>
           </div>
@@ -653,6 +669,7 @@ footer a svg{width:18px;height:18px;}
               <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>Word</button>
           </div>
         </div>
+        <div class="check-badge" id="checkBadge" hidden></div>
         <div class="paper-wrap"><article class="paper" id="docPreview"></article></div>
         <textarea class="field" id="genOutput" placeholder="Здесь появится текст документа" aria-label="Текст документа"></textarea>
         <div class="doc-meta">
@@ -742,7 +759,9 @@ let currentStep = '1';
 let mode = 'preview';
 const MAX_DATA_CHARS = 150000;
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-const DEFAULT_SETTINGS = { length: 'std', tone: 'official', style: 'business', tables: true, pageNums: true, date: true, org: '', position: '', fio: '' };
+const DEFAULT_SETTINGS = { length: 'std', tone: 'official', style: 'business', tables: true, chart: true, pageNums: true, date: true, org: '', position: '', fio: '' };
+let loadedFiles = [];
+let chart = null;   // { title, dataUrl, bytes, w, h }
 let settings = Object.assign({}, DEFAULT_SETTINGS, loadJson('etw_settings', {}));
 const SET_LABELS = { length: { short: 'Кратко', std: 'Стандартно', long: 'Подробно' }, tone: { official: 'официально', neutral: 'нейтрально', simple: 'простым языком' }, style: { business: 'Times 14', modern: 'Calibri 11' } };
 let dataStats = [];
@@ -868,23 +887,51 @@ drop.addEventListener('click', () => fileInput.click());
 drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
 ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag'); }));
 ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag'); }));
-drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
-fileInput.addEventListener('change', e => { const f = e.target.files[0]; if (f) handleFile(f); e.target.value = ''; });
+drop.addEventListener('drop', e => { if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files, false); });
+fileInput.addEventListener('change', e => { if (e.target.files.length) handleFiles(e.target.files, false); e.target.value = ''; });
+$('fileInputAdd').addEventListener('change', e => { if (e.target.files.length) handleFiles(e.target.files, true); e.target.value = ''; });
 
-function handleFile(file){
-  const reader = new FileReader();
-  reader.onload = e => {
+function readWorkbook(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => { try { resolve(XLSX.read(new Uint8Array(e.target.result), { type: 'array' })); } catch (err) { reject(err); } };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
+}
+async function handleFiles(fileList, append){
+  const files = [...fileList];
+  for (let i = 0; i < files.length; i++){
     try {
-      loadWorkbook(XLSX.read(new Uint8Array(e.target.result), { type: 'array' }), file.name);
+      const wb = await readWorkbook(files[i]);
+      if (append || i > 0) mergeWorkbook(wb, files[i].name); else loadWorkbook(wb, files[i].name);
     } catch (err) {
-      result.innerHTML = '<div class="empty" style="margin-top:14px">Не получилось прочитать файл: ' + escapeHtml(String(err.message || err)) + '</div>';
-      toast('Ошибка чтения файла', 'err');
+      toast('Не получилось прочитать «' + files[i].name + '»', 'err');
     }
+  }
+  if (loadedFiles.length > 1) toast('Файлов в работе: ' + loadedFiles.length + '. ИИ сравнит их данные', 'ok');
+}
+const shortName = (n) => n.replace(/\.(xlsx|xls|csv)$/i, '').slice(0, 22);
+function mergeWorkbook(wb, name){
+  if (!workbook){ loadWorkbook(wb, name); return; }
+  const addSheet = (sheetName, sheet) => {
+    let nm = sheetName, k = 2;
+    while (workbook.Sheets[nm]) nm = sheetName + ' (' + (k++) + ')';
+    workbook.SheetNames.push(nm); workbook.Sheets[nm] = sheet;
   };
-  reader.readAsArrayBuffer(file);
+  if (loadedFiles.length === 1){   // первый файл тоже подписываем именем, чтобы листы не путались
+    const old = workbook; const prefix = shortName(loadedFiles[0]);
+    workbook = { SheetNames: [], Sheets: {} };
+    old.SheetNames.forEach(n => addSheet(prefix + ' · ' + n, old.Sheets[n]));
+  }
+  wb.SheetNames.forEach(n => addSheet(shortName(name) + ' · ' + n, wb.Sheets[n]));
+  loadedFiles.push(name);
+  activeFileName = loadedFiles.join(' + ');
+  activeSheet = workbook.SheetNames[0];
+  renderWorkbook(); renderStats(); refreshSummary();
 }
 function loadWorkbook(wb, name){
-  workbook = wb; activeSheet = wb.SheetNames[0]; activeFileName = name;
+  workbook = wb; activeSheet = wb.SheetNames[0]; activeFileName = name; loadedFiles = [name];
   renderWorkbook();
   renderStats();
   drop.style.display = 'none';
@@ -964,11 +1011,158 @@ function analyzeWorkbook(){
 }
 function renderStats(){
   dataStats = workbook ? analyzeWorkbook() : [];
+  knownCache = null;
+  updateChart();
   const cards = dataStats.flatMap(s => s.numCols.map(c => Object.assign({ sheet: s.sheet }, c))).slice(0, 6);
   $('statsBox').innerHTML = !cards.length ? '' :
     '<div class="section-label"><span>Автосводка</span><span class="hint">точные итоги уйдут ИИ</span></div><div class="stats">' +
     cards.map((c, i) => '<div class="stat" style="animation-delay:' + (i * 0.05) + 's"><small>Σ ' + escapeHtml(c.name) + (dataStats.length > 1 ? ' · ' + escapeHtml(c.sheet) : '') + '</small><b>' + fmtNum(c.sum) + '</b>' +
       '<span>ср. ' + fmtNum(c.avg) + ' · мин ' + fmtNum(c.min) + ' · макс ' + fmtNum(c.max) + '</span></div>').join('') + '</div>';
+}
+/* ---- Диаграмма по данным (рисуется в браузере, вставляется в документ и в Word) ---- */
+function shortNum(n){
+  const a = Math.abs(n), f = (x) => x.toLocaleString('ru-RU', { maximumFractionDigits: 1 });
+  if (a >= 1e9) return f(n / 1e9) + ' млрд';
+  if (a >= 1e6) return f(n / 1e6) + ' млн';
+  if (a >= 1e4) return f(n / 1e3) + ' тыс';
+  return f(n);
+}
+function chartSpec(){
+  const cands = [];
+  dataStats.forEach(s => s.groups.forEach(g => { if (g.rows.length >= 2 && g.rows.length <= 12) cands.push(g); }));
+  if (!cands.length) return null;
+  cands.sort((a, b) => a.rows.length - b.rows.length);
+  const g = cands[0];
+  const maxOf = (j) => Math.max(...g.rows.map(([, a]) => a[j]));
+  const series = [0];
+  if (g.cols.length > 1){ const r = maxOf(1) / (maxOf(0) || 1); if (r > 0.33 && r < 3) series.push(1); } // одна ось: только сопоставимые величины
+  const vals = series.flatMap(j => g.rows.map(([, a]) => a[j]));
+  if (vals.some(v => v < 0) || Math.max(...vals) <= 0) return null;
+  const base = (n) => n.split(',')[0].trim();
+  const unit = (g.cols[0].split(',')[1] || '').trim();
+  const names = series.map(j => base(g.cols[j]));
+  return {
+    title: names.map((n, i) => i && !/^[A-ZА-ЯЁ]{2}/.test(n) ? n[0].toLowerCase() + n.slice(1) : n).join(' и ') + ' по «' + g.by + '»' + (unit ? ', ' + unit : ''),
+    cats: g.rows.map(([k]) => k),
+    series: series.map((j, si) => ({ name: names[si], values: g.rows.map(([, a]) => a[j]) })),
+  };
+}
+function drawChart(spec){
+  const W = 720, H = 360, S = 2;                       // логический размер и масштаб для чёткости
+  const cv = document.createElement('canvas'); cv.width = W * S; cv.height = H * S;
+  const c = cv.getContext('2d'); c.scale(S, S);
+  const COLORS = ['#2a78d6', '#eb6834'];               // проверенная пара (дальтонизм, контраст)
+  const INK = '#0b0b0b', INK2 = '#52514e', GRID = '#e4e4e0', FONT = 'Arial, Helvetica, sans-serif';
+  c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
+  const max = Math.max(...spec.series.flatMap(s => s.values));
+  const rawStep = max / 4, mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(v => v >= rawStep);
+  const top = Math.ceil(max / step) * step;
+  c.font = '15px ' + FONT;
+  const tickW = Math.max(...Array.from({ length: Math.round(top / step) + 1 }, (_, i) => c.measureText(shortNum(i * step)).width));
+  const L = Math.ceil(tickW) + 18, R = 16, T = spec.series.length > 1 ? 56 : 30, B = 48;
+  const pw = W - L - R, ph = H - T - B, y = (v) => T + ph - (v / top) * ph;
+  // сетка и подписи оси Y
+  c.textAlign = 'right'; c.textBaseline = 'middle'; c.lineWidth = 1;
+  for (let v = 0; v <= top + 1e-9; v += step){
+    const yy = Math.round(y(v)) + 0.5;
+    c.strokeStyle = v === 0 ? '#c9c9c4' : GRID; c.beginPath(); c.moveTo(L, yy); c.lineTo(W - R, yy); c.stroke();
+    c.fillStyle = INK2; c.fillText(shortNum(v), L - 8, yy);
+  }
+  // легенда (для двух рядов)
+  if (spec.series.length > 1){
+    c.textAlign = 'left'; c.font = '15px ' + FONT; let lx = L;
+    spec.series.forEach((s, i) => {
+      c.fillStyle = COLORS[i]; roundRect(c, lx, 17, 13, 13, 3); c.fill();
+      c.fillStyle = INK; c.fillText(s.name, lx + 20, 24); lx += 20 + c.measureText(s.name).width + 24;
+    });
+  }
+  // столбцы: не толще 28px, скругление 4px сверху, зазор 2px между соседями
+  const n = spec.cats.length, k = spec.series.length, gw = pw / n;
+  const bw = Math.min(28, (gw * 0.62 - (k - 1) * 2) / k), groupW = bw * k + (k - 1) * 2;
+  const maxIdx = spec.series.map(s => s.values.indexOf(Math.max(...s.values)));
+  const taken = [];   // занятые подписями промежутки по X — подписи не налезают друг на друга
+  spec.cats.forEach((cat, ci) => {
+    const gx = L + gw * ci + (gw - groupW) / 2;
+    spec.series.forEach((s, si) => {
+      const x = gx + si * (bw + 2), yv = y(s.values[ci]), h = T + ph - yv;
+      c.fillStyle = COLORS[si]; roundRect(c, x, yv, bw, h, Math.min(4, h), true); c.fill();
+      if (maxIdx[si] === ci){
+        c.font = '600 14px ' + FONT; const txt = shortNum(s.values[ci]), tw = c.measureText(txt).width, cx0 = x + bw / 2 - tw / 2 - 3, cx1 = x + bw / 2 + tw / 2 + 3;
+        if (!taken.some(([a, b2]) => cx0 < b2 && cx1 > a)){ taken.push([cx0, cx1]); c.fillStyle = INK; c.textAlign = 'center'; c.textBaseline = 'bottom'; c.fillText(txt, x + bw / 2, yv - 5); }
+      }
+    });
+    // подпись категории (обрезаем, если не помещается)
+    c.fillStyle = INK2; c.font = '15px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'top';
+    let label = String(cat); const maxW = gw - 6;
+    if (c.measureText(label).width > maxW){ while (label.length > 1 && c.measureText(label + '…').width > maxW) label = label.slice(0, -1); label += '…'; }
+    c.fillText(label, L + gw * ci + gw / 2, T + ph + 10);
+  });
+  const dataUrl = cv.toDataURL('image/png');
+  const bin = atob(dataUrl.split(',')[1]); const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { title: spec.title, dataUrl, bytes, w: W, h: H };
+}
+function roundRect(c, x, y, w, h, r, topOnly){
+  c.beginPath();
+  c.moveTo(x, y + h);
+  c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y);
+  c.lineTo(x + w - r, y); c.quadraticCurveTo(x + w, y, x + w, y + r);
+  if (topOnly){ c.lineTo(x + w, y + h); } else { c.lineTo(x + w, y + h - r); c.quadraticCurveTo(x + w, y + h, x + w - r, y + h); c.lineTo(x + r, y + h); c.quadraticCurveTo(x, y + h, x, y + h - r); }
+  c.closePath();
+}
+function updateChart(){
+  const spec = workbook ? chartSpec() : null;
+  try { chart = spec ? drawChart(spec) : null; } catch (e) { chart = null; }
+}
+const chartOn = () => !!(settings.chart && chart);
+function placeChart(blocks, streaming){
+  if (!chartOn()) return blocks.filter(b => b.type !== 'chart');
+  let seen = false;
+  const out = blocks.filter(b => b.type !== 'chart' || (!seen && (seen = true)));
+  if (seen || streaming) return out;
+  let idx = out.findIndex(b => b.type === 'table');
+  if (idx >= 0) idx += 1;
+  else { const hs = out.map((b, i) => b.type === 'h' ? i : -1).filter(i => i >= 0); idx = hs.length >= 2 ? hs[hs.length - 1] : out.length; }
+  out.splice(idx, 0, { type: 'chart' });
+  return out;
+}
+
+/* ---- Проверка цифр: каждое число в тексте сверяется с таблицей ---- */
+let knownCache = null;
+function knownNumbers(){
+  if (knownCache) return knownCache;
+  const set = [];
+  if (workbook) workbook.SheetNames.forEach(n => sheetRows(n).forEach(r => r.forEach(v => { const x = parseNum(v); if (x !== null) set.push(x); })));
+  dataStats.forEach(s => {
+    s.numCols.forEach(c => set.push(c.sum, c.avg, c.min, c.max));
+    for (let a = 0; a < s.numCols.length; a++) for (let b = a + 1; b < s.numCols.length; b++) set.push(Math.abs(s.numCols[a].sum - s.numCols[b].sum));
+    s.groups.forEach(g => g.rows.forEach(([, arr]) => { set.push(...arr); if (arr.length > 1) set.push(Math.abs(arr[0] - arr[1]), Math.abs(arr[1] - arr[0])); }));
+  });
+  return (knownCache = set.map(Math.abs));
+}
+const NUM_RE = /(\d{1,3}(?:[   ]\d{3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)(\s*(?:млрд|млн|тыс)\.?)?(\s*%)?/g;
+function verifyNumber(raw, mult, pct){
+  if (pct) return null;                                             // проценты — расчётные, не проверяем
+  const v = parseFloat(raw.replace(/[   ]/g, '').replace(',', '.'));
+  if (!isFinite(v)) return null;
+  const m = /млрд/.test(mult) ? 1e9 : /млн/.test(mult) ? 1e6 : /тыс/.test(mult) ? 1e3 : 1;
+  const val = v * m;
+  if (m === 1 && (val < 100 || (Number.isInteger(val) && val >= 1900 && val <= 2100 && !/\s/.test(raw)))) return null; // мелкие числа и годы пропускаем
+  const tol = (k) => m > 1 ? m * 0.051 : Math.max(0.51, Math.abs(k) * 0.005);
+  return knownNumbers().some(k => Math.abs(k - val) <= tol(k));
+}
+let checkStats = { total: 0, bad: 0 }, markOn = false;
+function markNumbers(html){
+  if (!workbook || !markOn) return html;
+  return html.replace(NUM_RE, (all, raw, mult = '', pct = '') => {
+    const ok = verifyNumber(raw, mult, pct);
+    if (ok === null) return all;
+    checkStats.total++;
+    if (ok) return all;
+    checkStats.bad++;
+    return '<mark class="chk-bad" title="Этого числа нет в таблице и в её итогах — проверьте">' + all + '</mark>';
+  });
 }
 function statsText(){
   let t = '';
@@ -988,8 +1182,9 @@ function renderWorkbook(){
   const cols = rows.reduce((m, r) => Math.max(m, r.length), 0);
   const sheets = workbook.SheetNames.length;
   let html = '<div class="file-card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M3 15h18M9 3v18"/></svg></div>' +
-    '<div style="min-width:0"><div class="nm">' + escapeHtml(activeFileName) + '</div><div class="mt">Листов: ' + sheets + ' · строк: ' + rows.length + ' · столбцов: ' + cols + '</div></div>' +
-    '<button class="icon-btn" id="replaceFile" aria-label="Выбрать другой файл" title="Другой файл"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v6h6M20 20v-6h-6"/><path d="M20 10a8 8 0 00-14.6-4.6L4 10M4 14a8 8 0 0014.6 4.6L20 14"/></svg></button></div>';
+    '<div style="min-width:0"><div class="nm">' + escapeHtml(activeFileName) + '</div><div class="mt">' + (loadedFiles.length > 1 ? 'Файлов: ' + loadedFiles.length + ' · ' : '') + 'Листов: ' + sheets + ' · строк: ' + rows.length + ' · столбцов: ' + cols + '</div></div>' +
+    '<button class="icon-btn" id="addFile" aria-label="Добавить ещё файл" title="Добавить ещё файл"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>' +
+    '<button class="icon-btn" id="replaceFile" aria-label="Выбрать другой файл" title="Другой файл" style="margin-left:8px"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v6h6M20 20v-6h-6"/><path d="M20 10a8 8 0 00-14.6-4.6L4 10M4 14a8 8 0 0014.6 4.6L20 14"/></svg></button></div>';
   if (sheets > 1){
     html += '<div class="tabs">' + workbook.SheetNames.map(n => '<button class="tab ' + (n === activeSheet ? 'active' : '') + '" data-sheet="' + escapeHtml(n) + '">' + escapeHtml(n) + '</button>').join('') + '</div>';
   } else html += '<div style="height:14px"></div>';
@@ -997,6 +1192,7 @@ function renderWorkbook(){
   result.innerHTML = html;
   result.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { activeSheet = b.dataset.sheet; renderWorkbook(); }));
   $('replaceFile').addEventListener('click', () => fileInput.click());
+  $('addFile').addEventListener('click', () => $('fileInputAdd').click());
 }
 function renderTable(rows){
   if (!rows.length) return '<div class="empty">Лист пуст</div>';
@@ -1094,7 +1290,7 @@ $('tplDocxInput').addEventListener('change', async (e) => {
    Шаг 3: генерация и документ
    ===================================================================== */
 function refreshSummary(){
-  $('sumData').textContent = workbook ? (activeFileName + ' · листов: ' + workbook.SheetNames.length) : 'не загружены';
+  $('sumData').textContent = workbook ? ((loadedFiles.length > 1 ? loadedFiles.length + ' файла' : activeFileName) + ' · листов: ' + workbook.SheetNames.length) : 'не загружены';
   const tpl = getTpl(selectedTplId);
   $('sumTpl').textContent = tpl ? tpl.name : 'не выбран';
   const btn = $('genBtn');
@@ -1110,7 +1306,8 @@ function updateOutputButtons(){
   $('docStats').textContent = has ? words + ' ' + plural(words, 'слово', 'слова', 'слов') + ' · ~' + Math.max(1, Math.round(words / 180)) + ' мин чтения' : '';
   if (!genController){ clearTimeout(draftTimer); draftTimer = setTimeout(() => { try { localStorage.setItem('etw_draft', outText()); } catch(e){} }, 400); }
 }
-function inl(t){ return escapeHtml(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); }
+const nbspNums = (t) => String(t).replace(/(\d) (?=\d{3}(?!\d))/g, '$1\u00a0');
+function inl(t){ return markNumbers(escapeHtml(nbspNums(t))).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); }
 const isNumCell = (v) => parseNum(v) !== null;
 const todayStr = () => new Date().toLocaleDateString('ru-RU');
 function parseDoc(text){
@@ -1132,6 +1329,7 @@ function parseDoc(text){
     }
     flush();
     if (!t){ inHead = false; return; }
+    if (/^\[?\s*ДИАГРАММА\s*\]?$/i.test(t)){ blocks.push({ type: 'chart' }); inHead = false; titled = true; return; }
     const clean = t.replace(/^#+\s*/, '');
     if (!titled){ blocks.push({ type: 'title', text: clean }); titled = true; inHead = true; return; }
     if (inHead && t.length < 160 && !/^(#|[-•*]\s|\d+[.)]\s)/.test(t)){ blocks.push({ type: 'subtitle', text: t }); return; }
@@ -1158,7 +1356,8 @@ function renderPreview(streaming){
   let html = settings.org ? '<div class="org">' + escapeHtml(settings.org) + '</div>' : '';
   let list = null;
   const close = () => { if (list){ html += '</' + list + '>'; list = null; } };
-  const blocks = parseDoc(text);
+  checkStats = { total: 0, bad: 0 }; markOn = !streaming;
+  const blocks = placeChart(parseDoc(text), streaming);
   blocks.forEach((b, i) => {
     if (b.type !== 'li' && b.type !== 'ol') close();
     if (b.type === 'title') html += '<h3 class="title">' + inl(b.text) + '</h3>';
@@ -1173,6 +1372,7 @@ function renderPreview(streaming){
         const tag = ri === 0 ? 'th' : 'td';
         return '<' + tag + (ri && ci && isNumCell(c) ? ' class="num"' : '') + '>' + inl(c) + '</' + tag + '>';
       }).join('') + '</tr>').join('') + '</table></div>';
+    else if (b.type === 'chart') html += '<figure class="chart"><img src="' + chart.dataUrl + '" alt="' + escapeHtml(chart.title) + '"><figcaption>Рисунок 1 — ' + escapeHtml(chart.title) + '</figcaption></figure>';
     else html += '<p>' + inl(b.text) + '</p>';
     if ((b.type === 'title' || b.type === 'subtitle') && (!blocks[i + 1] || blocks[i + 1].type !== 'subtitle')) html += '<div class="title-gap"></div>';
   });
@@ -1183,6 +1383,17 @@ function renderPreview(streaming){
     if (settings.position || settings.fio) html += '<div class="sign"><span>' + escapeHtml(settings.position) + '</span><span>' + escapeHtml(settings.fio) + '</span></div>';
   }
   el.innerHTML = html;
+  const badge = $('checkBadge');
+  if (streaming || !workbook || !checkStats.total){ badge.hidden = true; return; }
+  badge.hidden = false;
+  const ok = checkStats.total - checkStats.bad;
+  if (!checkStats.bad){
+    badge.className = 'check-badge ok';
+    badge.innerHTML = '<span class="ic">✓</span><div><b>Цифры сверены с таблицей</b><small>Все ' + checkStats.total + ' ' + plural(checkStats.total, 'число', 'числа', 'чисел') + ' в тексте найдены в данных или их итогах. Проценты не проверяются.</small></div>';
+  } else {
+    badge.className = 'check-badge warn';
+    badge.innerHTML = '<span class="ic">!</span><div><b>' + checkStats.bad + ' ' + plural(checkStats.bad, 'число не найдено', 'числа не найдены', 'чисел не найдено') + ' в таблице</b><small>Подсвечены жёлтым — проверьте их или попросите помощника «Проверь цифры». Совпало: ' + ok + ' из ' + checkStats.total + '.</small></div>';
+  }
 }
 function setMode(m){
   mode = m;
@@ -1229,13 +1440,14 @@ $('genBtn').addEventListener('click', async () => {
     'Числа берёшь из таблицы точно; готовые итоги, посчитанные программой, используй как есть и не пересчитывай.\n\n' +
     'Формат ответа: первая строка — заголовок документа, следующая строка (по желанию) — подзаголовок. Подзаголовки разделов — строкой вида "## Заголовок раздела". ' +
     'Перечни — строками, начинающимися с "- ". Остальное — обычные абзацы. ' +
+    (chartOn() ? 'Программа построит диаграмму «' + chart.title + '»: вставь в подходящее место документа (обычно после таблицы или в разделе анализа) отдельную строку [ДИАГРАММА]. ' : '') +
     (settings.tables ? 'Где уместно, добавь 1–2 компактные таблицы с ключевыми цифрами строками вида "| Показатель | Значение |" (первая строка — заголовки, не больше 12 строк). ' : 'Не используй таблицы. ') +
     'Выводи только готовый текст документа, без пояснений от себя и без другой markdown-разметки. ' +
     'Заполнители в квадратных скобках из образца заменяй реальными данными. ' +
     ((settings.date || settings.position || settings.fio || settings.org) ? 'Не добавляй название организации, дату, подпись и ФИО — программа добавит их сама. ' : '') +
     '\n' + LEN[settings.length] + ' ' + TONE[settings.tone];
   const user = 'ОБРАЗЕЦ готового документа — повтори его стиль, структуру, заголовки и формулировки:\n---\n' + tpl.text.slice(0, 30000) + '\n---\n\n' +
-    'ДАННЫЕ из Excel-файла «' + activeFileName + '» (все листы, построчно, столбцы через " | "):\n---\n' + dataCsv + '---\n\n' +
+    (loadedFiles.length > 1 ? 'ДАННЫЕ из ' + loadedFiles.length + ' Excel-файлов (' + loadedFiles.map(f => '«' + f + '»').join(', ') + '; листы подписаны именем файла) — сравни их между собой, где это уместно' : 'ДАННЫЕ из Excel-файла «' + activeFileName + '»') + ' (все листы, построчно, столбцы через " | "):\n---\n' + dataCsv + '---\n\n' +
     (facts ? 'ТОЧНЫЕ ИТОГИ, посчитанные программой по этой таблице:\n' + facts + '\n' : '') +
     (fileComment ? 'КОММЕНТАРИЙ пользователя — на что обратить особое внимание: ' + fileComment + '\n\n' : '') +
     'Составь итоговый документ по этим данным в стиле и структуре образца.';
@@ -1290,7 +1502,7 @@ function escapeXml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','
 function wRuns(text, o = {}){
   return String(text).split(/(\*\*[^*]+\*\*)/).filter(x => x !== '').map(part => {
     const bold = o.b || /^\*\*[^*]+\*\*$/.test(part);
-    const t = part.replace(/^\*\*([^*]+)\*\*$/, '$1');
+    const t = nbspNums(part.replace(/^\*\*([^*]+)\*\*$/, '$1'));
     const rPr = (bold ? '<w:b/><w:bCs/>' : '') + (o.sz ? '<w:sz w:val="' + o.sz + '"/><w:szCs w:val="' + o.sz + '"/>' : '');
     return '<w:r>' + (rPr ? '<w:rPr>' + rPr + '</w:rPr>' : '') + '<w:t xml:space="preserve">' + escapeXml(t) + '</w:t></w:r>';
   }).join('');
@@ -1315,13 +1527,25 @@ async function buildDocx(text){
   let body = '';
   if (settings.org) body += wP(wRuns(settings.org.toUpperCase(), { b: true }), '<w:spacing w:after="360"/><w:jc w:val="center"/>');
   let afterHead = false;
-  parseDoc(text).forEach(b => {
+  let fig = 0;
+  placeChart(parseDoc(text), false).forEach(b => {
     const gap = afterHead ? '<w:spacing w:before="240"/>' : '';
     if (b.type === 'title'){ body += wP(wRuns(b.text, { b: true, sz: base + 4 }), '<w:spacing w:after="60"/><w:jc w:val="center"/>'); afterHead = true; return; }
     if (b.type === 'subtitle'){ body += wP(wRuns(b.text), '<w:spacing w:after="60"/><w:jc w:val="center"/>'); afterHead = true; return; }
     if (b.type === 'h') body += wP(wRuns(b.text, { b: true }), '<w:keepNext/><w:spacing w:before="240" w:after="120"/>');
     else if (b.type === 'li') body += wP('<w:r><w:t>•</w:t></w:r><w:r><w:tab/></w:r>' + wRuns(b.text), gap + '<w:ind w:left="709" w:hanging="284"/>' + justify);
     else if (b.type === 'ol') body += wP('<w:r><w:t xml:space="preserve">' + escapeXml(b.num) + '</w:t></w:r><w:r><w:tab/></w:r>' + wRuns(b.text), gap + '<w:ind w:left="709" w:hanging="425"/>' + justify);
+    else if (b.type === 'chart'){
+      fig++;
+      const cx = 5760000, cy = Math.round(cx * chart.h / chart.w);   // 16 см по ширине
+      body += wP('<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="' + cx + '" cy="' + cy + '"/><wp:docPr id="' + fig + '" name="Диаграмма ' + fig + '"/>' +
+        '<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
+        '<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="' + fig + '" name="chart' + fig + '.png"/><pic:cNvPicPr/></pic:nvPicPr>' +
+        '<pic:blipFill><a:blip r:embed="rId3"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>' +
+        '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + cx + '" cy="' + cy + '"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>' +
+        '</a:graphicData></a:graphic></wp:inline></w:drawing></w:r>', '<w:keepNext/><w:spacing w:before="160" w:after="60"/><w:jc w:val="center"/>');
+      body += wP(wRuns('Рисунок ' + fig + ' — ' + chart.title, { sz: base - 2 }), '<w:spacing w:after="200"/><w:jc w:val="center"/>');
+    }
     else if (b.type === 'table') body += (afterHead ? wP('', '<w:spacing w:after="120"/>') : '') + wTable(b.rows, base, W) + wP('', '<w:spacing w:after="60"/>');
     else body += wP(wRuns(b.text), gap + (biz ? '<w:ind w:firstLine="709"/>' : '') + justify);
     afterHead = false;
@@ -1330,7 +1554,7 @@ async function buildDocx(text){
   if (settings.position || settings.fio) body += wP(wRuns(settings.position || '') + '<w:r><w:tab/></w:r>' + wRuns(settings.fio || ''),
     '<w:tabs><w:tab w:val="right" w:pos="' + W + '"/></w:tabs><w:spacing w:before="' + (settings.date ? 120 : 480) + '"/>');
 
-  const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+  const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"';
   const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
   const documentXml = XML + '<w:document ' + NS + '><w:body>' + body + '<w:sectPr>' +
     (settings.pageNums ? '<w:footerReference w:type="default" r:id="rId2"/>' : '') +
@@ -1346,6 +1570,7 @@ async function buildDocx(text){
   const contentTypes = XML + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
     '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
     '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Default Extension="png" ContentType="image/png"/>' +
     '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
     '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
     '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>';
@@ -1353,7 +1578,8 @@ async function buildDocx(text){
     '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';
   const docRels = XML + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
     '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
-    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>';
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>' +
+    (fig ? '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/chart1.png"/>' : '') + '</Relationships>';
   const zip = new JSZip();
   zip.file('[Content_Types].xml', contentTypes);
   zip.folder('_rels').file('.rels', rels);
@@ -1362,6 +1588,7 @@ async function buildDocx(text){
   w.file('styles.xml', stylesXml);
   w.file('footer1.xml', footerXml);
   w.folder('_rels').file('document.xml.rels', docRels);
+  if (fig) w.folder('media').file('chart1.png', chart.bytes);
   return zip.generateAsync({ type: 'blob', mimeType: DOCX_MIME });
 }
 function reportFileName(text){
@@ -1447,7 +1674,7 @@ async function sendApMessage(preset){
   const tableText = workbook ? workbookAsText().slice(0, 30000) : '';
   const instruction = 'Ты — дружелюбный помощник внутри веб-приложения TimDOX (шаги: 1) загрузка Excel и комментарий к нему → 2) выбор образца документа (есть готовые и свои) → 3) создание документа → скачивание в Word или отправка в мессенджер). ' +
     'Отвечай кратко и по-русски. Помогай с интерфейсом и с содержанием документов. ' +
-    'Если пользователь просит изменить или переписать документ, выдай ПОЛНЫЙ новый текст документа между строками <<<ДОКУМЕНТ и ДОКУМЕНТ>>> в том же формате (первая строка — заголовок, "## " — подзаголовки, "- " — пункты, таблицы — строками "| a | b |"). ' +
+    'Если пользователь просит изменить или переписать документ, выдай ПОЛНЫЙ новый текст документа между строками <<<ДОКУМЕНТ и ДОКУМЕНТ>>> в том же формате (первая строка — заголовок, "## " — подзаголовки, "- " — пункты, таблицы — строками "| a | b |"; строку [ДИАГРАММА], если она есть, сохрани). ' +
     appContext() + (doc ? '\n\nТекущий текст документа:\n' + doc.slice(0, 40000) : '') + (tableText && /цифр|данн|таблиц|провер/i.test(text) ? '\n\nДанные таблицы:\n' + tableText : '') + (dataStats.length ? '\n\nТочные итоги по таблице:\n' + statsText() : '');
   try {
     const reply = await callAI([{ role: 'system', content: instruction }, ...apTurns], {
@@ -1519,7 +1746,7 @@ function renderSettings(){
   document.querySelectorAll('.seg[data-set]').forEach(seg => seg.querySelectorAll('button').forEach(b => b.classList.toggle('active', settings[seg.dataset.set] === b.dataset.v)));
   document.querySelectorAll('[data-toggle]').forEach(i => i.checked = !!settings[i.dataset.toggle]);
   document.querySelectorAll('[data-text]').forEach(i => { if (document.activeElement !== i) i.value = settings[i.dataset.text] || ''; });
-  $('setSummary').textContent = SET_LABELS.length[settings.length] + ', ' + SET_LABELS.tone[settings.tone] + ' · ' + SET_LABELS.style[settings.style] + (settings.tables ? ' · таблицы' : '');
+  $('setSummary').textContent = SET_LABELS.length[settings.length] + ', ' + SET_LABELS.tone[settings.tone] + ' · ' + SET_LABELS.style[settings.style] + (settings.tables ? ' · таблицы' : '') + (settings.chart ? ' · диаграмма' : '');
 }
 function saveSettings(){ saveJson('etw_settings', settings); renderSettings(); if (!genController) renderPreview(false); }
 document.querySelectorAll('.seg[data-set]').forEach(seg => seg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; settings[seg.dataset.set] = b.dataset.v; saveSettings(); }));
