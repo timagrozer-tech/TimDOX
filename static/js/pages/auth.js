@@ -10,9 +10,9 @@ function orbitScene() {
   const core = h("div.orbit-core", h("div.sun-glow"), h("div.sun"), h("div.sun-ring"), h("div.sun-logo", logo(false).firstChild));
   return h("div.orbit-scene",
     h("div.orbit-system",
-      h("div.orbit.o1", planet("p-top", "💬", "rgba(51,224,255,.7)"), planet("p-bottom", "❤️", "rgba(255,95,162,.7)")),
-      h("div.orbit.o2", planet("p-right", "📷", "rgba(255,179,71,.7)"), planet("p-left", "🎉", "rgba(139,108,255,.8)"), planet("p-tr", "🎵", "rgba(51,224,255,.7)")),
-      h("div.orbit.o3", planet("p-top", "🌍", "rgba(34,211,238,.7)"), planet("p-bl", "✨", "rgba(255,95,162,.7)"), planet("p-right", "🏔", "rgba(139,108,255,.7)"))),
+      h("div.orbit.o1", planet("p-top", "💬", "color-mix(in srgb, var(--c3) 70%, transparent)"), planet("p-bottom", "❤️", "color-mix(in srgb, var(--c2) 70%, transparent)")),
+      h("div.orbit.o2", planet("p-right", "📷", "color-mix(in srgb, var(--c4) 70%, transparent)"), planet("p-left", "🎉", "color-mix(in srgb, var(--c1) 70%, transparent)"), planet("p-tr", "🎵", "color-mix(in srgb, var(--c3) 70%, transparent)")),
+      h("div.orbit.o3", planet("p-top", "🌍", "color-mix(in srgb, var(--c3) 70%, transparent)"), planet("p-bl", "✨", "color-mix(in srgb, var(--c2) 70%, transparent)"), planet("p-right", "🏔", "color-mix(in srgb, var(--c1) 70%, transparent)"))),
     core,
     h("div.floaters",
       h("div.floater.f1", "💬 ", h("b", "Борис:"), " уже выезжаю!"),

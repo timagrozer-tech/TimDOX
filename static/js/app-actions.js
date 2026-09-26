@@ -2,6 +2,14 @@
 import { api, state, disconnectStream, emit, loadMe, connectStream } from "./api.js";
 import { navigate } from "./router.js";
 import { applyTheme } from "./ui.js";
+import { applyLook } from "./look.js";
+
+/** Применяет тему и оформление, сохранённые в аккаунте */
+export function applyUserLook() {
+  if (!state.me) return;
+  if (state.me.theme) applyTheme(state.me.theme);
+  if (state.me.appearance) applyLook(state.me.appearance, state.me.background);
+}
 
 export async function logout() {
   try { await api.post("/api/auth/logout"); } catch { /* сессия уже могла истечь */ }
@@ -13,7 +21,7 @@ export async function logout() {
 
 export async function afterLogin(next) {
   await loadMe();
-  if (state.me?.theme && state.me.theme !== "system") applyTheme(state.me.theme);
+  applyUserLook();
   connectStream();
   navigate(next && next.startsWith("/") && !next.startsWith("//") ? next : "/", { replace: true });
 }

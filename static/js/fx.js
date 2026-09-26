@@ -29,6 +29,8 @@ function buildScene() {
   scene.id = "scene";
   scene.setAttribute("aria-hidden", "true");
   scene.innerHTML = `
+    <div class="scene-layer scene-photo" data-depth="10" data-scroll="0.02"></div>
+    <div class="scene-layer scene-mesh" data-depth="14" data-scroll="0.03"></div>
     <div class="scene-layer aurora" data-depth="18" data-scroll="0.04">
       <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span><span class="blob b4"></span>
     </div>
@@ -67,6 +69,8 @@ function initStars(canvas) {
   const draw = (t) => {
     requestAnimationFrame(draw);
     if (t - last < 33 || document.hidden) return;
+    const bgMode = document.documentElement.dataset.bg || "orbit";
+    if (bgMode !== "orbit" && bgMode !== "stars") return;
     last = t;
     const color = getComputedStyle(document.documentElement).getPropertyValue("--star").trim() || "220,210,255";
     ctx.clearRect(0, 0, w, h);

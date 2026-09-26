@@ -282,6 +282,52 @@ PRIVACY_FIELDS = {
 }
 
 
+APPEARANCE_ENUMS = {
+    "preset": ("orbit", "dawn", "ocean", "forest", "sakura", "midnight", "neon", "graphite", "classic", "custom"),
+    "palette": ("violet", "ocean", "mint", "forest", "sakura", "ruby", "lavender", "midnight", "graphite", "custom"),
+    "bg": ("orbit", "aurora", "stars", "gradient", "pattern", "plain", "image"),
+    "font": ("manrope", "inter", "nunito", "rubik", "montserrat", "comfortaa", "serif", "mono", "system"),
+    "shape": ("soft", "medium", "sharp"),
+}
+APPEARANCE_RANGES = {"dim": (0, 85), "blur": (0, 24)}
+HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def clean_appearance(raw) -> dict | None:
+    """Проверяет настройки оформления: только известные ключи и значения."""
+    if not isinstance(raw, dict):
+        return None
+    out = {}
+    for key, allowed in APPEARANCE_ENUMS.items():
+        if key in raw:
+            if raw[key] not in allowed:
+                return None
+            out[key] = raw[key]
+    for key, (lo, hi) in APPEARANCE_RANGES.items():
+        if key in raw:
+            try:
+                out[key] = max(lo, min(hi, int(raw[key])))
+            except (TypeError, ValueError):
+                return None
+    custom = raw.get("custom")
+    if custom not in (None, ""):
+        if not isinstance(custom, str) or not HEX_COLOR.match(custom):
+            return None
+        out["custom"] = custom.lower()
+    if out.get("palette") == "custom" and not out.get("custom"):
+        return None
+    return out
+
+
+def parse_appearance(value):
+    if not value:
+        return None
+    try:
+        return json.loads(value)
+    except ValueError:
+        return None
+
+
 @auth()
 async def settings_get(request: Request):
     u = request.state.user
@@ -290,6 +336,7 @@ async def settings_get(request: Request):
     p["email_verified"] = bool(u["email_verified_at"])
     p["show_birth_date"] = bool(p["show_birth_date"])
     p["invisible"] = bool(p["invisible"])
+    p["appearance"] = parse_appearance(p["appearance"])
     return JSONResponse(p)
 
 
@@ -353,6 +400,13 @@ async def settings_update(request: Request):
                 continue
             sets.append(f"{field}=?")
             params.append(data[field])
+    if "appearance" in data:
+        look = clean_appearance(data["appearance"])
+        if look is None:
+            errors["appearance"] = "Недопустимые настройки оформления"
+        else:
+            sets.append("appearance=?")
+            params.append(json.dumps(look, separators=(",", ":")))
     if errors:
         return JSONResponse({"error": "Проверьте поля формы", "fields": errors}, status_code=422)
     if sets:
@@ -365,7 +419,7 @@ async def upload_image(request: Request):
     limit(request, "upload")
     v = request.state.user["id"]
     kind = request.path_params["kind"]
-    if kind not in ("avatar", "cover"):
+    if kind not in ("avatar", "cover", "background"):
         raise ApiError(404, "Не найдено")
     old = db.value(f"SELECT {kind} FROM profiles WHERE user_id=?", (v,))
     if request.method == "DELETE":
@@ -422,8 +476,8 @@ async def delete_account(request: Request):
     post_ids = [r["id"] for r in db.all("SELECT id FROM posts WHERE author_id=?", (v,))]
     if post_ids:
         delete_post_files(post_ids)
-    prof = db.one("SELECT avatar, cover FROM profiles WHERE user_id=?", (v,))
-    media.delete_files(prof["avatar"], prof["cover"])
+    prof = db.one("SELECT avatar, cover, background FROM profiles WHERE user_id=?", (v,))
+    media.delete_files(prof["avatar"], prof["cover"], prof["background"])
     for r in db.all("SELECT media FROM stories WHERE author_id=?", (v,)):
         media.delete_files(r["media"])
     for r in db.all("SELECT cover FROM events WHERE creator_id=?", (v,)):

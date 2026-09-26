@@ -1,4 +1,5 @@
 """Регистрация, вход, выход, подтверждение почты, восстановление и смена пароля."""
+import json
 import re
 import secrets
 
@@ -10,6 +11,13 @@ from .. import config, db, mailer, social
 from ..security import (USERNAME_RE, hash_password, new_token, token_hash,
                         validate_password, verify_password)
 from ..web import ApiError, auth, body, limit, ok
+
+
+def parse_appearance(value):
+    try:
+        return json.loads(value) if value else None
+    except ValueError:
+        return None
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 RESERVED = {"admin", "api", "login", "register", "settings", "messages", "friends", "search",
@@ -23,7 +31,7 @@ def me_payload(request: Request) -> dict:
     return {
         "user": {
             "id": u["id"], "email": u["email"], "username": u["username"], "name": u["name"],
-            "avatar": u["avatar"], "theme": u["theme"], "default_visibility": u["default_visibility"], "email_verified": bool(u["email_verified_at"]),
+            "avatar": u["avatar"], "theme": u["theme"], "appearance": parse_appearance(u["appearance"]), "background": u["background"], "default_visibility": u["default_visibility"], "email_verified": bool(u["email_verified_at"]),
             "is_admin": bool(u["is_admin"]),
         },
         "csrf": request.state.session["csrf"],

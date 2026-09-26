@@ -2,6 +2,8 @@
 import { state, loadMe, connectStream, on } from "./api.js";
 import { h, avatar } from "./dom.js";
 import { route, onRender, start, navigate } from "./router.js";
+import { restoreLook } from "./look.js";
+import { applyUserLook } from "./app-actions.js";
 import { toast, closeAllModals, closeMenu, setTitle, applyTheme } from "./ui.js";
 import { ensureShell, setActive, destroyShell } from "./components/layout.js";
 import { notifText, notifLink } from "./components/notif.js";
@@ -110,6 +112,7 @@ on("logged-out", () => {
 });
 
 // ---------------------------------------------------------------- Запуск
+restoreLook();
 initFx();
 
 (async function boot() {
@@ -119,7 +122,7 @@ initFx();
     // сервер недоступен — покажем страницу входа, она сообщит об ошибке
   }
   if (state.me) {
-    if (state.me.theme && state.me.theme !== "system") applyTheme(state.me.theme);
+    applyUserLook();
     connectStream();
   }
   start();

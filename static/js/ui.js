@@ -1,4 +1,5 @@
 // Общие элементы интерфейса: всплывающие сообщения, модальные окна, меню, просмотр фото, бесконечные списки.
+import { updateThemeColor } from "./look.js";
 import { h, icon, clear } from "./dom.js";
 import { navigate } from "./router.js";
 
@@ -235,7 +236,7 @@ export function applyTheme(theme) {
   try { localStorage.setItem("krug-theme", theme); } catch { /* приватный режим */ }
   const dark = theme === "dark" || (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
   document.documentElement.dataset.theme = dark ? "dark" : "light";
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#0b101b" : "#1f3fae");
+  updateThemeColor();
 }
 export function currentTheme() {
   try { return localStorage.getItem("krug-theme") || "system"; } catch { return "system"; }

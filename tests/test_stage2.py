@@ -149,6 +149,26 @@ class Stage2Test(unittest.TestCase):
         self.kate.delete(f"/api/circles/{close['id']}")
         self.assertEqual(self.mila.get(f"/api/posts/{p['id']}").status_code, 404)
 
+    def test_appearance(self):
+        c = self.mila
+        good = {"preset": "custom", "palette": "custom", "custom": "#12AB34", "bg": "image", "dim": 200, "blur": 5, "font": "serif", "shape": "sharp"}
+        r = c.patch("/api/me/settings", {"appearance": good})
+        self.assertEqual(r.status_code, 200, r.text)
+        look = r.json()["appearance"]
+        self.assertEqual(look["custom"], "#12ab34")
+        self.assertEqual(look["dim"], 85)  # ограничено сверху
+        self.assertEqual(c.refresh()["user"]["appearance"]["font"], "serif")
+        for bad in ({"font": "Comic Sans"}, {"custom": "red; background:url(x)"}, {"palette": "custom"}, "text"):
+            self.assertEqual(c.patch("/api/me/settings", {"appearance": bad}).status_code, 422, bad)
+        # своё фото на фон
+        up = c.post("/api/me/background", files=[("file", ("bg.png", png_bytes(), "image/png"))])
+        self.assertEqual(up.status_code, 200, up.text)
+        url = up.json()["background"]
+        self.assertTrue(url.startswith("/uploads/"))
+        self.assertEqual(c.refresh()["user"]["background"], url)
+        self.assertEqual(c.get(url).status_code, 200)
+        self.assertEqual(c.delete("/api/me/background").json()["background"], None)
+
     def test_guests_and_classmates(self):
         self.kate.patch("/api/me/settings", {"school": "Лицей № 2", "school_year": 2012})
         self.mila.patch("/api/me/settings", {"school": "Лицей №2 г. Тулы", "school_year": 2012})

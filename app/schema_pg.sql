@@ -41,8 +41,12 @@ CREATE TABLE IF NOT EXISTS profiles (
     university         TEXT NOT NULL DEFAULT '',
     university_year    INTEGER,
     invisible          INTEGER NOT NULL DEFAULT 0,
-    guests_seen_at     TEXT
+    guests_seen_at     TEXT,
+    appearance         TEXT,
+    background         TEXT
 );
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS appearance TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS background TEXT;
 CREATE INDEX IF NOT EXISTS idx_profiles_name ON profiles(lower(name));
 CREATE INDEX IF NOT EXISTS idx_profiles_school ON profiles(school_year);
 

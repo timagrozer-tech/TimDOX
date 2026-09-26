@@ -21,6 +21,7 @@ PRESETS = {
     "event": (1600, 800, False),
     "avatar": (512, 128, True),
     "cover": (1600, 800, False),
+    "background": (2400, 480, False),
 }
 
 

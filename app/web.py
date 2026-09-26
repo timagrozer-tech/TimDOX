@@ -57,7 +57,7 @@ def load_session(request: Request) -> None:
         return
     row = db.one(
         """SELECT s.id AS sid, s.csrf_token, s.expires_at, u.id, u.email, u.email_verified_at,
-                  u.is_admin, u.is_banned, p.username, p.name, p.avatar, p.theme, p.default_visibility
+                  u.is_admin, u.is_banned, p.username, p.name, p.avatar, p.theme, p.default_visibility, p.appearance, p.background
            FROM sessions s JOIN users u ON u.id = s.user_id JOIN profiles p ON p.user_id = u.id
            WHERE s.id = ?""",
         (token_hash(token),),
