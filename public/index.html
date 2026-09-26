@@ -348,6 +348,72 @@ footer a{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-
 footer a:hover{border-color:#2aa3e0;}
 footer a svg{width:18px;height:18px;}
 
+/* ================= НОВОВВЕДЕНИЯ ================= */
+.demo-row{text-align:center;margin-top:12px;}
+.link-btn{border:0;background:none;color:var(--muted);font-size:13.5px;padding:8px;}
+.link-btn b{color:var(--accent);font-weight:600;}
+.link-btn:hover b{text-decoration:underline;}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;}
+.stat{padding:12px 14px;border-radius:16px;background:var(--surface-2);border:1px solid var(--line);min-width:0;animation:rise .45s ease both;}
+.stat small{display:block;font-size:12px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stat b{display:block;font-family:var(--display);font-weight:400;font-size:21px;margin:2px 0;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stat span{font-size:11.5px;color:var(--muted);}
+.with-mic{position:relative;}
+.with-mic textarea{padding-right:54px;}
+.mic{position:absolute;right:8px;bottom:10px;width:38px;height:38px;border-radius:12px;border:1px solid var(--line-strong);background:var(--surface-solid);display:grid;place-items:center;color:var(--muted);transition:background .2s;}
+.mic svg{width:18px;height:18px;stroke:currentColor;}
+.mic:hover{color:var(--text);}
+.mic.rec{background:var(--danger);border-color:var(--danger);color:#fff;animation:recp 1.2s infinite;}
+@keyframes recp{0%{box-shadow:0 0 0 0 rgba(255,92,122,.6);}100%{box-shadow:0 0 0 10px rgba(255,92,122,0);}}
+.as-input .mic{position:static;flex:none;width:46px;height:46px;border-radius:14px;}
+.settings{margin-bottom:14px;border:1px solid var(--line);border-radius:18px;background:var(--surface-2);}
+.settings summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:12px 14px;}
+.settings summary::-webkit-details-marker{display:none;}
+.settings .gear{width:36px;height:36px;border-radius:11px;background:var(--surface-3);display:grid;place-items:center;flex:none;}
+.settings .gear svg{width:18px;height:18px;stroke:var(--text);}
+.settings summary b{display:block;font-size:14px;}
+.settings summary small{display:block;font-size:12.5px;color:var(--muted);}
+.settings .chev{margin-left:auto;width:18px;height:18px;stroke:var(--faint);transition:transform .25s;flex:none;}
+.settings[open] .chev{transform:rotate(90deg);}
+.set-body{padding:4px 14px 16px;display:grid;gap:16px;}
+.set-row > label:not(.switch){display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:7px;}
+.set-row > label:not(.switch) .hint{text-transform:none;letter-spacing:0;font-weight:500;}
+.set-row .seg{display:flex;flex-wrap:wrap;width:100%;}
+.set-row .seg button{flex:1 1 auto;}
+.switches{display:flex;flex-wrap:wrap;gap:12px 20px;}
+.switch{display:inline-flex;align-items:center;gap:10px;font-size:14px;cursor:pointer;user-select:none;position:relative;}
+.switch input{position:absolute;opacity:0;pointer-events:none;}
+.switch span{width:40px;height:24px;border-radius:999px;background:var(--surface-3);border:1px solid var(--line-strong);position:relative;transition:background .2s;flex:none;}
+.switch span::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s;}
+.switch input:checked + span{background:var(--accent);border-color:var(--accent);}
+.switch input:checked + span::after{transform:translateX(16px);}
+.switch input:focus-visible + span{outline:2px solid var(--accent);outline-offset:2px;}
+.req{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.req input:first-child{grid-column:1/-1;}
+.doc-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;}
+#docStats{font-size:12.5px;color:var(--faint);margin-right:auto;}
+.doc-meta .btn{height:38px;font-size:13px;padding:0 14px;}
+.paper .org{text-align:center;font-weight:700;margin-bottom:22px;text-transform:uppercase;letter-spacing:.03em;font-size:.92em;}
+.paper .date{margin-top:28px;}
+.paper .sign{display:flex;justify-content:space-between;gap:20px;margin-top:10px;}
+.paper .tbl{overflow-x:auto;margin:6px 0 14px;}
+.paper table{border-collapse:collapse;width:100%;font-size:.9em;}
+.paper th,.paper td{border:1px solid #b9bdcc;padding:6px 9px;white-space:normal;text-align:left;}
+.paper th{background:#eceef5;font-weight:700;position:static;color:inherit;font-size:1em;}
+.paper td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.paper tbody tr:hover td,.paper tr:hover td{background:transparent;}
+.paper ol{margin:0 0 10px;padding-left:24px;}
+.paper.business{font-family:'Times New Roman',Times,serif;font-size:15.5px;}
+.paper.business p:not(.subtitle):not(.date){text-indent:1.25cm;}
+#printArea{display:none;}
+@media print{
+  @page{size:A4;margin:20mm 15mm 20mm 30mm;}
+  html,body{background:#fff!important;}
+  body > *:not(#printArea){display:none!important;}
+  #printArea{display:block!important;}
+  #printArea .paper{box-shadow:none;padding:0;max-width:none;border-radius:0;min-height:0;background:#fff;color:#000;}
+}
+
 /* ================= МОБИЛЬНЫЕ ================= */
 @media (max-width:640px){
   .card{padding:18px;border-radius:20px;}
@@ -376,6 +442,9 @@ footer a svg{width:18px;height:18px;}
   .fab span{display:none;}
   .assistant{right:0;left:0;bottom:0;width:100%;height:78vh;border-radius:22px 22px 0 0;padding-bottom:env(safe-area-inset-bottom,0px);}
   .nav-row .btn{flex:1;}
+  .req{grid-template-columns:1fr;}
+  .stats{grid-template-columns:1fr 1fr;}
+  .stat b{font-size:18px;}
   .toasts{top:auto;bottom:calc(86px + env(safe-area-inset-bottom,0px));flex-direction:column-reverse;}
   .features{gap:6px;}
   .feature{font-size:12px;padding:6px 10px;}
@@ -446,6 +515,7 @@ footer a svg{width:18px;height:18px;}
     <div class="features">
       <span class="feature">⚡ <b>За минуту</b></span>
       <span class="feature">📄 <b>По вашему образцу</b></span>
+      <span class="feature">📊 <b>Точные итоги и таблицы</b></span>
       <span class="feature">📲 <b>Отправка в мессенджеры</b></span>
     </div>
     <div class="install-tip" id="installTip"></div>
@@ -472,10 +542,12 @@ footer a svg{width:18px;height:18px;}
         <span>.xlsx, .xls, .csv</span>
         <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
       </div>
+      <div class="demo-row" id="demoRow"><button class="link-btn" id="demoBtn">Нет файла под рукой? <b>Попробуйте на примере →</b></button></div>
       <div id="result"></div>
+      <div id="statsBox"></div>
       <div id="commentBox" style="display:none">
         <div class="section-label"><span>На что обратить внимание</span><span class="hint">необязательно</span></div>
-        <textarea class="field" id="fileComment" placeholder="Например: главное — лист «Итоги», сравни с прошлым месяцем"></textarea>
+        <div class="with-mic"><textarea class="field" id="fileComment" placeholder="Например: главное — лист «Итоги», сравни с прошлым месяцем"></textarea><button class="mic" id="commentMic" aria-label="Надиктовать голосом" title="Надиктовать"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></button></div>
         <div class="chips" style="margin-top:10px" id="commentChips">
           <button class="chip" data-add="Сравни показатели с прошлым периодом.">+ Сравнить периоды</button>
           <button class="chip" data-add="Выдели лидеров и отстающих.">+ Лидеры и отстающие</button>
@@ -538,6 +610,28 @@ footer a svg{width:18px;height:18px;}
           <button class="edit" data-go="2">Изменить</button>
         </div>
       </div>
+      <details class="settings" id="settingsBox">
+        <summary><span class="gear"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></span>
+          <span><b>Настройки документа</b><small id="setSummary"></small></span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></summary>
+        <div class="set-body">
+          <div class="set-row"><label>Объём</label><div class="seg" data-set="length"><button data-v="short">Кратко</button><button data-v="std">Стандартно</button><button data-v="long">Подробно</button></div></div>
+          <div class="set-row"><label>Стиль текста</label><div class="seg" data-set="tone"><button data-v="official">Официально</button><button data-v="neutral">Нейтрально</button><button data-v="simple">Простым языком</button></div></div>
+          <div class="set-row"><label>Оформление Word</label><div class="seg" data-set="style"><button data-v="business">Деловое · Times 14</button><button data-v="modern">Современное · Calibri 11</button></div></div>
+          <div class="set-row switches">
+            <label class="switch"><input type="checkbox" data-toggle="tables"><span></span>Таблицы с цифрами</label>
+            <label class="switch"><input type="checkbox" data-toggle="pageNums"><span></span>Номера страниц</label>
+            <label class="switch"><input type="checkbox" data-toggle="date"><span></span>Дата внизу</label>
+          </div>
+          <div class="set-row"><label>Реквизиты <span class="hint">— необязательно, сохранятся</span></label>
+            <div class="req">
+              <input class="field" data-text="org" placeholder="Организация — будет в шапке">
+              <input class="field" data-text="position" placeholder="Должность подписанта">
+              <input class="field" data-text="fio" placeholder="И.О. Фамилия">
+            </div>
+          </div>
+        </div>
+      </details>
       <div class="gen-row">
         <button class="btn btn-primary btn-lg" id="genBtn" disabled>
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg><span>Создать документ</span></button>
@@ -546,7 +640,7 @@ footer a svg{width:18px;height:18px;}
 
       <div class="result" id="resultBox">
         <div class="result-bar">
-          <div class="seg" role="tablist">
+          <div class="seg" role="tablist" id="modeSeg">
             <button class="active" data-mode="preview">Просмотр</button>
             <button data-mode="edit">Редактировать</button>
           </div>
@@ -561,6 +655,10 @@ footer a svg{width:18px;height:18px;}
         </div>
         <div class="paper-wrap"><article class="paper" id="docPreview"></article></div>
         <textarea class="field" id="genOutput" placeholder="Здесь появится текст документа" aria-label="Текст документа"></textarea>
+        <div class="doc-meta">
+          <span id="docStats"></span>
+          <button class="btn btn-ghost" id="printBtn" disabled><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="7" rx="1"/></svg>Печать / PDF</button>
+        </div>
       </div>
 
       <div class="section-label"><span>История</span><span class="hint">последние 15 документов</span></div>
@@ -596,6 +694,7 @@ footer a svg{width:18px;height:18px;}
   </div>
   <div class="as-input">
     <textarea class="field" id="apInput" placeholder="Ваш вопрос…" rows="1"></textarea>
+    <button class="mic" id="apMic" aria-label="Надиктовать голосом"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></button>
     <button class="btn btn-primary" id="apSend" aria-label="Отправить"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
   </div>
 </div>
@@ -643,6 +742,11 @@ let currentStep = '1';
 let mode = 'preview';
 const MAX_DATA_CHARS = 150000;
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const DEFAULT_SETTINGS = { length: 'std', tone: 'official', style: 'business', tables: true, pageNums: true, date: true, org: '', position: '', fio: '' };
+let settings = Object.assign({}, DEFAULT_SETTINGS, loadJson('etw_settings', {}));
+const SET_LABELS = { length: { short: 'Кратко', std: 'Стандартно', long: 'Подробно' }, tone: { official: 'официально', neutral: 'нейтрально', simple: 'простым языком' }, style: { business: 'Times 14', modern: 'Calibri 11' } };
+let dataStats = [];
+const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c); };
 const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>';
 const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3"/></svg>';
 const ICON_DOC = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>';
@@ -771,21 +875,112 @@ function handleFile(file){
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-      activeSheet = workbook.SheetNames[0];
-      activeFileName = file.name;
-      renderWorkbook();
-      drop.style.display = 'none';
-      $('commentBox').style.display = 'block';
-      $('next1').disabled = false;
-      markDone('1');
-      document.body.classList.add('compact');
+      loadWorkbook(XLSX.read(new Uint8Array(e.target.result), { type: 'array' }), file.name);
     } catch (err) {
       result.innerHTML = '<div class="empty" style="margin-top:14px">Не получилось прочитать файл: ' + escapeHtml(String(err.message || err)) + '</div>';
       toast('Ошибка чтения файла', 'err');
     }
   };
   reader.readAsArrayBuffer(file);
+}
+function loadWorkbook(wb, name){
+  workbook = wb; activeSheet = wb.SheetNames[0]; activeFileName = name;
+  renderWorkbook();
+  renderStats();
+  drop.style.display = 'none';
+  $('demoRow').style.display = 'none';
+  $('commentBox').style.display = 'block';
+  $('next1').disabled = false;
+  markDone('1');
+  document.body.classList.add('compact');
+}
+function demoWorkbook(){
+  const months = ['Январь','Февраль','Март','Апрель','Май','Июнь'];
+  const regions = [['Москва', 420000], ['Санкт-Петербург', 310000], ['Казань', 180000]];
+  const rows = [['Месяц', 'Регион', 'План, руб.', 'Факт, руб.', 'Клиенты']];
+  months.forEach((m, mi) => regions.forEach(([r, base], ri) => {
+    const plan = Math.round(base * (1 + mi * 0.04) / 1000) * 1000;
+    const fact = Math.round(plan * (0.9 + ((mi * 7 + ri * 3) % 9) / 40) / 100) * 100;
+    rows.push([m, r, plan, fact, Math.round(fact / (2800 + ri * 400))]);
+  }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Продажи');
+  return wb;
+}
+$('demoBtn').addEventListener('click', () => {
+  loadWorkbook(demoWorkbook(), 'Пример — продажи за полугодие.xlsx');
+  $('fileComment').value = 'Сравни план и факт по регионам, выдели лидера и отстающих.';
+  toast('Загружен пример — жмите «Далее»', 'ok');
+});
+
+/* ---- Автосводка: точные итоги по числовым столбцам ---- */
+function parseNum(v){
+  if (typeof v === 'number') return isFinite(v) ? v : null;
+  let s = String(v ?? '').trim(); if (!s) return null;
+  s = s.replace(/[\s  ]/g, '').replace(/(руб\.?|р\.|₽|\$|€|%)$/i, '').replace(/^(₽|\$|€)/, '');
+  if (/^-?\d+,\d+$/.test(s)) s = s.replace(',', '.');
+  else if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, '');
+  return /^-?\d+(\.\d+)?$/.test(s) ? parseFloat(s) : null;
+}
+const fmtNum = (n) => Number(n).toLocaleString('ru-RU', { maximumFractionDigits: 2 });
+function analyzeWorkbook(){
+  const out = [];
+  workbook.SheetNames.forEach(sheet => {
+    const rows = sheetRows(sheet).filter(r => r.some(c => String(c).trim() !== ''));
+    if (rows.length < 2) return;
+    const width = rows.reduce((m, r) => Math.max(m, r.length), 0);
+    const head = rows[0], filled = head.filter(c => String(c).trim());
+    const hasHeader = filled.length && filled.filter(c => parseNum(c) === null).length >= filled.length * 0.6;
+    const data = hasHeader ? rows.slice(1) : rows;
+    const names = Array.from({ length: width }, (_, i) => (hasHeader && String(head[i] ?? '').trim()) || ('Столбец ' + (i + 1)));
+    const numCols = [], catCols = [];
+    for (let i = 0; i < width; i++){
+      const vals = data.map(r => r[i]).filter(v => String(v ?? '').trim() !== '');
+      const nums = vals.map(parseNum).filter(n => n !== null);
+      if (nums.length >= 2 && nums.length >= vals.length * 0.6){
+        if (/(^|\s)(год|year|№|id|код|номер|дата|месяц|телефон|инн)/i.test(names[i]) || nums.every(n => Number.isInteger(n) && n >= 1900 && n <= 2100)) continue;
+        const sum = nums.reduce((a, b) => a + b, 0);
+        numCols.push({ i, name: names[i], count: nums.length, sum, avg: sum / nums.length, min: Math.min(...nums), max: Math.max(...nums) });
+      } else if (vals.length){
+        const distinct = new Set(vals.map(v => String(v).trim()));
+        if (distinct.size >= 2 && distinct.size <= 20 && distinct.size < vals.length) catCols.push({ i, name: names[i] });
+      }
+    }
+    if (!numCols.length) return;
+    const used = numCols.slice(0, 4);
+    const groups = catCols.slice(0, 2).map(cat => {
+      const map = new Map();
+      data.forEach(r => {
+        const k = String(r[cat.i] ?? '').trim(); if (!k) return;
+        if (!map.has(k)) map.set(k, used.map(() => 0));
+        const acc = map.get(k);
+        used.forEach((c, j) => { const n = parseNum(r[c.i]); if (n !== null) acc[j] += n; });
+      });
+      return { by: cat.name, cols: used.map(c => c.name), rows: [...map.entries()].slice(0, 20) };
+    });
+    out.push({ sheet, numCols, groups });
+  });
+  return out;
+}
+function renderStats(){
+  dataStats = workbook ? analyzeWorkbook() : [];
+  const cards = dataStats.flatMap(s => s.numCols.map(c => Object.assign({ sheet: s.sheet }, c))).slice(0, 6);
+  $('statsBox').innerHTML = !cards.length ? '' :
+    '<div class="section-label"><span>Автосводка</span><span class="hint">точные итоги уйдут ИИ</span></div><div class="stats">' +
+    cards.map((c, i) => '<div class="stat" style="animation-delay:' + (i * 0.05) + 's"><small>Σ ' + escapeHtml(c.name) + (dataStats.length > 1 ? ' · ' + escapeHtml(c.sheet) : '') + '</small><b>' + fmtNum(c.sum) + '</b>' +
+      '<span>ср. ' + fmtNum(c.avg) + ' · мин ' + fmtNum(c.min) + ' · макс ' + fmtNum(c.max) + '</span></div>').join('') + '</div>';
+}
+function statsText(){
+  let t = '';
+  dataStats.forEach(s => {
+    t += 'Лист «' + s.sheet + '»:\n';
+    s.numCols.forEach(c => { t += '- «' + c.name + '»: сумма ' + fmtNum(c.sum) + ', среднее ' + fmtNum(c.avg) + ', мин ' + fmtNum(c.min) + ', макс ' + fmtNum(c.max) + ' (значений: ' + c.count + ')\n'; });
+    s.groups.forEach(g => {
+      t += '  Итоги по «' + g.by + '»:\n';
+      g.rows.forEach(([k, arr]) => { t += '  - ' + k + ': ' + g.cols.map((n, j) => n + ' ' + fmtNum(arr[j])).join('; ') + '\n'; });
+    });
+  });
+  return t;
 }
 function sheetRows(name){ return XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: '', raw: false }); }
 function renderWorkbook(){
@@ -907,43 +1102,95 @@ function refreshSummary(){
   btn.title = !aiReady ? 'ИИ не подключён на сервере' : (!workbook ? 'Сначала загрузите Excel' : (!tpl ? 'Выберите образец' : ''));
 }
 function outText(){ return $('genOutput').value; }
+let draftTimer = 0;
 function updateOutputButtons(){
-  const has = !!outText().trim();
-  ['dlBtn','shareFileBtn','copyBtn'].forEach(id => $(id).disabled = !has || !!genController);
+  const text = outText().trim(), has = !!text;
+  ['dlBtn','shareFileBtn','copyBtn','printBtn'].forEach(id => $(id).disabled = !has || !!genController);
+  const words = has ? text.replace(/[#|*\-•]/g, ' ').split(/\s+/).filter(Boolean).length : 0;
+  $('docStats').textContent = has ? words + ' ' + plural(words, 'слово', 'слова', 'слов') + ' · ~' + Math.max(1, Math.round(words / 180)) + ' мин чтения' : '';
+  if (!genController){ clearTimeout(draftTimer); draftTimer = setTimeout(() => { try { localStorage.setItem('etw_draft', outText()); } catch(e){} }, 400); }
+}
+function inl(t){ return escapeHtml(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); }
+const isNumCell = (v) => parseNum(v) !== null;
+const todayStr = () => new Date().toLocaleDateString('ru-RU');
+function parseDoc(text){
+  const blocks = []; let titled = false, inHead = false, table = null;
+  const flush = () => {
+    if (!table) return;
+    const w = Math.max(...table.rows.map(r => r.length));
+    table.rows = table.rows.map(r => Array.from({ length: w }, (_, i) => r[i] ?? ''));
+    blocks.push(table); table = null;
+  };
+  text.replace(/\r/g, '').split('\n').forEach(raw => {
+    const t = raw.trim();
+    if (t.startsWith('|') && t.indexOf('|', 1) > 0){
+      inHead = false; titled = true;
+      if (/^\|[\s:|-]+\|?$/.test(t)) return;
+      if (!table) table = { type: 'table', rows: [] };
+      table.rows.push(t.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim()));
+      return;
+    }
+    flush();
+    if (!t){ inHead = false; return; }
+    const clean = t.replace(/^#+\s*/, '');
+    if (!titled){ blocks.push({ type: 'title', text: clean }); titled = true; inHead = true; return; }
+    if (inHead && t.length < 160 && !/^(#|[-•*]\s|\d+[.)]\s)/.test(t)){ blocks.push({ type: 'subtitle', text: t }); return; }
+    inHead = false;
+    let m;
+    if (/^#{1,4}\s+/.test(t)) blocks.push({ type: 'h', text: clean });
+    else if ((m = t.match(/^[-•*]\s+(.*)$/))) blocks.push({ type: 'li', text: m[1] });
+    else if ((m = t.match(/^(\d+[.)])\s+(.*)$/))) blocks.push({ type: 'ol', num: m[1], text: m[2] });
+    else blocks.push({ type: 'p', text: t });
+  });
+  flush();
+  return blocks;
 }
 function renderPreview(streaming){
   const el = $('docPreview');
-  const text = outText().replace(/\r/g, '');
+  el.className = 'paper ' + (settings.style === 'modern' ? 'modern' : 'business');
+  const text = outText();
   if (!text.trim()){
     el.innerHTML = '<div class="paper-empty">' + ICON_DOC.replace('<svg', '<svg aria-hidden="true"') +
       '<b>' + (streaming ? 'ИИ читает таблицу…' : 'Здесь появится документ') + '</b><span>' +
       (streaming ? 'Первые строки появятся через несколько секунд' : 'Нажмите «Создать документ»') + '</span></div>';
     return;
   }
-  let html = '', inList = false, titled = false, inHead = false;
-  const closeList = () => { if (inList){ html += '</ul>'; inList = false; } };
-  const endHead = () => { if (inHead){ html += '<div class="title-gap"></div>'; inHead = false; } };
-  text.split('\n').forEach(raw => {
-    const t = raw.trim();
-    if (!t){ closeList(); endHead(); return; }
-    if (!titled){ html += '<h3 class="title">' + escapeHtml(t.replace(/^#+\s*/, '')) + '</h3>'; titled = true; inHead = true; return; }
-    if (inHead && t.length < 160 && !/^(#|[-•*]\s)/.test(t)){ html += '<p class="subtitle">' + escapeHtml(t) + '</p>'; return; }
-    endHead();
-    if (/^#{1,3}\s+/.test(t)){ closeList(); html += '<h4>' + escapeHtml(t.replace(/^#+\s*/, '')) + '</h4>'; return; }
-    if (/^[-•*]\s+/.test(t)){ if (!inList){ html += '<ul>'; inList = true; } html += '<li>' + escapeHtml(t.replace(/^[-•*]\s+/, '')) + '</li>'; return; }
-    closeList(); html += '<p>' + escapeHtml(t) + '</p>';
+  let html = settings.org ? '<div class="org">' + escapeHtml(settings.org) + '</div>' : '';
+  let list = null;
+  const close = () => { if (list){ html += '</' + list + '>'; list = null; } };
+  const blocks = parseDoc(text);
+  blocks.forEach((b, i) => {
+    if (b.type !== 'li' && b.type !== 'ol') close();
+    if (b.type === 'title') html += '<h3 class="title">' + inl(b.text) + '</h3>';
+    else if (b.type === 'subtitle') html += '<p class="subtitle">' + inl(b.text) + '</p>';
+    else if (b.type === 'h') html += '<h4>' + inl(b.text) + '</h4>';
+    else if (b.type === 'li' || b.type === 'ol'){
+      const tag = b.type === 'li' ? 'ul' : 'ol';
+      if (list !== tag){ close(); html += '<' + tag + '>'; list = tag; }
+      html += '<li>' + inl(b.text) + '</li>';
+    }
+    else if (b.type === 'table') html += '<div class="tbl"><table>' + b.rows.map((r, ri) => '<tr>' + r.map((c, ci) => {
+        const tag = ri === 0 ? 'th' : 'td';
+        return '<' + tag + (ri && ci && isNumCell(c) ? ' class="num"' : '') + '>' + inl(c) + '</' + tag + '>';
+      }).join('') + '</tr>').join('') + '</table></div>';
+    else html += '<p>' + inl(b.text) + '</p>';
+    if ((b.type === 'title' || b.type === 'subtitle') && (!blocks[i + 1] || blocks[i + 1].type !== 'subtitle')) html += '<div class="title-gap"></div>';
   });
-  closeList(); endHead();
+  close();
   if (streaming) html += '<span class="caret"></span>';
+  else {
+    if (settings.date) html += '<p class="date">' + todayStr() + '</p>';
+    if (settings.position || settings.fio) html += '<div class="sign"><span>' + escapeHtml(settings.position) + '</span><span>' + escapeHtml(settings.fio) + '</span></div>';
+  }
   el.innerHTML = html;
 }
 function setMode(m){
   mode = m;
-  document.querySelectorAll('.seg button').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
+  document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
   $('resultBox').classList.toggle('editing', m === 'edit');
   if (m === 'preview') renderPreview(!!genController);
 }
-document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+document.querySelectorAll('#modeSeg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
 $('genOutput').addEventListener('input', () => { updateOutputButtons(); });
 
 function workbookAsText(){
@@ -974,15 +1221,22 @@ $('genBtn').addEventListener('click', async () => {
   updateOutputButtons();
   const dataCsv = workbookAsText();
   const fileComment = $('fileComment').value.trim();
+  const facts = statsText();
+  const LEN = { short: 'Объём: кратко, до половины страницы, только главное.', std: 'Объём: около 1–2 страниц.', long: 'Объём: подробно, 2–4 страницы, с разбором всех значимых показателей.' };
+  const TONE = { official: 'Стиль: официально-деловой.', neutral: 'Стиль: нейтральный деловой.', simple: 'Стиль: простым и понятным языком, без канцелярита.' };
   const system = 'Ты — опытный составитель деловых справок и докладов на русском языке. ' +
     'Пишешь строго по фактам из переданных данных, ничего не выдумываешь; если каких-то данных не хватает — так и пишешь. ' +
-    'Числа берёшь из таблицы точно, итоги и проценты считаешь аккуратно.\n\n' +
-    'Формат ответа: первая строка — заголовок документа. Подзаголовки разделов — строкой вида "## Заголовок раздела". ' +
+    'Числа берёшь из таблицы точно; готовые итоги, посчитанные программой, используй как есть и не пересчитывай.\n\n' +
+    'Формат ответа: первая строка — заголовок документа, следующая строка (по желанию) — подзаголовок. Подзаголовки разделов — строкой вида "## Заголовок раздела". ' +
     'Перечни — строками, начинающимися с "- ". Остальное — обычные абзацы. ' +
-    'Выводи только готовый текст документа, без пояснений от себя и без другой markdown-разметки (никаких ** и таблиц). ' +
-    'Заполнители в квадратных скобках из образца заменяй реальными данными.';
+    (settings.tables ? 'Где уместно, добавь 1–2 компактные таблицы с ключевыми цифрами строками вида "| Показатель | Значение |" (первая строка — заголовки, не больше 12 строк). ' : 'Не используй таблицы. ') +
+    'Выводи только готовый текст документа, без пояснений от себя и без другой markdown-разметки. ' +
+    'Заполнители в квадратных скобках из образца заменяй реальными данными. ' +
+    ((settings.date || settings.position || settings.fio || settings.org) ? 'Не добавляй название организации, дату, подпись и ФИО — программа добавит их сама. ' : '') +
+    '\n' + LEN[settings.length] + ' ' + TONE[settings.tone];
   const user = 'ОБРАЗЕЦ готового документа — повтори его стиль, структуру, заголовки и формулировки:\n---\n' + tpl.text.slice(0, 30000) + '\n---\n\n' +
     'ДАННЫЕ из Excel-файла «' + activeFileName + '» (все листы, построчно, столбцы через " | "):\n---\n' + dataCsv + '---\n\n' +
+    (facts ? 'ТОЧНЫЕ ИТОГИ, посчитанные программой по этой таблице:\n' + facts + '\n' : '') +
     (fileComment ? 'КОММЕНТАРИЙ пользователя — на что обратить особое внимание: ' + fileComment + '\n\n' : '') +
     'Составь итоговый документ по этим данным в стиле и структуре образца.';
   let raf = 0;
@@ -1032,43 +1286,82 @@ $('histList').addEventListener('click', e => {
 });
 
 /* ---- файлы: Word, скачивание, отправка ---- */
-function escapeXml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c])); }
+function escapeXml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c])); }
+function wRuns(text, o = {}){
+  return String(text).split(/(\*\*[^*]+\*\*)/).filter(x => x !== '').map(part => {
+    const bold = o.b || /^\*\*[^*]+\*\*$/.test(part);
+    const t = part.replace(/^\*\*([^*]+)\*\*$/, '$1');
+    const rPr = (bold ? '<w:b/><w:bCs/>' : '') + (o.sz ? '<w:sz w:val="' + o.sz + '"/><w:szCs w:val="' + o.sz + '"/>' : '');
+    return '<w:r>' + (rPr ? '<w:rPr>' + rPr + '</w:rPr>' : '') + '<w:t xml:space="preserve">' + escapeXml(t) + '</w:t></w:r>';
+  }).join('');
+}
+const wP = (inner, pPr) => '<w:p>' + (pPr ? '<w:pPr>' + pPr + '</w:pPr>' : '') + (inner || '') + '</w:p>';
+function wTable(rows, base, W){
+  const cols = rows[0].length, cw = Math.floor(W / cols), sz = base - 4;
+  const border = ['top','left','bottom','right','insideH','insideV'].map(x => '<w:' + x + ' w:val="single" w:sz="4" w:space="0" w:color="8A8FA3"/>').join('');
+  return '<w:tbl><w:tblPr><w:tblW w:w="' + (cw * cols) + '" w:type="dxa"/><w:tblBorders>' + border + '</w:tblBorders><w:tblLayout w:type="fixed"/>' +
+    '<w:tblCellMar><w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr>' +
+    '<w:tblGrid>' + ('<w:gridCol w:w="' + cw + '"/>').repeat(cols) + '</w:tblGrid>' +
+    rows.map((r, ri) => '<w:tr>' + (ri === 0 ? '<w:trPr><w:tblHeader/></w:trPr>' : '') + r.map((c, ci) =>
+      '<w:tc><w:tcPr><w:tcW w:w="' + cw + '" w:type="dxa"/>' + (ri === 0 ? '<w:shd w:val="clear" w:color="auto" w:fill="E9EAF2"/>' : '') + '</w:tcPr>' +
+      wP(wRuns(c, { b: ri === 0, sz }), '<w:spacing w:before="40" w:after="40" w:line="240" w:lineRule="auto"/>' + (ri && ci && isNumCell(c) ? '<w:jc w:val="right"/>' : '')) + '</w:tc>').join('') + '</w:tr>').join('') + '</w:tbl>';
+}
 async function buildDocx(text){
-  let bodyXml = '', titled = false, inHead = false;
-  text.split('\n').forEach(line => {
-    const t = line.trim();
-    if (!t){ bodyXml += '<w:p/>'; inHead = false; return; }
-    if (inHead && t.length < 160 && !/^(#|[-•*]\s)/.test(t)){
-      bodyXml += '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t xml:space="preserve">' + escapeXml(t) + '</w:t></w:r></w:p>';
-      return;
-    }
-    inHead = false;
-    if (!titled){
-      titled = true; inHead = true;
-      bodyXml += '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="32"/></w:rPr><w:t xml:space="preserve">' + escapeXml(t.replace(/^#+\s*/, '')) + '</w:t></w:r></w:p>';
-    } else if (/^#{1,3}\s+/.test(t)) {
-      bodyXml += '<w:p><w:pPr><w:spacing w:before="200" w:after="100"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="26"/></w:rPr><w:t xml:space="preserve">' + escapeXml(t.replace(/^#+\s*/, '')) + '</w:t></w:r></w:p>';
-    } else if (/^[-•*]\s+/.test(t)) {
-      bodyXml += '<w:p><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr><w:r><w:t xml:space="preserve">• ' + escapeXml(t.replace(/^[-•*]\s+/, '')) + '</w:t></w:r></w:p>';
-    } else if (/^\d+[.)]\s+/.test(t)) {
-      bodyXml += '<w:p><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr><w:r><w:t xml:space="preserve">' + escapeXml(t) + '</w:t></w:r></w:p>';
-    } else {
-      bodyXml += '<w:p><w:r><w:t xml:space="preserve">' + escapeXml(t) + '</w:t></w:r></w:p>';
-    }
+  const biz = settings.style !== 'modern';
+  const font = biz ? 'Times New Roman' : 'Calibri';
+  const base = biz ? 28 : 22;   // размер в половинках пункта: 14 pt / 11 pt
+  const W = 9355;               // ширина текста A4 при полях 30/15 мм, в twips
+  const justify = biz ? '<w:jc w:val="both"/>' : '';
+  let body = '';
+  if (settings.org) body += wP(wRuns(settings.org.toUpperCase(), { b: true }), '<w:spacing w:after="360"/><w:jc w:val="center"/>');
+  let afterHead = false;
+  parseDoc(text).forEach(b => {
+    const gap = afterHead ? '<w:spacing w:before="240"/>' : '';
+    if (b.type === 'title'){ body += wP(wRuns(b.text, { b: true, sz: base + 4 }), '<w:spacing w:after="60"/><w:jc w:val="center"/>'); afterHead = true; return; }
+    if (b.type === 'subtitle'){ body += wP(wRuns(b.text), '<w:spacing w:after="60"/><w:jc w:val="center"/>'); afterHead = true; return; }
+    if (b.type === 'h') body += wP(wRuns(b.text, { b: true }), '<w:keepNext/><w:spacing w:before="240" w:after="120"/>');
+    else if (b.type === 'li') body += wP('<w:r><w:t>•</w:t></w:r><w:r><w:tab/></w:r>' + wRuns(b.text), gap + '<w:ind w:left="709" w:hanging="284"/>' + justify);
+    else if (b.type === 'ol') body += wP('<w:r><w:t xml:space="preserve">' + escapeXml(b.num) + '</w:t></w:r><w:r><w:tab/></w:r>' + wRuns(b.text), gap + '<w:ind w:left="709" w:hanging="425"/>' + justify);
+    else if (b.type === 'table') body += (afterHead ? wP('', '<w:spacing w:after="120"/>') : '') + wTable(b.rows, base, W) + wP('', '<w:spacing w:after="60"/>');
+    else body += wP(wRuns(b.text), gap + (biz ? '<w:ind w:firstLine="709"/>' : '') + justify);
+    afterHead = false;
   });
-  const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' + bodyXml +
-    '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="1701"/></w:sectPr></w:body></w:document>';
-  const contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+  if (settings.date) body += wP(wRuns(todayStr()), '<w:spacing w:before="480"/>');
+  if (settings.position || settings.fio) body += wP(wRuns(settings.position || '') + '<w:r><w:tab/></w:r>' + wRuns(settings.fio || ''),
+    '<w:tabs><w:tab w:val="right" w:pos="' + W + '"/></w:tabs><w:spacing w:before="' + (settings.date ? 120 : 480) + '"/>');
+
+  const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+  const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const documentXml = XML + '<w:document ' + NS + '><w:body>' + body + '<w:sectPr>' +
+    (settings.pageNums ? '<w:footerReference w:type="default" r:id="rId2"/>' : '') +
+    '<w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="1701" w:header="709" w:footer="709" w:gutter="0"/></w:sectPr></w:body></w:document>';
+  const stylesXml = XML + '<w:styles ' + NS + '><w:docDefaults><w:rPrDefault><w:rPr>' +
+    '<w:rFonts w:ascii="' + font + '" w:hAnsi="' + font + '" w:eastAsia="' + font + '" w:cs="' + font + '"/>' +
+    '<w:sz w:val="' + base + '"/><w:szCs w:val="' + base + '"/><w:lang w:val="ru-RU" w:eastAsia="ru-RU" w:bidi="ar-SA"/></w:rPr></w:rPrDefault>' +
+    '<w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="' + (biz ? 300 : 276) + '" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>' +
+    '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>' +
+    '<w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/>' +
+    '<w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style></w:styles>';
+  const footerXml = XML + '<w:ftr ' + NS + '>' + wP('<w:fldSimple w:instr=" PAGE "><w:r><w:rPr><w:sz w:val="' + (base - 4) + '"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple>', '<w:jc w:val="center"/>') + '</w:ftr>';
+  const contentTypes = XML + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
     '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
     '<Default Extension="xml" ContentType="application/xml"/>' +
-    '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>';
-  const rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+    '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
+    '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>';
+  const rels = XML + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
     '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';
+  const docRels = XML + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>';
   const zip = new JSZip();
   zip.file('[Content_Types].xml', contentTypes);
   zip.folder('_rels').file('.rels', rels);
-  zip.folder('word').file('document.xml', documentXml);
+  const w = zip.folder('word');
+  w.file('document.xml', documentXml);
+  w.file('styles.xml', stylesXml);
+  w.file('footer1.xml', footerXml);
+  w.folder('_rels').file('document.xml.rels', docRels);
   return zip.generateAsync({ type: 'blob', mimeType: DOCX_MIME });
 }
 function reportFileName(text){
@@ -1154,8 +1447,8 @@ async function sendApMessage(preset){
   const tableText = workbook ? workbookAsText().slice(0, 30000) : '';
   const instruction = 'Ты — дружелюбный помощник внутри веб-приложения TimDOX (шаги: 1) загрузка Excel и комментарий к нему → 2) выбор образца документа (есть готовые и свои) → 3) создание документа → скачивание в Word или отправка в мессенджер). ' +
     'Отвечай кратко и по-русски. Помогай с интерфейсом и с содержанием документов. ' +
-    'Если пользователь просит изменить или переписать документ, выдай ПОЛНЫЙ новый текст документа между строками <<<ДОКУМЕНТ и ДОКУМЕНТ>>> в том же формате (первая строка — заголовок, "## " — подзаголовки, "- " — пункты). ' +
-    appContext() + (doc ? '\n\nТекущий текст документа:\n' + doc.slice(0, 40000) : '') + (tableText && /цифр|данн|таблиц|провер/i.test(text) ? '\n\nДанные таблицы:\n' + tableText : '');
+    'Если пользователь просит изменить или переписать документ, выдай ПОЛНЫЙ новый текст документа между строками <<<ДОКУМЕНТ и ДОКУМЕНТ>>> в том же формате (первая строка — заголовок, "## " — подзаголовки, "- " — пункты, таблицы — строками "| a | b |"). ' +
+    appContext() + (doc ? '\n\nТекущий текст документа:\n' + doc.slice(0, 40000) : '') + (tableText && /цифр|данн|таблиц|провер/i.test(text) ? '\n\nДанные таблицы:\n' + tableText : '') + (dataStats.length ? '\n\nТочные итоги по таблице:\n' + statsText() : '');
   try {
     const reply = await callAI([{ role: 'system', content: instruction }, ...apTurns], {
       onText: (t) => { botDiv.textContent = t.replace(/<<<ДОКУМЕНТ[\s\S]*/, '✍️ Переписываю документ…'); apMessages.scrollTop = apMessages.scrollHeight; }
@@ -1219,8 +1512,62 @@ sharePanel.querySelectorAll('[data-share]').forEach(btn => btn.addEventListener(
 /* =====================================================================
    Старт и установка как приложение
    ===================================================================== */
+/* =====================================================================
+   Настройки документа
+   ===================================================================== */
+function renderSettings(){
+  document.querySelectorAll('.seg[data-set]').forEach(seg => seg.querySelectorAll('button').forEach(b => b.classList.toggle('active', settings[seg.dataset.set] === b.dataset.v)));
+  document.querySelectorAll('[data-toggle]').forEach(i => i.checked = !!settings[i.dataset.toggle]);
+  document.querySelectorAll('[data-text]').forEach(i => { if (document.activeElement !== i) i.value = settings[i.dataset.text] || ''; });
+  $('setSummary').textContent = SET_LABELS.length[settings.length] + ', ' + SET_LABELS.tone[settings.tone] + ' · ' + SET_LABELS.style[settings.style] + (settings.tables ? ' · таблицы' : '');
+}
+function saveSettings(){ saveJson('etw_settings', settings); renderSettings(); if (!genController) renderPreview(false); }
+document.querySelectorAll('.seg[data-set]').forEach(seg => seg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; settings[seg.dataset.set] = b.dataset.v; saveSettings(); }));
+document.querySelectorAll('[data-toggle]').forEach(i => i.addEventListener('change', () => { settings[i.dataset.toggle] = i.checked; saveSettings(); }));
+document.querySelectorAll('[data-text]').forEach(i => i.addEventListener('input', () => { settings[i.dataset.text] = i.value.trim(); saveSettings(); }));
+
+/* =====================================================================
+   Голосовой ввод, печать, горячие клавиши
+   ===================================================================== */
+function setupVoice(btn, field){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR){ btn.style.display = 'none'; return; }
+  let rec = null;
+  btn.addEventListener('click', () => {
+    if (rec){ rec.stop(); return; }
+    rec = new SR(); rec.lang = 'ru-RU'; rec.interimResults = true; rec.continuous = false;
+    const base = field.value.trim();
+    rec.onresult = (e) => { let t = ''; for (const r of e.results) t += r[0].transcript; field.value = (base ? base + ' ' : '') + t; };
+    rec.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') toast('Разрешите доступ к микрофону в настройках браузера', 'err'); };
+    rec.onend = () => { btn.classList.remove('rec'); rec = null; field.focus(); };
+    btn.classList.add('rec');
+    try { rec.start(); } catch (e) { btn.classList.remove('rec'); rec = null; }
+  });
+}
+setupVoice($('commentMic'), $('fileComment'));
+setupVoice($('apMic'), $('apInput'));
+$('printBtn').addEventListener('click', () => {
+  if (!outText().trim()) return;
+  setMode('preview'); renderPreview(false);
+  let area = $('printArea');
+  if (!area){ area = document.createElement('div'); area.id = 'printArea'; document.body.appendChild(area); }
+  area.innerHTML = '';
+  const copy = $('docPreview').cloneNode(true); copy.removeAttribute('id');
+  area.appendChild(copy);
+  window.print();
+});
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && currentStep === '3' && !$('genBtn').disabled){ e.preventDefault(); $('genBtn').click(); }
+});
+
+/* =====================================================================
+   Старт
+   ===================================================================== */
+try { const d = localStorage.getItem('etw_draft'); if (d) $('genOutput').value = d; } catch(e){}
+renderSettings();
 renderTplList();
 renderHistList();
+updateOutputButtons();
 renderPreview(false);
 checkAI();
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
