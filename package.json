@@ -1,0 +1,13 @@
+{
+  "name": "timdox",
+  "version": "1.0.0",
+  "description": "TimDOX — Excel в готовые справки и доклады Word с помощью ИИ (DeepSeek / OpenRouter)",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,7 @@
+Сторонние библиотеки, встроенные в TimDOX:
+
+xlsx.full.min.js — SheetJS Community Edition 0.18.5
+  https://github.com/SheetJS/sheetjs — лицензия Apache License 2.0
+
+jszip.min.js — JSZip 3.10.1
+  https://github.com/Stuk/jszip — лицензия MIT (или GPLv3, на выбор)

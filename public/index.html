@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TimDOX</title>
+<meta name="description" content="TimDOX — загрузите Excel, добавьте образец и получите готовую справку или доклад в Word за минуту.">
+<meta name="theme-color" content="#0b0d12">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TimDOX">
+<meta property="og:title" content="TimDOX">
+<meta property="og:description" content="Excel → готовая справка или доклад в Word с помощью ИИ">
+<meta property="og:image" content="/icon-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="/vendor/xlsx.full.min.js"></script>
+<script src="/vendor/jszip.min.js"></script>
+<style>
+  :root {
+    --bg: #0b0d12; --panel: #12151d; --panel2: #171b26; --text: #eef0f5; --sub: #9aa2b1;
+    --accent: #6d5cff; --accent2: #ff5ca8; --border: #232838; --ok: #2ee6a6; --warn: #ffb84d;
+    box-sizing: border-box; padding-top: env(safe-area-inset-top,0px); padding-bottom: env(safe-area-inset-bottom,0px);
+  }
+  :root:not([data-theme="light"]) { color-scheme: dark; }
+  :root[data-theme="light"] { --bg:#f4f5f9; --panel:#fff; --panel2:#f0f1f7; --text:#14161e; --sub:#5b6072; --border:#e2e4ee; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) { --bg:#f4f5f9; --panel:#fff; --panel2:#f0f1f7; --text:#14161e; --sub:#5b6072; --border:#e2e4ee; }
+  }
+  html { scroll-padding-top: env(safe-area-inset-top,0px); height: 100%; }
+  * { box-sizing: border-box; }
+  body { height:100%; margin:0; background:var(--bg); color:var(--text); font-family:Inter,system-ui,sans-serif; overflow-x:hidden; -webkit-font-smoothing:antialiased; }
+  .bg-anim { position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+  .bg-anim span { position:absolute; border-radius:50%; filter:blur(80px); opacity:.35; animation:float 16s ease-in-out infinite; }
+  .bg-anim span:nth-child(1){width:420px;height:420px;background:var(--accent);top:-100px;left:-80px;}
+  .bg-anim span:nth-child(2){width:380px;height:380px;background:var(--accent2);bottom:-120px;right:-100px;animation-delay:-6s;}
+  @keyframes float{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(40px,-30px) scale(1.08);}}
+  .wrap{position:relative;z-index:1;max-width:920px;margin:0 auto;padding:40px 20px 80px;}
+  header{text-align:center;margin-bottom:36px;animation:fadeUp .6s ease both;}
+  h1{font-family:'Russo One',system-ui,sans-serif;font-size:clamp(28px,5vw,44px);margin:0 0 8px;letter-spacing:.5px;
+     background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;
+     background-size:200% auto;animation:shine 5s linear infinite;}
+  @keyframes shine{to{background-position:200% center;}}
+  header p{color:var(--sub);margin:0;font-size:15px;}
+  .stepper{display:flex;align-items:center;justify-content:center;gap:6px;margin:28px 0 32px;animation:fadeUp .6s ease .1s both;}
+  .step{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;}
+  .dot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;
+       border:2px solid var(--border);color:var(--sub);transition:all .3s ease;background:var(--panel);}
+  .step.active .dot{border-color:var(--accent);color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 0 0 4px rgba(109,92,255,.15);}
+  .step.done .dot{border-color:var(--ok);color:var(--ok);}
+  .step-label{font-size:13px;color:var(--sub);}
+  .step.active .step-label{color:var(--text);font-weight:600;}
+  .line{width:40px;height:2px;background:var(--border);}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:28px;animation:fadeUp .6s ease .2s both;}
+  .step-view{display:none;}
+  .step-view.active{display:block;animation:fadeUp .4s ease both;}
+  .drop{border:2px dashed var(--border);border-radius:14px;padding:40px 20px;text-align:center;cursor:pointer;transition:border-color .25s ease,background .25s ease;}
+  .drop.drag{border-color:var(--accent);background:var(--panel2);}
+  .drop svg{margin-bottom:10px;opacity:.7;}
+  .drop b{display:block;margin-bottom:4px;}
+  .drop span{color:var(--sub);font-size:13px;}
+  input[type=file]{display:none;}
+  .sheets{display:flex;gap:8px;margin:20px 0 12px;flex-wrap:wrap;}
+  .sheet-btn,.tpl-btn{padding:7px 14px;border-radius:999px;border:1px solid var(--border);background:var(--panel2);color:var(--sub);font-size:13px;cursor:pointer;transition:all .2s ease;}
+  .sheet-btn.active,.tpl-btn.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent;}
+  .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;max-height:360px;overflow-y:auto;}
+  table{border-collapse:collapse;width:100%;font-size:13px;}
+  th,td{padding:8px 12px;border-bottom:1px solid var(--border);white-space:nowrap;text-align:left;}
+  th{background:var(--panel2);position:sticky;top:0;color:var(--sub);font-weight:600;}
+  tr:hover td{background:var(--panel2);}
+  .meta{display:flex;gap:16px;margin:14px 0;color:var(--sub);font-size:13px;flex-wrap:wrap;}
+  .meta b{color:var(--text);}
+  .empty{color:var(--sub);text-align:center;padding:20px;font-size:13px;}
+  .top-actions{position:fixed;top:calc(16px + env(safe-area-inset-top,0px));right:16px;z-index:6;display:flex;gap:8px;}
+  .top-btn{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px 12px;color:var(--sub);font-size:13px;cursor:pointer;}
+  .share-panel{position:absolute;top:calc(100% + 8px);right:0;background:var(--panel);border:1px solid var(--border);border-radius:12px;
+      padding:8px;display:none;flex-direction:column;gap:2px;min-width:190px;box-shadow:0 10px 30px rgba(0,0,0,.3);animation:fadeUp .2s ease both;}
+  .share-panel button{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--text);padding:9px 10px;border-radius:8px;font-size:13px;cursor:pointer;text-align:left;width:100%;}
+  .share-panel button:hover{background:var(--panel2);}
+  .logo{display:flex;justify-content:center;margin-bottom:8px;animation:logoFloat 3.5s ease-in-out infinite;filter:drop-shadow(0 4px 18px rgba(109,92,255,.45));}
+  @keyframes logoFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+  .logo-spin{transform-origin:32px 32px;animation:spin 6s linear infinite;}
+  .lg1{stop-color:var(--accent);}
+  .lg2{stop-color:var(--accent2);}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+  label.field-label{display:block;font-size:13px;color:var(--sub);margin:0 0 6px;font-weight:600;}
+  input[type=text],textarea{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:12px;color:var(--text);
+      padding:12px 14px;font-family:inherit;font-size:14px;resize:vertical;}
+  textarea{min-height:130px;line-height:1.5;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px;}
+  .btn{border:none;border-radius:12px;padding:11px 20px;font-weight:600;font-size:14px;cursor:pointer;transition:transform .15s ease,opacity .15s ease;}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;}
+  .btn-primary:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-primary:not(:disabled):hover{transform:translateY(-1px);}
+  .btn-ghost{background:var(--panel2);color:var(--text);border:1px solid var(--border);}
+  .tpl-list{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
+  .tpl-item{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--border);
+      border-radius:12px;padding:10px 14px;font-size:13px;}
+  .tpl-item.selected{border-color:var(--accent);}
+  .tpl-item .name{font-weight:600;}
+  .tpl-item .snippet{color:var(--sub);font-size:12px;display:block;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .icon-btn{background:none;border:none;color:var(--sub);cursor:pointer;font-size:15px;}
+  .icon-btn:hover{color:var(--accent2);}
+  .summary-box{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px;}
+  .summary-box .chip{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--sub);}
+  .summary-box .chip b{color:var(--text);}
+  #genOutput{min-height:220px;white-space:pre-wrap;}
+  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:spin .7s linear infinite;vertical-align:-3px;margin-right:8px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .toasts{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));right:20px;z-index:5;display:flex;flex-direction:column;gap:10px;}
+  .assistant-fab{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:6;width:52px;height:52px;border-radius:50%;
+      border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:22px;cursor:pointer;
+      box-shadow:0 8px 24px rgba(109,92,255,.4);animation:fabPulse 3s ease-in-out infinite;}
+  @keyframes fabPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.06);}}
+  .assistant-panel{position:fixed;left:20px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:6;width:min(340px,calc(100vw - 40px));
+      max-height:60vh;background:var(--panel);border:1px solid var(--border);border-radius:16px;display:none;flex-direction:column;
+      box-shadow:0 20px 50px rgba(0,0,0,.35);overflow:hidden;animation:fadeUp .25s ease both;}
+  .ap-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600;font-size:14px;}
+  .ap-messages{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px;font-size:13px;}
+  .ap-msg{max-width:85%;padding:9px 12px;border-radius:12px;line-height:1.4;white-space:pre-wrap;}
+  .ap-msg.user{align-self:flex-end;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-bottom-right-radius:3px;}
+  .ap-msg.bot{align-self:flex-start;background:var(--panel2);border:1px solid var(--border);border-bottom-left-radius:3px;}
+  .ap-input-row{display:flex;gap:8px;padding:10px;border-top:1px solid var(--border);}
+  .ap-input-row textarea{min-height:38px;max-height:90px;flex:1;padding:8px 10px;font-size:13px;}
+  .ap-input-row .btn{padding:8px 14px;}
+  .site-footer{text-align:center;margin-top:32px;padding-top:20px;border-top:1px solid var(--border);color:var(--sub);font-size:13px;}
+  .site-footer a{color:var(--text);text-decoration:none;font-weight:600;}
+  .site-footer a:hover{color:var(--accent2);}
+  @media (max-width: 480px){
+    .wrap{padding-top:78px;padding-left:14px;padding-right:14px;}
+    .top-btn .lbl{display:none;}
+    .top-btn{padding:8px 10px;}
+    .assistant-panel{left:10px;right:10px;width:auto;bottom:calc(78px + env(safe-area-inset-bottom,0px));}
+    .assistant-fab{left:14px;width:48px;height:48px;font-size:20px;}
+    .card{padding:18px;}
+    .stepper{gap:2px;}
+    .line{width:18px;}
+    .btn{padding:11px 16px;font-size:13px;}
+    .row{gap:8px;}
+  }
+  .toast{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:12px 16px;font-size:13px;
+      box-shadow:0 8px 24px rgba(0,0,0,.25);animation:toastIn .3s ease both;max-width:300px;}
+  .ai-status{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:6px 12px;border-radius:999px;border:1px solid var(--border);
+      background:var(--panel);color:var(--sub);font-size:12px;}
+  .ai-status i{width:8px;height:8px;border-radius:50%;background:var(--sub);display:inline-block;}
+  .ai-status.on i{background:var(--ok);box-shadow:0 0 0 0 rgba(46,230,166,.6);animation:ping 2s infinite;}
+  .ai-status.off i{background:#ff5c7a;}
+  @keyframes ping{0%{box-shadow:0 0 0 0 rgba(46,230,166,.6);}70%{box-shadow:0 0 0 8px rgba(46,230,166,0);}100%{box-shadow:0 0 0 0 rgba(46,230,166,0);}}
+  .btn-stop{background:#ff5c7a;color:#fff;}
+  .modal-bg{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:16px;}
+  .modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:22px;width:min(380px,100%);animation:fadeUp .25s ease both;}
+  .modal h3{margin:0 0 8px;font-family:'Russo One',system-ui,sans-serif;font-weight:400;}
+  .modal p{margin:0 0 14px;color:var(--sub);font-size:13px;line-height:1.5;}
+  .install-tip{display:none;margin-top:10px;font-size:12px;color:var(--sub);}
+  button,.btn,.icon-btn,.top-btn{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  input[type=text],textarea{font-size:16px;} /* iOS не будет зумить поле при фокусе */
+  .toast.err{border-left-color:#ff5c7a;}
+  .toast.ok{border-left-color:var(--ok);}
+  @keyframes toastIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+</style>
+</head>
+<body>
+<div class="bg-anim"><span></span><span></span></div>
+<div class="top-actions">
+  <button class="top-btn" id="shareBtn">📤 <span class="lbl">Поделиться</span></button>
+  <button class="top-btn" id="themeBtn">🌓 <span class="lbl">Тема</span></button>
+  <div class="share-panel" id="sharePanel">
+    <button data-share="tg">✈️ Telegram</button>
+    <button data-share="wa">🟢 WhatsApp</button>
+    <button data-share="max">🔷 MAX</button>
+    <button data-share="copy">🔗 Скопировать ссылку</button>
+  </div>
+</div>
+<div class="toasts" id="toasts"></div>
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 64 64" width="52" height="52" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="lg1"/><stop offset="1" class="lg2"/></linearGradient></defs>
+        <circle class="logo-spin" cx="32" cy="32" r="27" fill="none" stroke="url(#logoGrad)" stroke-width="2.5" stroke-dasharray="55 30" opacity=".55"/>
+        <rect x="18" y="12" width="28" height="38" rx="5" fill="url(#logoGrad)"/>
+        <path d="M38 12 L46 20 L38 20 Z" fill="rgba(255,255,255,.4)"/>
+        <line x1="24" y1="27" x2="38" y2="27" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".9"/>
+        <line x1="24" y1="33" x2="38" y2="33" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+        <line x1="24" y1="39" x2="33" y2="39" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+      </svg>
+    </div>
+    <h1>TIMDOX</h1>
+    <p>Загрузите таблицу, добавьте образец — получите готовый документ</p>
+    <div class="ai-status" id="aiStatus"><i></i><span>Проверяю подключение ИИ…</span></div>
+    <div class="install-tip" id="installTip"></div>
+  </header>
+
+  <div class="stepper">
+    <div class="step active" data-step="1"><div class="dot">1</div><span class="step-label">Загрузка Excel</span></div>
+    <div class="line"></div>
+    <div class="step" data-step="2"><div class="dot">2</div><span class="step-label">Образец</span></div>
+    <div class="line"></div>
+    <div class="step" data-step="3"><div class="dot">3</div><span class="step-label">Генерация</span></div>
+  </div>
+
+  <div class="card">
+    <!-- STEP 1 -->
+    <section class="step-view active" id="view-1">
+      <div class="drop" id="drop">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg>
+        <b>Перетащите файл сюда</b>
+        <span>или нажмите, чтобы выбрать — .xlsx, .xls, .csv</span>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+      </div>
+      <div id="result"></div>
+      <div id="commentBox" style="display:none;margin-top:18px;">
+        <label class="field-label">Комментарий к файлу — на что обратить внимание при генерации (необязательно)</label>
+        <textarea id="fileComment" placeholder="Например: акцентируйте внимание на листе «Итоги», данные по регионам важнее сводной таблицы на первом листе"></textarea>
+      </div>
+    </section>
+
+    <!-- STEP 2 -->
+    <section class="step-view" id="view-2">
+      <label class="field-label">Название образца</label>
+      <input type="text" id="tplName" placeholder="Например: Справка о доходах — стандартный вид">
+      <div style="height:12px"></div>
+      <label class="field-label">Вставьте текст примера готового документа</label>
+      <textarea id="tplText" placeholder="Вставьте сюда текст готовой справки/доклада — стиль, структуру и формулировки которого нужно повторить"></textarea>
+      <div class="row">
+        <button class="btn btn-primary" id="saveTpl">Сохранить образец</button>
+        <button class="btn btn-ghost" id="tplDocxBtn">Загрузить из .docx</button>
+        <input type="file" id="tplDocxInput" accept=".docx" style="display:none">
+        <span style="color:var(--sub);font-size:13px">Образцы хранятся в этом браузере</span>
+      </div>
+      <div class="tpl-list" id="tplList"></div>
+    </section>
+
+    <!-- STEP 3 -->
+    <section class="step-view" id="view-3">
+      <div class="summary-box">
+        <div class="chip">Данные: <b id="sumData">не загружены</b></div>
+        <div class="chip">Образец: <b id="sumTpl">не выбран</b></div>
+      </div>
+      <div class="row">
+        <button class="btn btn-primary" id="genBtn" disabled>Сгенерировать документ</button>
+        <button class="btn btn-stop" id="stopBtn" style="display:none">■ Стоп</button>
+        <button class="btn btn-ghost" id="dlBtn" disabled>Скачать .docx</button>
+        <button class="btn btn-ghost" id="shareFileBtn" disabled>📤 Поделиться файлом</button>
+      </div>
+      <div style="height:16px"></div>
+      <label class="field-label">Результат (можно отредактировать перед скачиванием)</label>
+      <textarea id="genOutput" placeholder="Здесь появится сгенерированный текст"></textarea>
+      <div style="height:20px"></div>
+      <label class="field-label">История сгенерированных документов</label>
+      <div class="tpl-list" id="histList"></div>
+    </section>
+  </div>
+
+  <footer class="site-footer">TimDOX · <a href="https://t.me/groom005" target="_blank" rel="noopener noreferrer">✈️ Автор в Telegram — @groom005</a></footer>
+</div>
+
+<div class="modal-bg" id="codeModal">
+  <div class="modal">
+    <h3>Код доступа</h3>
+    <p>Владелец сайта включил защиту ИИ. Введите код, который он вам дал — он запомнится на этом устройстве.</p>
+    <input type="text" id="codeInput" placeholder="Код доступа" autocomplete="off">
+    <div class="row">
+      <button class="btn btn-primary" id="codeOk">Готово</button>
+      <button class="btn btn-ghost" id="codeCancel">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<button class="assistant-fab" id="assistantFab" title="Помощник TimDOX">🤖</button>
+<div class="assistant-panel" id="assistantPanel">
+  <div class="ap-head"><span>Помощник TimDOX</span><button class="icon-btn" id="assistantClose">✕</button></div>
+  <div class="ap-messages" id="apMessages"></div>
+  <div class="ap-input-row">
+    <textarea id="apInput" placeholder="Спросите что-нибудь..." rows="1"></textarea>
+    <button class="btn btn-primary" id="apSend">➤</button>
+  </div>
+</div>
+
+<script>
+/* ---------- state ---------- */
+let workbook = null, activeSheet = null, activeFileName = '';
+function loadJson(key, fallback){ try { const v = JSON.parse(localStorage.getItem(key)); return v == null ? fallback : v; } catch(e){ return fallback; } }
+function saveJson(key, value){ try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch(e){ toast('Не хватает места в памяти браузера — удалите старые документы', 'err'); return false; } }
+let templates = loadJson('etw_templates', []);
+let docHistory = loadJson('etw_history', []);
+let selectedTplId = loadJson('etw_selected_tpl', null);
+if (!templates.some(t => t.id === selectedTplId)) selectedTplId = null;
+let aiReady = false;
+let genController = null;
+const MAX_DATA_CHARS = 150000;
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+/* ---------- AI client (свой сервер /api/chat) ---------- */
+function getAccessCode(){ try { return localStorage.getItem('etw_access_code') || ''; } catch(e){ return ''; } }
+function askAccessCode(){
+  return new Promise(resolve => {
+    const bg = document.getElementById('codeModal');
+    const input = document.getElementById('codeInput');
+    input.value = getAccessCode();
+    bg.style.display = 'flex';
+    setTimeout(() => input.focus(), 50);
+    const done = (val) => {
+      bg.style.display = 'none';
+      document.getElementById('codeOk').onclick = document.getElementById('codeCancel').onclick = null;
+      resolve(val);
+    };
+    document.getElementById('codeOk').onclick = () => {
+      const v = input.value.trim();
+      try { localStorage.setItem('etw_access_code', v); } catch(e){}
+      done(v);
+    };
+    document.getElementById('codeCancel').onclick = () => done(null);
+  });
+}
+
+async function callAI(messages, { onText, signal, maxTokens } = {}, retried){
+  let res;
+  try {
+    res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Access-Code': getAccessCode() },
+      body: JSON.stringify({ messages, max_tokens: maxTokens }),
+      signal
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') throw { code: 'cancelled' };
+    throw { code: 'network', message: 'Нет связи с сервером. Проверьте интернет.' };
+  }
+  if (res.status === 401 && !retried){
+    const code = await askAccessCode();
+    if (code == null) throw { code: 'cancelled' };
+    return callAI(messages, { onText, signal, maxTokens }, true);
+  }
+  if (!res.ok){
+    let msg = 'Ошибка сервера (' + res.status + ')';
+    try { const j = await res.json(); if (j.error) msg = j.error; } catch(e){}
+    throw { code: 'http_' + res.status, message: msg };
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let text = '';
+  try {
+    while (true){
+      const { value, done } = await reader.read();
+      if (done) break;
+      text += decoder.decode(value, { stream: true });
+      if (onText) onText(text);
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') throw { code: 'cancelled', text };
+    throw { code: 'network', message: 'Связь оборвалась во время ответа', text };
+  }
+  return text;
+}
+
+async function checkAI(){
+  const el = document.getElementById('aiStatus');
+  try {
+    const r = await fetch('/api/health', { cache: 'no-store' });
+    const h = await r.json();
+    aiReady = !!h.configured;
+    el.className = 'ai-status ' + (aiReady ? 'on' : 'off');
+    el.querySelector('span').textContent = aiReady ? ('ИИ подключён · ' + h.provider) : 'ИИ не настроен на сервере — генерация недоступна';
+  } catch (e) {
+    aiReady = false;
+    el.className = 'ai-status off';
+    el.querySelector('span').textContent = 'Сервер ИИ недоступен (открыт файл без сервера?)';
+  }
+  refreshSummary();
+}
+
+/* ---------- files: download & share ---------- */
+function reportFileName(text){
+  const first = (text.split('\n').find(l => l.trim()) || 'Документ').trim().replace(/^#+\s*/, '');
+  const safe = first.replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').slice(0, 60).trim() || 'Документ';
+  return safe + '.docx';
+}
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+async function downloadDocx(text){
+  try { downloadBlob(await buildDocx(text), reportFileName(text)); toast('Файл сохранён', 'ok'); }
+  catch (e) { toast('Не удалось сформировать файл', 'err'); }
+}
+async function shareDocx(text){
+  const name = reportFileName(text);
+  const blob = await buildDocx(text);
+  const file = new File([blob], name, { type: DOCX_MIME });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name, text: 'Документ из TimDOX' }); }
+    catch (e) { if (e.name !== 'AbortError') toast('Не удалось поделиться файлом', 'err'); }
+  } else {
+    downloadBlob(blob, name);
+    toast('Этот браузер не умеет отправлять файлы напрямую — файл скачан, прикрепите его в мессенджере', 'ok');
+  }
+}
+
+/* ---------- toasts ---------- */
+function toast(msg, type){
+  const el = document.createElement('div');
+  el.className = 'toast' + (type ? ' ' + type : '');
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  el.addEventListener('click', () => el.remove());
+  const ms = Math.max(3500, Math.min(15000, msg.length * 70));
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }, ms);
+}
+
+/* ---------- stepper nav ---------- */
+document.querySelectorAll('.step').forEach(stepEl => {
+  stepEl.addEventListener('click', () => switchStep(stepEl.dataset.step));
+});
+function switchStep(n){
+  document.querySelectorAll('.step').forEach(s => s.classList.toggle('active', s.dataset.step === n));
+  document.querySelectorAll('.step-view').forEach(v => v.classList.toggle('active', v.id === 'view-' + n));
+  if (n === '3') refreshSummary();
+}
+function markDone(n){ document.querySelector('.step[data-step="'+n+'"]').classList.add('done'); }
+
+/* ---------- STEP 1: excel ---------- */
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('fileInput');
+const result = document.getElementById('result');
+drop.addEventListener('click', () => fileInput.click());
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag'); }));
+drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
+fileInput.addEventListener('change', e => { const f = e.target.files[0]; if (f) handleFile(f); });
+
+function handleFile(file){
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      activeSheet = workbook.SheetNames[0];
+      activeFileName = file.name;
+      render();
+      markDone('1');
+      document.getElementById('commentBox').style.display = 'block';
+      toast('Файл разобран: ' + file.name, 'ok');
+    } catch (err) {
+      result.innerHTML = '<div class="empty">Не получилось прочитать файл: ' + escapeHtml(String(err.message || err)) + '</div>';
+      toast('Ошибка чтения файла', 'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function render(){
+  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[activeSheet], { header: 1, defval: '' });
+  const cols = rows[0] ? rows[0].length : 0;
+  let html = '<div class="meta"><span>Файл: <b>'+escapeHtml(activeFileName)+'</b></span><span>Листов: <b>'+workbook.SheetNames.length+'</b></span><span>Строк: <b>'+rows.length+'</b></span><span>Столбцов: <b>'+cols+'</b></span></div>';
+  if (workbook.SheetNames.length > 1){
+    html += '<div class="sheets">' + workbook.SheetNames.map(name => '<button class="sheet-btn '+(name===activeSheet?'active':'')+'" data-sheet="'+escapeHtml(name)+'">'+escapeHtml(name)+'</button>').join('') + '</div>';
+  }
+  html += renderTable(rows);
+  result.innerHTML = html;
+  result.querySelectorAll('.sheet-btn').forEach(btn => btn.addEventListener('click', () => { activeSheet = btn.dataset.sheet; render(); }));
+}
+function renderTable(rows){
+  if (!rows.length) return '<div class="empty">Лист пуст</div>';
+  const preview = rows.slice(0, 50);
+  const header = preview[0] || [];
+  const body = preview.slice(1);
+  let html = '<div class="table-wrap"><table><thead><tr>' + header.map(h => '<th>'+escapeHtml(String(h))+'</th>').join('') + '</tr></thead><tbody>';
+  body.forEach(r => { html += '<tr>' + header.map((_, i) => '<td>'+escapeHtml(String(r[i] ?? ''))+'</td>').join('') + '</tr>'; });
+  html += '</tbody></table></div>';
+  if (rows.length > 50) html += '<div class="empty">Показаны первые 50 строк из ' + (rows.length - 1) + '</div>';
+  return html;
+}
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- STEP 2: templates ---------- */
+function renderTplList(){
+  const list = document.getElementById('tplList');
+  if (!templates.length){ list.innerHTML = '<div class="empty">Пока нет сохранённых образцов</div>'; return; }
+  list.innerHTML = templates.map(t => '<div class="tpl-item '+(t.id===selectedTplId?'selected':'')+'" data-id="'+t.id+'">' +
+    '<div><span class="name">'+escapeHtml(t.name)+'</span><span class="snippet">'+escapeHtml(t.text.slice(0,80))+'</span></div>' +
+    '<div><button class="icon-btn" data-act="use" title="Использовать">✅</button> <button class="icon-btn" data-act="del" title="Удалить">🗑</button></div></div>').join('');
+  list.querySelectorAll('.tpl-item').forEach(item => {
+    const id = item.dataset.id;
+    item.querySelector('[data-act="use"]').addEventListener('click', () => { selectedTplId = id; saveJson('etw_selected_tpl', id); markDone('2'); renderTplList(); toast('Образец выбран', 'ok'); });
+    item.querySelector('[data-act="del"]').addEventListener('click', () => {
+      templates = templates.filter(t => t.id !== id);
+      if (selectedTplId === id) selectedTplId = null;
+      persistTpl(); renderTplList();
+    });
+  });
+}
+function persistTpl(){ saveJson('etw_templates', templates); saveJson('etw_selected_tpl', selectedTplId); }
+function renderHistList(){
+  const list = document.getElementById('histList');
+  if (!list) return;
+  if (!docHistory.length){ list.innerHTML = '<div class="empty">Пока нет сгенерированных документов</div>'; return; }
+  list.innerHTML = docHistory.map(h => '<div class="tpl-item" data-id="'+h.id+'">' +
+    '<div><span class="name">'+escapeHtml(h.title)+'</span><span class="snippet">'+escapeHtml(h.date)+'</span></div>' +
+    '<div><button class="icon-btn" data-act="open" title="Открыть в редакторе">📝</button> <button class="icon-btn" data-act="dl" title="Скачать .docx">⬇️</button> <button class="icon-btn" data-act="del" title="Удалить">🗑</button></div></div>').join('');
+  list.querySelectorAll('.tpl-item').forEach(item => {
+    const h = docHistory.find(x => x.id === item.dataset.id);
+    item.querySelector('[data-act="open"]').addEventListener('click', () => {
+      document.getElementById('genOutput').value = h.text;
+      updateOutputButtons();
+      toast('Документ загружен в редактор', 'ok');
+    });
+    item.querySelector('[data-act="dl"]').addEventListener('click', () => downloadDocx(h.text));
+    item.querySelector('[data-act="del"]').addEventListener('click', () => {
+      docHistory = docHistory.filter(x => x.id !== item.dataset.id);
+      saveJson('etw_history', docHistory);
+      renderHistList();
+    });
+  });
+}
+renderHistList();
+document.getElementById('saveTpl').addEventListener('click', () => {
+  const name = document.getElementById('tplName').value.trim();
+  const text = document.getElementById('tplText').value.trim();
+  if (!name || !text){ toast('Заполните название и текст образца', 'err'); return; }
+  const item = { id: 't'+Date.now(), name, text };
+  templates.unshift(item);
+  selectedTplId = item.id;
+  persistTpl(); renderTplList();
+  document.getElementById('tplName').value = '';
+  document.getElementById('tplText').value = '';
+  markDone('2');
+  toast('Образец сохранён', 'ok');
+});
+renderTplList();
+
+document.getElementById('tplDocxBtn').addEventListener('click', () => document.getElementById('tplDocxInput').click());
+document.getElementById('tplDocxInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const zip = await JSZip.loadAsync(file);
+    const xmlFile = zip.file('word/document.xml');
+    if (!xmlFile) throw new Error('not a docx');
+    const xml = await xmlFile.async('string');
+    const paras = xml.split(/<w:p[ >]/).slice(1);
+    const text = paras.map(p => {
+      const mats = [...p.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)];
+      return mats.map(m => m[1]).join('');
+    }).join('\n').trim();
+    document.getElementById('tplText').value = text;
+    if (!document.getElementById('tplName').value.trim()) {
+      document.getElementById('tplName').value = file.name.replace(/\.docx$/i, '');
+    }
+    toast('Текст извлечён из .docx', 'ok');
+  } catch (err) {
+    toast('Не получилось прочитать .docx файл', 'err');
+  }
+  e.target.value = '';
+});
+
+/* ---------- STEP 3: generation ---------- */
+function refreshSummary(){
+  document.getElementById('sumData').textContent = workbook ? (activeFileName + ' · листов: ' + workbook.SheetNames.length) : 'не загружены';
+  const tpl = templates.find(t => t.id === selectedTplId);
+  document.getElementById('sumTpl').textContent = tpl ? tpl.name : 'не выбран';
+  document.getElementById('genBtn').disabled = !(workbook && tpl && aiReady);
+  document.getElementById('genBtn').title = !aiReady ? 'ИИ не подключён на сервере' : (!workbook ? 'Сначала загрузите Excel' : (!tpl ? 'Выберите образец' : ''));
+}
+function updateOutputButtons(){
+  const has = !!document.getElementById('genOutput').value.trim();
+  document.getElementById('dlBtn').disabled = !has;
+  document.getElementById('shareFileBtn').disabled = !has;
+}
+document.getElementById('genOutput').addEventListener('input', updateOutputButtons);
+
+function workbookAsText(){
+  let dataCsv = '';
+  workbook.SheetNames.forEach(name => {
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: '', raw: false })
+      .filter(r => r.some(c => String(c).trim() !== ''));
+    dataCsv += 'Лист «' + name + '» (' + rows.length + ' строк):\n' + rows.map(row => row.join(' | ')).join('\n') + '\n\n';
+  });
+  if (dataCsv.length > MAX_DATA_CHARS){
+    toast('Таблица очень большая — ИИ получит только первую часть данных', 'err');
+    dataCsv = dataCsv.slice(0, MAX_DATA_CHARS) + '\n[…данные обрезаны…]';
+  }
+  return dataCsv;
+}
+
+document.getElementById('stopBtn').addEventListener('click', () => { if (genController) genController.abort(); });
+
+document.getElementById('genBtn').addEventListener('click', async () => {
+  const tpl = templates.find(t => t.id === selectedTplId);
+  if (!workbook || !tpl || !aiReady) return;
+  const btn = document.getElementById('genBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const out = document.getElementById('genOutput');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Пишу документ…';
+  stopBtn.style.display = '';
+  out.value = '';
+  updateOutputButtons();
+  genController = new AbortController();
+  const dataCsv = workbookAsText();
+  const fileComment = document.getElementById('fileComment').value.trim();
+  const templateText = tpl.text.slice(0, 30000);
+  const system = 'Ты — опытный составитель деловых справок и докладов на русском языке. ' +
+    'Пишешь строго по фактам из переданных данных, ничего не выдумываешь; если каких-то данных не хватает — так и пишешь. ' +
+    'Числа берёшь из таблицы точно, итоги и проценты считаешь аккуратно.\n\n' +
+    'Формат ответа: первая строка — заголовок документа. Подзаголовки разделов — строкой вида "## Заголовок раздела". ' +
+    'Перечни — строками, начинающимися с "- ". Остальное — обычные абзацы. ' +
+    'Выводи только готовый текст документа, без пояснений от себя и без другой markdown-разметки (никаких ** и таблиц).';
+  const user = 'ОБРАЗЕЦ готового документа — повтори его стиль, структуру, заголовки и формулировки:\n---\n' + templateText + '\n---\n\n' +
+    'ДАННЫЕ из Excel-файла «' + activeFileName + '» (все листы, построчно, столбцы через " | "):\n---\n' + dataCsv + '---\n\n' +
+    (fileComment ? 'КОММЕНТАРИЙ пользователя — на что обратить особое внимание: ' + fileComment + '\n\n' : '') +
+    'Составь итоговый документ по этим данным в стиле и структуре образца.';
+  try {
+    const text = await callAI([{ role: 'system', content: system }, { role: 'user', content: user }], {
+      signal: genController.signal,
+      onText: (t) => { out.value = t; out.scrollTop = out.scrollHeight; }
+    });
+    out.value = text;
+    updateOutputButtons();
+    markDone('3');
+    const firstLine = (text.split('\n').find(l => l.trim()) || 'Документ').replace(/^#+\s*/, '').slice(0, 60);
+    docHistory.unshift({ id: 'h'+Date.now(), date: new Date().toLocaleString('ru-RU'), title: firstLine, text });
+    docHistory = docHistory.slice(0, 15);
+    saveJson('etw_history', docHistory);
+    renderHistList();
+    toast('Документ готов', 'ok');
+  } catch (e) {
+    if (e.text) out.value = e.text;
+    updateOutputButtons();
+    if (e.code === 'cancelled') toast('Генерация остановлена');
+    else toast(e.message || 'Ошибка генерации', 'err');
+  } finally {
+    genController = null;
+    stopBtn.style.display = 'none';
+    btn.textContent = 'Сгенерировать документ';
+    refreshSummary();
+  }
+});
+
+/* ---------- docx export ---------- */
+function escapeXml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c])); }
+async function buildDocx(text){
+  const lines = text.split('\n');
+  let bodyXml = '';
+  lines.forEach((line, i) => {
+    const t = line.trim();
+    if (!t){ bodyXml += '<w:p/>'; return; }
+    if (i === 0){
+      bodyXml += '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="32"/></w:rPr><w:t xml:space="preserve">' + escapeXml(t) + '</w:t></w:r></w:p>';
+    } else if (t.startsWith('## ')) {
+      bodyXml += '<w:p><w:pPr><w:spacing w:before="200" w:after="100"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="26"/></w:rPr><w:t xml:space="preserve">' + escapeXml(t.slice(3)) + '</w:t></w:r></w:p>';
+    } else if (/^[-•]\s+/.test(t)) {
+      bodyXml += '<w:p><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr><w:r><w:t xml:space="preserve">• ' + escapeXml(t.replace(/^[-•]\s+/, '')) + '</w:t></w:r></w:p>';
+    } else if (/^\d+[.)]\s+/.test(t)) {
+      bodyXml += '<w:p><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr><w:r><w:t xml:space="preserve">' + escapeXml(t) + '</w:t></w:r></w:p>';
+    } else {
+      bodyXml += '<w:p><w:r><w:t xml:space="preserve">' + escapeXml(t) + '</w:t></w:r></w:p>';
+    }
+  });
+  const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' + bodyXml +
+    '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="1701"/></w:sectPr></w:body></w:document>';
+  const contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>';
+  const rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml', contentTypes);
+  zip.folder('_rels').file('.rels', rels);
+  zip.folder('word').file('document.xml', documentXml);
+  return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
+
+document.getElementById('dlBtn').addEventListener('click', () => {
+  const text = document.getElementById('genOutput').value.trim();
+  if (!text){ toast('Сначала сгенерируйте документ', 'err'); return; }
+  downloadDocx(text);
+});
+
+document.getElementById('shareFileBtn').addEventListener('click', async () => {
+  const text = document.getElementById('genOutput').value.trim();
+  if (!text){ toast('Сначала сгенерируйте документ', 'err'); return; }
+  try { await shareDocx(text); } catch (e) { toast('Не удалось подготовить файл', 'err'); }
+});
+
+/* ---------- AI assistant ---------- */
+const assistantFab = document.getElementById('assistantFab');
+const assistantPanel = document.getElementById('assistantPanel');
+const apMessages = document.getElementById('apMessages');
+const apInput = document.getElementById('apInput');
+let apTurns = [];
+let apOpened = false;
+
+assistantFab.addEventListener('click', () => {
+  const willOpen = assistantPanel.style.display !== 'flex';
+  assistantPanel.style.display = willOpen ? 'flex' : 'none';
+  if (willOpen && !apOpened) {
+    apOpened = true;
+    addApMsg('bot', aiReady ? 'Привет! Я помощник TimDOX. Спросите, как загрузить данные, что писать в образце, или попросите переписать готовый документ — например, «сделай короче» или «добавь вывод».' : 'Привет! ИИ пока не подключён на сервере, поэтому отвечать я не смогу. Остальные функции сайта работают.');
+  }
+});
+document.getElementById('assistantClose').addEventListener('click', () => { assistantPanel.style.display = 'none'; });
+
+function addApMsg(role, text){
+  const div = document.createElement('div');
+  div.className = 'ap-msg ' + role;
+  div.textContent = text;
+  apMessages.appendChild(div);
+  apMessages.scrollTop = apMessages.scrollHeight;
+  return div;
+}
+
+function appContext(){
+  const tpl = templates.find(t => t.id === selectedTplId);
+  return 'Контекст приложения TimDOX прямо сейчас: ' +
+    (workbook ? ('загружен файл «' + activeFileName + '», листы: ' + workbook.SheetNames.join(', ') + ', активный лист «' + activeSheet + '»') : 'файл ещё не загружен') + '. ' +
+    (tpl ? ('выбран образец «' + tpl.name + '»') : 'образец ещё не выбран') + '. ' +
+    (document.getElementById('genOutput').value.trim() ? 'документ уже сгенерирован, его можно редактировать и скачивать' : 'документ ещё не сгенерирован') + '.';
+}
+
+document.getElementById('apSend').addEventListener('click', sendApMessage);
+apInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendApMessage(); } });
+
+let apBusy = false;
+async function sendApMessage(){
+  const text = apInput.value.trim();
+  if (!text || apBusy) return;
+  if (!aiReady){ toast('ИИ не подключён на сервере', 'err'); return; }
+  apBusy = true;
+  apInput.value = '';
+  addApMsg('user', text);
+  apTurns.push({ role: 'user', content: text });
+  apTurns = apTurns.slice(-12);
+  const botDiv = addApMsg('bot', 'Думаю…');
+  const doc = document.getElementById('genOutput').value.trim();
+  const instruction = 'Ты — дружелюбный помощник внутри веб-приложения TimDOX (шаги: 1) загрузка Excel и комментарий к нему → 2) образец документа → 3) генерация справки/доклада → скачивание .docx или отправка в мессенджер). ' +
+    'Отвечай кратко и по-русски. Помогай с интерфейсом и с содержанием документов. ' +
+    'Если пользователь просит переписать документ, выдай ПОЛНЫЙ новый текст документа между строками <<<ДОКУМЕНТ и ДОКУМЕНТ>>> в том же формате (первая строка — заголовок, "## " — подзаголовки, "- " — пункты). ' +
+    appContext() + (doc ? '\n\nТекущий текст документа:\n' + doc.slice(0, 40000) : '');
+  try {
+    const reply = await callAI([{ role: 'system', content: instruction }, ...apTurns], {
+      onText: (t) => { botDiv.textContent = t.replace(/<<<ДОКУМЕНТ[\s\S]*/,'✍️ Переписываю документ…'); apMessages.scrollTop = apMessages.scrollHeight; }
+    });
+    const m = reply.match(/<<<ДОКУМЕНТ\s*([\s\S]*?)\s*ДОКУМЕНТ>>>/);
+    let shown = reply;
+    if (m){
+      shown = reply.replace(m[0], '').trim() || 'Готово.';
+      botDiv.textContent = shown;
+      const applyBtn = document.createElement('button');
+      applyBtn.className = 'btn btn-primary';
+      applyBtn.style.cssText = 'margin-top:8px;padding:7px 12px;font-size:12px;display:block';
+      applyBtn.textContent = 'Вставить новую версию в документ';
+      applyBtn.onclick = () => {
+        document.getElementById('genOutput').value = m[1];
+        updateOutputButtons();
+        switchStep('3');
+        toast('Документ обновлён', 'ok');
+      };
+      botDiv.appendChild(applyBtn);
+    } else {
+      botDiv.textContent = reply;
+    }
+    apTurns.push({ role: 'assistant', content: m ? shown + ' (новая версия документа предложена)' : reply });
+  } catch (e) {
+    botDiv.textContent = e.code === 'cancelled' ? 'Отменено.' : (e.message || 'Не получилось получить ответ, попробуйте ещё раз');
+    apTurns.pop();
+  } finally {
+    apBusy = false;
+  }
+}
+
+/* ---------- start ---------- */
+checkAI();
+refreshSummary();
+if (selectedTplId) markDone('2');
+
+/* ---------- PWA: установка на телефон ---------- */
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}
+(function installTip(){
+  const tip = document.getElementById('installTip');
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (standalone) return;
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/.test(ua)) {
+    tip.textContent = '📱 Чтобы установить как приложение: «Поделиться» → «На экран Домой»';
+    tip.style.display = 'block';
+  }
+  let deferred = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferred = e;
+    tip.innerHTML = '';
+    const b = document.createElement('button');
+    b.className = 'btn btn-ghost';
+    b.style.cssText = 'padding:7px 14px;font-size:12px';
+    b.textContent = '📲 Установить TimDOX как приложение';
+    b.onclick = async () => { deferred.prompt(); await deferred.userChoice; deferred = null; tip.style.display = 'none'; };
+    tip.appendChild(b);
+    tip.style.display = 'block';
+  });
+})();
+
+/* ---------- theme ---------- */
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  document.documentElement.setAttribute('data-theme', cur === 'light' ? 'dark' : 'light');
+});
+
+/* ---------- share ---------- */
+const shareBtn = document.getElementById('shareBtn');
+const sharePanel = document.getElementById('sharePanel');
+shareBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  sharePanel.style.display = sharePanel.style.display === 'flex' ? 'none' : 'flex';
+});
+document.addEventListener('click', () => { sharePanel.style.display = 'none'; });
+sharePanel.addEventListener('click', e => e.stopPropagation());
+sharePanel.querySelectorAll('[data-share]').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const url = location.href;
+    const text = 'TimDOX — превращаю Excel-таблицы в готовые справки и доклады в Word';
+    const kind = btn.dataset.share;
+    sharePanel.style.display = 'none';
+    if (kind === 'copy') {
+      try { await navigator.clipboard.writeText(url); toast('Ссылка скопирована', 'ok'); }
+      catch (e) { toast('Не удалось скопировать ссылку', 'err'); }
+      return;
+    }
+    const links = {
+      tg: 'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text),
+      wa: 'https://wa.me/?text=' + encodeURIComponent(text + ' ' + url),
+      max: 'https://max.ru/:share?text=' + encodeURIComponent(text + ' ' + url)
+    };
+    window.open(links[kind], '_blank', 'noopener,noreferrer');
+  });
+});
+</script>
+</body>
+</html>
