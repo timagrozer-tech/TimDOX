@@ -8,15 +8,39 @@ import { postCard } from "../components/post.js";
 import { storiesBar } from "../components/stories.js";
 
 export function verifyBanner() {
-  if (!state.me || state.me.email_verified) return null;
-  const resend = h("button.btn.sm.accent", { type: "button" }, "Отправить ещё раз");
-  resend.addEventListener("click", async () => {
-    try { await api.post("/api/auth/resend"); toast("Письмо отправлено", { icon: "mail" }); resend.disabled = true; } catch (e) { toastError(e); }
-  });
-  return h("div.banner", { role: "note" }, icon("mail"),
-    h("div.grow", h("b", "Подтвердите e-mail. "), `Мы отправили письмо на ${state.me.email}.`,
+  if (!state.me || state.me.email_verified || !state.mailEnabled) return null;
+  return h("div.banner.verify-banner", { role: "note" }, icon("mail"),
+    h("div.grow", h("b", "Подтвердите почту. "), `Код отправлен на ${state.me.email}.`,
       state.requireEmailConfirm ? " Без подтверждения нельзя публиковать записи и писать сообщения." : ""),
-    resend);
+    codeForm({
+      submit: (code) => api.post("/api/auth/verify-code", { code }),
+      resend: () => api.post("/api/auth/resend"),
+      onDone: (el) => { state.me.email_verified = true; toast("Почта подтверждена 🎉", { icon: "check" }); el.closest(".banner")?.remove(); },
+    }));
+}
+
+/** Поле для шестизначного кода из письма + «Отправить ещё раз» */
+export function codeForm({ submit, resend, onDone }) {
+  const input = h("input.code-input", { inputmode: "numeric", autocomplete: "one-time-code", maxlength: 7, placeholder: "000000", "aria-label": "Код из письма" });
+  const ok = h("button.btn.sm.primary", { type: "submit" }, "Подтвердить");
+  const again = h("button.btn.sm.ghost", { type: "button" }, "Отправить ещё раз");
+  const form = h("form.code-form", input, ok, resend ? again : null);
+  input.addEventListener("input", () => {
+    input.value = input.value.replace(/\D/g, "").slice(0, 6);
+    if (input.value.length === 6) form.requestSubmit();
+  });
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (input.value.length !== 6) { input.focus(); return; }
+    ok.disabled = true;
+    try { await submit(input.value); onDone(form); } catch (err) { toastError(err); input.select(); } finally { ok.disabled = false; }
+  });
+  again.addEventListener("click", async () => {
+    again.disabled = true;
+    try { await resend(); toast("Новый код отправлен", { icon: "mail" }); } catch (err) { toastError(err); }
+    setTimeout(() => { again.disabled = false; }, 30000);
+  });
+  return form;
 }
 
 export async function feedPage({ path, query }) {

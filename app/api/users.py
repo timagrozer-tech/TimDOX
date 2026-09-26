@@ -6,7 +6,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
-from .. import config, db, media, social
+from .. import collection, config, db, email_codes, mailer, media, social
 from ..realtime import hub
 from ..security import censor, clean_text, verify_password
 from ..social import FRIEND_IDS_SQL
@@ -69,7 +69,11 @@ async def profile(request: Request):
         "can_message": uid != v and not rel["blocked_by_me"] and (
             p["message_privacy"] == "all" or rel["status"] == "friends"),
         "friends_visible": _can_see_friends(v, p),
+        "equipped": collection.parse_equipped(p.get("equipped")),
     }
+    if full:
+        from .collection_routes import showcase
+        data["showcase"] = showcase(uid)
     if uid != v and not rel["blocked_by_me"]:
         from .people_extra import record_visit
         record_visit(uid, v)
@@ -340,7 +344,69 @@ async def settings_get(request: Request):
     p["show_birth_date"] = bool(p["show_birth_date"])
     p["invisible"] = bool(p["invisible"])
     p["appearance"] = parse_appearance(p["appearance"])
+    pend = email_codes.pending(u["id"], "email_change")
+    p["pending_email"] = pend["new_email"] if pend else None
+    p["mail_enabled"] = mailer.configured()
+    p["equipped"] = collection.parse_equipped(p.get("equipped"))
     return JSONResponse(p)
+
+
+def _mask(email: str) -> str:
+    name, _, domain = email.partition("@")
+    return (name[:2] + "•" * max(1, len(name) - 2)) + "@" + domain
+
+
+@auth()
+async def email_change(request: Request):
+    """Шаг 1: новый адрес + пароль → код на новый адрес (или сразу, если почта не настроена)."""
+    from .auth_routes import EMAIL_RE
+    limit(request, "auth", "email")
+    u = request.state.user
+    data = await body(request)
+    new = str(data.get("email", "")).strip().lower()
+    errors = {}
+    if not EMAIL_RE.match(new) or len(new) > 254:
+        errors["email"] = "Введите корректный адрес почты"
+    elif new == str(u["email"]).lower():
+        errors["email"] = "Это ваш текущий адрес"
+    elif db.value("SELECT 1 FROM users WHERE email=? AND id!=?", (new, u["id"])):
+        errors["email"] = "Этот адрес уже занят другим аккаунтом"
+    stored = db.value("SELECT password_hash FROM users WHERE id=?", (u["id"],))
+    if not verify_password(str(data.get("password", "")), stored):
+        errors["password"] = "Неверный пароль"
+    if errors:
+        return JSONResponse({"error": "Проверьте поля формы", "fields": errors}, status_code=422)
+    if not mailer.configured():
+        db.run("UPDATE users SET email=?, email_verified_at=NULL WHERE id=?", (new, u["id"]))
+        return JSONResponse({"changed": True, "email": new, "email_verified": False})
+    code = email_codes.issue(u["id"], "email_change", new)
+    sent = await mailer.send(new, f"Код для смены почты: {code} — {config.APP_NAME}",
+                             "Вы меняете адрес почты своего аккаунта. Введите этот код на сайте, чтобы подтвердить новый адрес.",
+                             code=code)
+    if not sent:
+        raise ApiError(503, "Не удалось отправить письмо. Попробуйте позже.")
+    return JSONResponse({"pending": new})
+
+
+@auth()
+async def email_confirm(request: Request):
+    """Шаг 2: код из письма → адрес меняется и сразу считается подтверждённым."""
+    limit(request, "auth", "code")
+    u = request.state.user
+    data = await body(request)
+    if data.get("cancel"):
+        db.run("DELETE FROM email_codes WHERE user_id=? AND purpose='email_change'", (u["id"],))
+        return ok()
+    row = email_codes.consume(u["id"], "email_change", str(data.get("code", "")))
+    new = row["new_email"]
+    if db.value("SELECT 1 FROM users WHERE email=? AND id!=?", (new, u["id"])):
+        raise ApiError(409, "Этот адрес уже занят другим аккаунтом")
+    old = u["email"]
+    db.run("UPDATE users SET email=?, email_verified_at=? WHERE id=?", (new, db.now(), u["id"]))
+    await mailer.send(old, f"Адрес почты изменён — {config.APP_NAME}",
+                      f"Адрес почты вашего аккаунта изменён на {_mask(new)}. Если это сделали не вы — срочно смените пароль "
+                      "и напишите в поддержку.")
+    return JSONResponse({"email": new, "email_verified": True})
 
 
 @auth()
@@ -509,6 +575,8 @@ routes = [
     Route("/api/friends/online", online_friends, methods=["GET"]),
     Route("/api/me/settings", settings_get, methods=["GET"]),
     Route("/api/me/settings", settings_update, methods=["PATCH"]),
+    Route("/api/me/email", email_change, methods=["POST"]),
+    Route("/api/me/email/confirm", email_confirm, methods=["POST"]),
     Route("/api/me/{kind}", upload_image, methods=["POST", "DELETE"]),
     Route("/api/me/export", export_data, methods=["GET"]),
     Route("/api/me", delete_account, methods=["DELETE"]),

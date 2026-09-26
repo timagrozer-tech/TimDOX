@@ -62,14 +62,22 @@ def user_card(row: dict) -> dict:
         "name": row["name"],
         "avatar": row.get("avatar"),
         "online": hub.is_online(row["id"] if "id" in row else row["user_id"]),
+        "frame": _frame_of(row.get("equipped")),
     }
+
+
+def _frame_of(equipped) -> str | None:
+    if not equipped:
+        return None
+    from .collection import parse_equipped
+    return parse_equipped(equipped).get("frame")
 
 
 def cards_by_ids(ids) -> dict[int, dict]:
     ids = list(set(ids))
     if not ids:
         return {}
-    rows = db.all(f"SELECT user_id AS id, username, name, avatar FROM profiles WHERE user_id IN ({db.placeholders(ids)})", tuple(ids))
+    rows = db.all(f"SELECT user_id AS id, username, name, avatar, equipped FROM profiles WHERE user_id IN ({db.placeholders(ids)})", tuple(ids))
     return {r["id"]: user_card(r) for r in rows}
 
 

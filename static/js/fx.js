@@ -3,6 +3,10 @@
 // Всё построено на transform/opacity и requestAnimationFrame; отключается настройкой «Анимации».
 
 const FINE_POINTER = matchMedia("(hover: hover) and (pointer: fine)").matches;
+// Облегчённый режим для телефонов и планшетов: без параллакса, 3D-орбит и анимации звёзд —
+// фон рисуется один раз и не нагружает процессор при прокрутке.
+export const LITE = !FINE_POINTER || matchMedia("(max-width: 719px)").matches;
+if (LITE) document.documentElement.classList.add("lite");
 const lerp = (a, b, t) => a + (b - a) * t;
 
 export function motionEnabled() {
@@ -34,9 +38,9 @@ function buildScene() {
     <div class="scene-layer aurora" data-depth="18" data-scroll="0.04">
       <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span><span class="blob b4"></span>
     </div>
-    <div class="scene-layer orbits" data-depth="40" data-scroll="0.12">
+    ${LITE ? "" : `<div class="scene-layer orbits" data-depth="40" data-scroll="0.12">
       <div class="tilt"><div class="ring"><i></i></div><div class="ring"><i></i></div><div class="ring"><i></i></div></div>
-    </div>
+    </div>`}
     <canvas class="scene-layer stars" data-depth="70" data-scroll="0.22"></canvas>
     <div class="grain"></div>`;
   document.body.prepend(scene);
@@ -57,15 +61,33 @@ function initStars(canvas) {
     w = canvas.clientWidth; h = canvas.clientHeight;
     canvas.width = w * dpr; canvas.height = h * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const count = Math.round(Math.min(160, (w * h) / 9000));
+    const count = Math.round(Math.min(LITE ? 70 : 160, (w * h) / (LITE ? 12000 : 9000)));
     stars = Array.from({ length: count }, () => ({
       x: Math.random() * w, y: Math.random() * h, r: Math.random() * 1.4 + .3,
       p: Math.random() * Math.PI * 2, s: Math.random() * .02 + .005, v: Math.random() * .08 + .02,
     }));
   };
   resize();
-  addEventListener("resize", resize);
   let last = 0;
+  if (LITE) {
+    // на телефоне — статичная картинка, перерисовка только при изменении размера или смене фона
+    const still = () => {
+      const color = getComputedStyle(document.documentElement).getPropertyValue("--star").trim() || "220,210,255";
+      ctx.clearRect(0, 0, w, h);
+      for (const s of stars) {
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(${color},${(.3 + Math.random() * .5).toFixed(2)})`;
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+    let rt = 0;
+    addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { resize(); still(); }, 200); });
+    new MutationObserver(still).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "style"] });
+    still();
+    return;
+  }
+  addEventListener("resize", resize);
   const draw = (t) => {
     requestAnimationFrame(draw);
     if (t - last < 33 || document.hidden) return;
@@ -89,6 +111,7 @@ function initStars(canvas) {
 
 let lastKey = "";
 function loop() {
+  if (LITE) return; // на телефоне слои фона неподвижны
   requestAnimationFrame(loop);
   const on = motionEnabled();
   pointer.x = lerp(pointer.x, on ? pointer.tx : 0, .06);
@@ -232,7 +255,7 @@ function onScroll() {
   const max = document.documentElement.scrollHeight - innerHeight;
   const bar = document.getElementById("scroll-progress");
   if (bar) bar.style.transform = `scaleX(${max > 0 ? Math.min(1, scrollY / max) : 0})`;
-  if (!motionEnabled()) return;
+  if (!motionEnabled() || LITE) return;
   document.querySelectorAll(".cover").forEach((c) => {
     const r = c.getBoundingClientRect();
     if (r.bottom < 0 || r.top > innerHeight) return;
@@ -253,7 +276,7 @@ export function initFx() {
   document.addEventListener("pointerleave", () => { pointer.tx = 0; pointer.ty = 0; });
   document.addEventListener("pointerdown", ripple, { passive: true });
   // на телефоне фон слегка следует за наклоном устройства
-  addEventListener("deviceorientation", (e) => {
+  if (!LITE) addEventListener("deviceorientation", (e) => {
     if (FINE_POINTER || e.gamma == null) return;
     pointer.tx = Math.max(-1, Math.min(1, e.gamma / 30));
     pointer.ty = Math.max(-1, Math.min(1, (e.beta - 45) / 30));

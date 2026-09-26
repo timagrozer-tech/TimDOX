@@ -2,7 +2,7 @@
 import { api, state, on } from "../api.js";
 import { h, icon, avatar, logo, pl } from "../dom.js";
 import { navigate } from "../router.js";
-import { applyTheme, currentTheme, showMenu, toastError } from "../ui.js";
+import { showMenu, toastError } from "../ui.js";
 import { openComposerModal } from "./composer.js";
 import { logout } from "../app-actions.js";
 
@@ -18,6 +18,7 @@ const NAV = [
   { href: "/communities", icon: "community", label: "Сообщества", match: (p) => p.startsWith("/communities") || p.startsWith("/c/") },
   { href: "/events", icon: "calendar", label: "Мероприятия", badge: "events", match: (p) => p.startsWith("/events") },
   { href: "/guests", icon: "eye", label: "Гости", badge: "guests", match: (p) => p === "/guests" },
+  { href: "/collection", icon: "gift", label: "Коллекция", match: (p) => p === "/collection" },
   { href: "/bookmarks", icon: "bookmark", label: "Закладки", match: (p) => p === "/bookmarks" },
   { href: "/settings", icon: "settings", label: "Настройки", match: (p) => p.startsWith("/settings") },
 ];
@@ -27,19 +28,6 @@ const hrefOf = (item) => (typeof item.href === "function" ? item.href() : item.h
 function badge(key) {
   const n = state.counters[key] || 0;
   return h("span.badge", { dataset: { badge: key, count: String(n) } }, n ? (n > 99 ? "99+" : String(n)) : "");
-}
-
-function themeToggle() {
-  const btn = h("button.btn.ghost.icon-only", { type: "button", "aria-label": "Тема оформления", title: "Тема оформления" });
-  const paint = () => btn.replaceChildren(icon(document.documentElement.dataset.theme === "dark" ? "sun" : "moon"));
-  btn.addEventListener("click", () => {
-    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    applyTheme(next);
-    api.patch("/api/me/settings", { theme: next }).catch(() => {});
-    paint();
-  });
-  paint();
-  return btn;
 }
 
 function sidebar() {
@@ -72,14 +60,12 @@ function mobileMenu(btn) {
 }
 
 function topbar() {
-  const menuBtn = h("button.btn.ghost.icon-only.icon-btn", { type: "button", "aria-label": "Меню", "aria-haspopup": "menu" }, icon("menu"), badge("guests"));
+  const menuBtn = h("button.btn.ghost.icon-only.icon-btn", { type: "button", "aria-label": "Меню", "aria-haspopup": "menu" }, icon("menu"), badge("friend_requests"));
   menuBtn.addEventListener("click", () => mobileMenu(menuBtn));
   return h("header.topbar",
     logo(),
     h("div.spacer"),
-    themeToggle(),
     h("a.btn.ghost.icon-only.icon-btn", { href: "/notifications", "aria-label": "Уведомления" }, icon("bell"), badge("notifications")),
-    h("a.btn.ghost.icon-only.icon-btn", { href: "/friends", "aria-label": "Друзья" }, icon("users"), badge("friend_requests")),
     menuBtn);
 }
 

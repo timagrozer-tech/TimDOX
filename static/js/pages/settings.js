@@ -5,6 +5,7 @@ import { setTitle, toast, toastError, busy, confirmDialog, modal, promptDialog }
 import { pickFriends } from "../components/people.js";
 import { loadCircles } from "../components/composer.js";
 import { appearanceSection } from "../components/appearance.js";
+import { codeForm } from "./feed.js";
 import { refreshSidebarUser } from "../components/layout.js";
 import { logout } from "../app-actions.js";
 
@@ -184,12 +185,81 @@ export async function settingsPage() {
     });
   });
 
-  const emailRow = settingRow("E-mail", s.email_verified ? `${s.email} · подтверждён` : `${s.email} · не подтверждён`,
-    s.email_verified ? h("span.status-pill.online", "✓ Подтверждён") : h("button.btn.accent.sm", {
-      type: "button", onclick: async (e) => {
-        try { await api.post("/api/auth/resend"); toast("Письмо отправлено", { icon: "mail" }); e.target.disabled = true; } catch (err) { toastError(err); }
-      },
-    }, "Отправить письмо ещё раз"));
+  // ---------------------------------------------------------------- Почта
+  const emailBox = h("div.email-box");
+  function paintEmail() {
+    const status = s.email_verified
+      ? h("span.status-pill.online", "✓ Подтверждена")
+      : h("span.status-pill.warn", "Не подтверждена");
+    const rows = [
+      h("div.setting-row",
+        h("div.label-block", h("b", "Почта"), h("small", s.email)),
+        h("div.row", { style: { gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" } }, status,
+          h("button.btn.soft.sm", { type: "button", onclick: changeEmail }, icon("edit", "sm"), "Изменить"))),
+    ];
+    if (!s.email_verified && s.mail_enabled) {
+      rows.push(h("div.code-block", h("small.muted", "Введите 6-значный код из письма:"),
+        codeForm({
+          submit: (code) => api.post("/api/auth/verify-code", { code }),
+          resend: () => api.post("/api/auth/resend"),
+          onDone: () => { s.email_verified = true; state.me.email_verified = true; toast("Почта подтверждена 🎉", { icon: "check" }); paintEmail(); },
+        })));
+    }
+    if (s.pending_email) {
+      rows.push(h("div.code-block",
+        h("small.muted", `Код отправлен на ${s.pending_email}. Введите его, чтобы сменить адрес:`),
+        codeForm({
+          submit: (code) => api.post("/api/me/email/confirm", { code }),
+          resend: null,
+          onDone: async () => {
+            const fresh = await api.get("/api/me/settings");
+            Object.assign(s, fresh);
+            state.me.email = s.email; state.me.email_verified = s.email_verified;
+            toast("Адрес почты изменён", { icon: "check" });
+            paintEmail();
+          },
+        }),
+        h("button.btn.ghost.sm", { type: "button", onclick: async () => {
+          await api.post("/api/me/email/confirm", { cancel: true }).catch(() => {});
+          s.pending_email = null; paintEmail();
+        } }, "Отменить смену")));
+    }
+    emailBox.replaceChildren(...rows);
+  }
+  function changeEmail() {
+    const email = h("input.input", { type: "email", autocomplete: "email", placeholder: "new@mail.ru", required: true });
+    const pw = h("input.input", { type: "password", autocomplete: "current-password", required: true });
+    const errE = h("div.field-error"), errP = h("div.field-error");
+    const go = h("button.btn.primary", { type: "button" }, s.mail_enabled ? "Получить код" : "Сменить почту");
+    const m = modal({
+      title: "Новая почта", narrow: true, sheet: false,
+      body: h("div.stack",
+        h("p.muted", { style: { margin: 0 } }, s.mail_enabled ? "Мы отправим код на новый адрес — так мы убедимся, что он ваш." : "Адрес сменится сразу."),
+        h("div.field", h("label", "Новый адрес"), email, errE),
+        h("div.field", h("label", "Текущий пароль"), pw, errP)),
+      footer: [h("button.btn.ghost", { type: "button", onclick: () => m.close() }, "Отмена"), go],
+    });
+    setTimeout(() => email.focus(), 60);
+    go.addEventListener("click", () => busy(go, async () => {
+      errE.textContent = ""; errP.textContent = "";
+      try {
+        const res = await api.post("/api/me/email", { email: email.value, password: pw.value });
+        m.close();
+        if (res.changed) {
+          s.email = res.email; s.email_verified = false; state.me.email = res.email; state.me.email_verified = false;
+          toast("Адрес почты изменён", { icon: "check" });
+        } else {
+          s.pending_email = res.pending;
+          toast(`Код отправлен на ${res.pending}`, { icon: "mail" });
+        }
+        paintEmail();
+      } catch (err) {
+        errE.textContent = err.fields?.email || ""; errP.textContent = err.fields?.password || "";
+        if (!Object.keys(err.fields || {}).length) toastError(err);
+      }
+    }));
+  }
+  paintEmail();
 
   // ---------------------------------------------------------------- Данные
   const deleteBtn = h("button.btn.danger", { type: "button" }, icon("trash", "sm"), "Удалить аккаунт");
@@ -220,7 +290,7 @@ export async function settingsPage() {
       settingRow("Режим невидимки", "Не показываться в «Гостях» у других", invisible)),
     section("Круги", "Списки друзей, для которых можно публиковать отдельно — например, только для близких.", circlesBox),
     appearanceSection(s),
-    section("Безопасность", null, emailRow, h("hr.divider"), h("b", "Смена пароля"), pwForm),
+    section("Безопасность", null, emailBox, h("hr.divider"), h("b", "Смена пароля"), pwForm),
     section("Мои данные", "По закону о персональных данных вы можете получить копию своих данных или удалить их.",
       h("div.row", { style: { flexWrap: "wrap" } },
         h("a.btn.outline", { href: "/api/me/export", download: "krug-export.json" }, icon("download", "sm"), "Скачать мои данные"),

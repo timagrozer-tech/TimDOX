@@ -14,3 +14,9 @@ services:
         value: db
       - key: DB_AUTO_SCHEMA      # схему в Supabase применяем миграцией (см. README)
         value: "0"
+      - key: BREVO_API_KEY       # ключ Brevo для отправки писем (SMTP-порты на бесплатном Render закрыты)
+        sync: false
+      - key: MAIL_FROM_EMAIL     # адрес отправителя, подтверждённый в Brevo
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: Круг

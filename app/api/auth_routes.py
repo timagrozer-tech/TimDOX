@@ -7,7 +7,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from .. import config, db, mailer, social
+from .. import config, db, email_codes, mailer, social
 from ..security import (USERNAME_RE, hash_password, new_token, token_hash,
                         validate_password, verify_password)
 from ..web import ApiError, auth, body, limit, ok
@@ -37,6 +37,7 @@ def me_payload(request: Request) -> dict:
         "csrf": request.state.session["csrf"],
         "counters": social.counters(u["id"]),
         "require_email_confirm": config.REQUIRE_EMAIL_CONFIRM,
+        "mail_enabled": mailer.configured(),
     }
 
 
@@ -49,17 +50,19 @@ def _start_session(request: Request, response: JSONResponse, user_id: int) -> No
                         httponly=True, samesite="lax", secure=config.COOKIE_SECURE, path="/")
 
 
-async def _send_token_email(user_id: int, email: str, kind: str) -> None:
+async def _send_token_email(user_id: int, email: str, kind: str) -> bool:
     token = new_token()
     hours = 48 if kind == "verify" else 2
     db.run("INSERT INTO email_tokens (id, user_id, kind, expires_at) VALUES (?,?,?,?)",
            (token_hash(token), user_id, kind, db.future(hours=hours)))
     if kind == "verify":
-        await mailer.send(email, f"Подтвердите e-mail — {config.APP_NAME}",
-                          "Здравствуйте! Чтобы подтвердить адрес электронной почты, перейдите по ссылке.",
-                          f"{config.APP_URL}/verify?token={token}")
+        code = email_codes.issue(user_id, "verify")
+        return await mailer.send(email, f"Код подтверждения: {code} — {config.APP_NAME}",
+                                 "Здравствуйте! Введите этот код на сайте, чтобы подтвердить адрес электронной почты. "
+                                 "Или просто нажмите кнопку ниже.",
+                                 f"{config.APP_URL}/verify?token={token}", code=code)
     else:
-        await mailer.send(email, f"Восстановление пароля — {config.APP_NAME}",
+        return await mailer.send(email, f"Восстановление пароля — {config.APP_NAME}",
                           "Вы запросили сброс пароля. Ссылка действует 2 часа.",
                           f"{config.APP_URL}/reset?token={token}")
 
@@ -155,7 +158,21 @@ async def resend(request: Request):
     u = request.state.user
     if u["email_verified_at"]:
         return ok()
-    await _send_token_email(u["id"], u["email"], "verify")
+    sent = await _send_token_email(u["id"], u["email"], "verify")
+    if not sent:
+        raise ApiError(503, "Отправка писем пока не настроена на сервере. Попробуйте позже.")
+    return ok()
+
+
+@auth()
+async def verify_code(request: Request):
+    limit(request, "auth", "code")
+    u = request.state.user
+    if u["email_verified_at"]:
+        return ok()
+    data = await body(request)
+    email_codes.consume(u["id"], "verify", str(data.get("code", "")))
+    db.run("UPDATE users SET email_verified_at=coalesce(email_verified_at, ?) WHERE id=?", (db.now(), u["id"]))
     return ok()
 
 
@@ -209,6 +226,7 @@ routes = [
     Route("/api/auth/me", me, methods=["GET"]),
     Route("/api/auth/verify", verify, methods=["POST"]),
     Route("/api/auth/resend", resend, methods=["POST"]),
+    Route("/api/auth/verify-code", verify_code, methods=["POST"]),
     Route("/api/auth/forgot", forgot, methods=["POST"]),
     Route("/api/auth/reset", reset, methods=["POST"]),
     Route("/api/auth/change-password", change_password, methods=["POST"]),

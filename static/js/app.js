@@ -19,6 +19,7 @@ import { notificationsPage } from "./pages/notifications.js";
 import { searchPage, tagPage } from "./pages/search.js";
 import { bookmarksPage } from "./pages/bookmarks.js";
 import { settingsPage } from "./pages/settings.js";
+import { collectionPage, showReveal } from "./pages/collection.js";
 import { legalPage } from "./pages/legal.js";
 import { communitiesPage, communityPage } from "./pages/communities.js";
 import { eventsPage, eventPage } from "./pages/events.js";
@@ -49,6 +50,7 @@ route("/c/:slug", communityPage);
 route("/events", eventsPage);
 route("/events/:id", eventPage);
 route("/guests", guestsPage);
+route("/collection", collectionPage);
 
 const root = document.getElementById("app");
 
@@ -97,6 +99,10 @@ onRender(async (m, query) => {
 
 // ---------------------------------------------------------------- События реального времени
 on("notification", (n) => {
+  if (n.type === "item" && n.extra?.item) {
+    showReveal({ id: n.extra.item, name: n.extra.name, slot: n.extra.slot, rarity: n.extra.rarity });
+    return;
+  }
   if (location.pathname === "/notifications") return;
   toast(notifText(n), { title: n.actor.name, avatar: avatar(n.actor, "sm", { presence: false }), href: notifLink(n) });
 });

@@ -316,3 +316,25 @@ CREATE TABLE IF NOT EXISTS media_files (
     data         BYTEA NOT NULL,
     created_at   TEXT NOT NULL DEFAULT krug_now()
 );
+
+-- Коллекционные предметы (выдаются за активность)
+CREATE TABLE IF NOT EXISTS user_items (
+    user_id   BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    item_id   TEXT NOT NULL,
+    earned_at TEXT NOT NULL DEFAULT krug_now(),
+    PRIMARY KEY (user_id, item_id)
+);
+
+-- Коды подтверждения почты и смены e-mail
+CREATE TABLE IF NOT EXISTS email_codes (
+    id         BIGSERIAL PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    purpose    TEXT NOT NULL,
+    code_hash  TEXT NOT NULL,
+    new_email  TEXT,
+    attempts   INTEGER NOT NULL DEFAULT 0,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE INDEX IF NOT EXISTS idx_email_codes_user ON email_codes(user_id, purpose);
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS equipped TEXT;

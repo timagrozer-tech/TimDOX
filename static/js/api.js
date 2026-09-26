@@ -74,6 +74,7 @@ export async function loadMe() {
   state.me = me.user;
   state.csrf = me.csrf || null;
   state.requireEmailConfirm = !!me.require_email_confirm;
+  state.mailEnabled = !!me.mail_enabled;
   if (me.counters) setCounters(me.counters);
   return me.user;
 }

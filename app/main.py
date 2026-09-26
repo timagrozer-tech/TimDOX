@@ -10,8 +10,8 @@ from starlette.responses import FileResponse, JSONResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from . import config, db, media
-from .api import auth_routes, communities, events, messages, misc, people_extra, posts, stories, users
+from . import collection, config, db, media
+from .api import auth_routes, collection_routes, communities, events, messages, misc, people_extra, posts, stories, users
 from .security import load_extra_banned
 from .web import ApiError, load_session
 
@@ -63,6 +63,14 @@ class SecurityMiddleware:
             await send(message)
 
         await self.app(scope, receive, send_wrapper)
+
+        # после действий пользователя проверяем, не заработал ли он новый коллекционный предмет
+        user = getattr(request.state, "user", None) if path.startswith("/api/") else None
+        if user and (scope["method"] not in SAFE_METHODS or path == "/api/auth/me"):
+            try:
+                collection.check(user["id"])
+            except Exception:  # награды не должны ломать основной запрос
+                log.exception("Не удалось проверить коллекцию")
 
     @staticmethod
     async def _reject(scope, receive, send, message):
@@ -137,7 +145,7 @@ async def lifespan(app):
 routes = [
     Route("/api/health", health),
     *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
-    *stories.routes, *communities.routes, *events.routes, *people_extra.routes,
+    *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *collection_routes.routes,
     Mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static"),
     Route("/uploads/{path:path}", uploads, methods=["GET", "HEAD"]),
     Route("/{path:path}", spa, methods=["GET"]),

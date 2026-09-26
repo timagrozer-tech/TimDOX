@@ -3,7 +3,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from .. import config, db, media, social
+from .. import collection, config, db, media, social
 from ..security import censor, clean_text, extract_hashtags, extract_mentions
 from ..social import is_friend_sql, not_blocked_sql, visible_post_sql
 from ..web import ApiError, auth, body, int_param, limit, ok, path_int
@@ -441,6 +441,7 @@ async def react(request: Request):
     if prev:
         social.unnotify(post["author_id"], v, "reaction", post["id"])
     social.notify(post["author_id"], v, "reaction", post_id=post["id"], extra={"reaction": rtype})
+    collection.check(post["author_id"])
     return JSONResponse(hydrate([post], v)[0]["reactions"])
 
 

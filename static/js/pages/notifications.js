@@ -11,9 +11,9 @@ function row(n) {
     acts.replaceChildren(h("span.muted", { style: { fontSize: "13px" } }, rel.status === "friends" ? "Теперь вы друзья" : "Заявка отклонена"));
   }, { small: true })) : null;
   const el = h(`a.notif${n.read ? "" : ".unread"}`, { href: notifLink(n) },
-    h("span.n-icon", avatar(n.actor), notifBadge(n)),
+    h("span.n-icon", n.type === "item" ? h(`span.avatar.item-notif.${n.extra?.rarity || "rare"}`, "🎁") : avatar(n.actor), notifBadge(n)),
     h("div.grow",
-      h("div.n-text", h("b", n.actor.name), " ", notifText(n)),
+      h("div.n-text", n.type === "item" ? null : h("b", n.actor.name), n.type === "item" ? null : " ", notifText(n)),
       n.snippet ? h("div.n-snippet", `«${n.snippet}»`) : null,
       h("div.n-time", timeAgo(n.created_at)),
       acts));

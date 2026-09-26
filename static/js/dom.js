@@ -134,6 +134,7 @@ export function thumb(url) { return url ? url.replace(/\.webp$/, "_t.webp") : ur
 export function avatar(user, size = "", opts = {}) {
   const el = h(`span.avatar${size ? "." + size : ""}`, { dataset: { userId: user?.id ?? "" } });
   if (user?.online && opts.presence !== false) el.dataset.online = "true";
+  if (user?.frame && opts.frame !== false) el.dataset.frame = user.frame;
   if (user?.avatar) {
     el.append(h("img", { src: ["xl", "lg"].includes(size) ? user.avatar : thumb(user.avatar), alt: "", loading: "lazy" }));
   } else {

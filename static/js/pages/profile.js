@@ -1,6 +1,7 @@
 // Страница пользователя: обложка, аватар, информация, записи, фото, друзья.
 import { api, state, on } from "../api.js";
 import { h, icon, avatar, pl, birthDate, joinedDate, timeAgo } from "../dom.js";
+import { decorate, pet, mountEffect, PETS, EFFECT_ICON } from "../components/cosmetics.js";
 import { infiniteList, setTitle, toast, toastError, showMenu, confirmDialog, lightbox, modal } from "../ui.js";
 import { setCleanup, navigate } from "../router.js";
 import { composer } from "../components/composer.js";
@@ -54,9 +55,11 @@ export async function profilePage({ params, query }) {
       actions.append(more);
     }
 
-    const av = avatar(u, "xl");
-    const avatarWrap = h("div", { style: { position: "relative" } },
+    const eq = data.equipped || {};
+    const av = decorate(avatar(u, "xl"), eq);
+    const avatarWrap = h(`div.avatar-slot${eq.frame ? ".has-frame" : ""}`, { style: { position: "relative" } },
       data.user.avatar ? h("button", { type: "button", style: { border: 0, padding: 0, background: "none", borderRadius: "50%" }, "aria-label": "Открыть фото профиля", onclick: () => lightbox([{ url: data.user.avatar, alt: u.name }]) }, av) : av,
+      eq.pet ? pet(eq.pet) : null,
       isMe ? h("button.avatar-edit", { type: "button", "aria-label": "Изменить фото профиля", onclick: () => uploadProfileImage("avatar", (url) => { data.user.avatar = url; state.me.avatar = url; renderHeader(); }) }, icon("camera", "sm")) : null);
 
     const info = [];
@@ -72,6 +75,7 @@ export async function profilePage({ params, query }) {
     info.push(h("span", icon("calendar"), `С нами ${joinedDate(data.joined_at)}`));
 
     const statusText = u.online ? "в сети" : null;
+    if (eq.effect) mountEffect(cover, eq.effect);
     header.replaceChildren(cover,
       h("div.profile-main",
         h("div.profile-top", avatarWrap, actions),
@@ -81,11 +85,24 @@ export async function profilePage({ params, query }) {
           h("div.handle", `@${u.username}`)),
         data.bio && !data.hidden ? h("p.profile-bio", data.bio) : null,
         h("div.profile-info", info),
+        showcaseRow(),
         h("div.profile-counts",
           h("a", { href: "#", onclick: (e) => { e.preventDefault(); selectTab("friends"); } }, h("b", data.counts.friends), " ", pl(data.counts.friends, ["друг", "друга", "друзей"]).split(" ")[1]),
           h("a", { href: "#", onclick: (e) => { e.preventDefault(); showFollows("followers"); } }, h("b", data.counts.followers), " ", pl(data.counts.followers, ["подписчик", "подписчика", "подписчиков"]).split(" ")[1]),
           h("a", { href: "#", onclick: (e) => { e.preventDefault(); showFollows("following"); } }, h("b", data.counts.following), " ", pl(data.counts.following, ["подписка", "подписки", "подписок"]).split(" ")[1]),
           !isMe && data.mutual_friends ? h("span", pl(data.mutual_friends, ["общий друг", "общих друга", "общих друзей"])) : null)));
+  }
+
+  function showcaseRow() {
+    const owned = data.showcase?.owned || [];
+    if (!owned.length) return isMe ? h("a.showcase.empty", { href: "/collection" }, "🎁 Коллекция пуста — зарабатывайте редкие предметы активностью") : null;
+    const ICON = { frame: "◎", animation: "✦", effect: "✨", pet: "🐾" };
+    return h(isMe ? "a.showcase" : "div.showcase", isMe ? { href: "/collection" } : {},
+      h("span.showcase-label", "Коллекция"),
+      ...owned.slice(0, 10).map((it) => h(`span.showcase-item.${it.rarity}`, { title: `${it.name} · ${it.rarity_label}` },
+        it.slot === "pet" ? PETS[it.id]?.emoji : it.slot === "effect" ? EFFECT_ICON[it.id] : ICON[it.slot])),
+      owned.length > 10 ? h("span.showcase-more", `+${owned.length - 10}`) : null,
+      h("span.showcase-count", `${owned.length}/${data.showcase.total}`));
   }
 
   async function follow(onoff) {
