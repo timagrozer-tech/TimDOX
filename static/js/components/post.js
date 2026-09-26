@@ -4,6 +4,7 @@ import { h, icon, avatar, richText, timeAgo, fullDate, pl, autosize } from "../d
 import { toast, toastError, showMenu, modal, confirmDialog, promptDialog, lightbox } from "../ui.js";
 import { navigate } from "../router.js";
 import { VISIBILITY, visibilitySelect, openComposerModal } from "./composer.js";
+import { burst } from "../fx.js";
 
 export const REACTIONS = [
   { type: "like", emoji: "👍", label: "Нравится" },
@@ -147,7 +148,7 @@ export function postCard(input, opts = {}) {
       picker = h("div.reaction-picker", { role: "menu", "aria-label": "Выберите реакцию" },
         REACTIONS.map((x) => h("button", {
           type: "button", title: x.label, "aria-label": x.label, "aria-pressed": String(mine === x.type), role: "menuitem",
-          onclick: (e) => { e.stopPropagation(); closePicker(); setReaction(p, x.type); },
+          onclick: (e) => { e.stopPropagation(); closePicker(); setReaction(p, x.type, reactBtn); },
         }, x.emoji)));
       wrap.append(picker);
       picker.addEventListener("mouseleave", () => { hoverTimer = setTimeout(closePicker, 300); });
@@ -166,7 +167,7 @@ export function postCard(input, opts = {}) {
     reactBtn.addEventListener("click", () => {
       if (suppressClick) { suppressClick = false; return; }
       clearTimeout(hoverTimer); closePicker();
-      setReaction(p, mine ? null : "like");
+      setReaction(p, mine ? null : "like", reactBtn);
     });
 
     const commentBtn = h("button.action", { type: "button", onclick: () => toggleComments(p) }, icon("comment"), h("span", "Комментарий"));
@@ -196,7 +197,8 @@ export function postCard(input, opts = {}) {
     return h("div.post-actions", wrap, commentBtn, repostBtn, h("div", { style: { flex: "0 0 52px" } }, bmBtn));
   }
 
-  async function setReaction(p, type) {
+  async function setReaction(p, type, anchor) {
+    if (type && anchor) burst(anchor, REACTION[type].emoji);
     try {
       const reactions = type ? await api.post(`/api/posts/${p.id}/react`, { type }) : await api.del(`/api/posts/${p.id}/react`);
       update({ ...p, reactions });

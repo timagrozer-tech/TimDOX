@@ -114,11 +114,16 @@ export function icon(name, cls = "") {
   return svg;
 }
 
+let logoSeq = 0;
 export function logo(withText = true) {
+  const gid = `lg-k${++logoSeq}`; // у каждого логотипа свой градиент: скрытые SVG не отдают свои <defs>
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("viewBox", "0 0 64 64");
   svg.setAttribute("aria-hidden", "true");
-  svg.innerHTML = '<rect width="64" height="64" rx="18" fill="#1f3fae"/><circle cx="32" cy="32" r="16" fill="none" stroke="#fff" stroke-width="7"/><circle cx="45.5" cy="18.5" r="6.5" fill="#f5761a" stroke="#1f3fae" stroke-width="3"/>';
+  svg.innerHTML = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6d4bff"/>`
+    + `<stop offset=".55" stop-color="#9a3cff"/><stop offset="1" stop-color="#e0357f"/></linearGradient></defs>`
+    + `<rect width="64" height="64" rx="20" fill="url(#${gid})"/><circle cx="32" cy="32" r="14" fill="none" stroke="#fff" stroke-width="6.5"/>`
+    + `<g class="orbit-dot"><circle cx="32" cy="7.5" r="5.5" fill="#33e0ff" stroke="#fff" stroke-width="2"/></g>`;
   return h("a.logo", { href: "/", "aria-label": "Круг — на главную" }, svg, withText ? h("span", "Круг") : null);
 }
 

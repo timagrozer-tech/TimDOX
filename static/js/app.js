@@ -5,6 +5,7 @@ import { route, onRender, start, navigate } from "./router.js";
 import { toast, closeAllModals, closeMenu, setTitle, applyTheme } from "./ui.js";
 import { ensureShell, setActive, destroyShell } from "./components/layout.js";
 import { notifText, notifLink } from "./components/notif.js";
+import { initFx } from "./fx.js";
 
 import * as authPages from "./pages/auth.js";
 import { feedPage } from "./pages/feed.js";
@@ -81,6 +82,7 @@ onRender(async (m, query) => {
   try {
     const node = await m.handler({ params: m.params, query, path });
     if (location.pathname !== path) return; // пользователь уже ушёл на другую страницу
+    node.classList?.add("page-enter");
     container.replaceChildren(node);
   } catch (e) {
     console.error(e);
@@ -108,6 +110,8 @@ on("logged-out", () => {
 });
 
 // ---------------------------------------------------------------- Запуск
+initFx();
+
 (async function boot() {
   try {
     await loadMe();

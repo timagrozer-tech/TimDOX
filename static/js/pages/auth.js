@@ -5,24 +5,37 @@ import { busy, setTitle, toast } from "../ui.js";
 import { navigate } from "../router.js";
 import { afterLogin } from "../app-actions.js";
 
+function orbitScene() {
+  const planet = (pos, emoji, color) => h(`div.planet.${pos}`, { style: { "--pc": color } }, h("div.face", h("span", emoji)));
+  const core = h("div.orbit-core", h("div.sun-glow"), h("div.sun"), h("div.sun-ring"), h("div.sun-logo", logo(false).firstChild));
+  return h("div.orbit-scene",
+    h("div.orbit-system",
+      h("div.orbit.o1", planet("p-top", "💬", "rgba(51,224,255,.7)"), planet("p-bottom", "❤️", "rgba(255,95,162,.7)")),
+      h("div.orbit.o2", planet("p-right", "📷", "rgba(255,179,71,.7)"), planet("p-left", "🎉", "rgba(139,108,255,.8)"), planet("p-tr", "🎵", "rgba(51,224,255,.7)")),
+      h("div.orbit.o3", planet("p-top", "🌍", "rgba(34,211,238,.7)"), planet("p-bl", "✨", "rgba(255,95,162,.7)"), planet("p-right", "🏔", "rgba(139,108,255,.7)"))),
+    core,
+    h("div.floaters",
+      h("div.floater.f1", "💬 ", h("b", "Борис:"), " уже выезжаю!"),
+      h("div.floater.f2", "❤️ 128 реакций на фото"),
+      h("div.floater.f3", "🎉 Встреча выпускников · 24 идут")));
+}
+
 function brand() {
   const item = (ic, text) => h("li", h("span.dot", icon(ic, "sm")), h("span", text));
   return h("section.auth-brand", { "aria-hidden": "true" },
-    h("div.ring"),
     logo(),
-    h("h2", "Все ваши люди — в одном круге"),
-    h("p", "Друзья и семья, блог и фото-дневник, сообщества по интересам и мессенджер. Вы сами решаете, чем для вас будет Круг."),
+    h("h2", "Все ваши люди — ", h("span.grad-text", "в одном круге")),
+    h("p", "Друзья и семья, истории и фото, сообщества, встречи и мессенджер. Вы сами решаете, чем для вас будет Круг."),
+    orbitScene(),
     h("ul",
-      item("users", "Друзья и подписки — как вам удобнее"),
-      item("lock", "Для каждой записи: все, друзья или только вы"),
-      item("message", "Сообщения в реальном времени"),
+      item("lock", "Для каждой записи: все, друзья, круг или только вы"),
       item("compass", "Лента по времени — без скрытых алгоритмов")));
 }
 
 const $ = (form, name) => form.querySelector(`[name="${name}"]`);
 
 function authLayout(...content) {
-  return h("div.auth", brand(), h("div.auth-form-wrap", ...content));
+  return h("div.auth", brand(), h("div.auth-form-wrap", h("div.auth-mobile-hero", { "aria-hidden": "true" }, orbitScene()), h("div.card.auth-card", ...content)));
 }
 
 function field({ label, name, type = "text", autocomplete, placeholder, prefix, hint, required = true, maxlength }) {

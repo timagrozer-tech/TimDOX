@@ -4,6 +4,7 @@ import { h, icon, avatar } from "../dom.js";
 import { setTitle, toast, toastError, busy, applyTheme, confirmDialog, modal, promptDialog } from "../ui.js";
 import { pickFriends } from "../components/people.js";
 import { loadCircles } from "../components/composer.js";
+import { setMotion, currentMotion } from "../fx.js";
 import { refreshSidebarUser } from "../components/layout.js";
 import { logout } from "../app-actions.js";
 
@@ -171,6 +172,12 @@ export async function settingsPage() {
   }, t)));
   paintTheme(s.theme);
 
+  const motionSeg = h("div.segmented", { role: "group", "aria-label": "Анимации" });
+  const paintMotion = (cur) => motionSeg.replaceChildren(...[["full", "Все эффекты"], ["reduced", "Минимум движения"]].map(([v, t]) => h("button", {
+    type: "button", "aria-pressed": String(v === cur), onclick: () => { setMotion(v); paintMotion(v); },
+  }, t)));
+  paintMotion(currentMotion());
+
   // ---------------------------------------------------------------- Безопасность
   const pwForm = h("form.stack",
     h("div.grid-2",
@@ -227,7 +234,8 @@ export async function settingsPage() {
       settingRow("Видимость новых записей по умолчанию", "Можно изменить при публикации", privacy.default_visibility),
       settingRow("Режим невидимки", "Не показываться в «Гостях» у других", invisible)),
     section("Круги", "Списки друзей, для которых можно публиковать отдельно — например, только для близких.", circlesBox),
-    section("Оформление", null, settingRow("Тема", null, themeSeg)),
+    section("Оформление", null, settingRow("Тема", null, themeSeg),
+      settingRow("Анимации и 3D-эффекты", "Параллакс, наклон карточек, появление элементов. На слабых устройствах можно выключить.", motionSeg)),
     section("Безопасность", null, emailRow, h("hr.divider"), h("b", "Смена пароля"), pwForm),
     section("Мои данные", "По закону о персональных данных вы можете получить копию своих данных или удалить их.",
       h("div.row", { style: { flexWrap: "wrap" } },
