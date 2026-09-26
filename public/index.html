@@ -343,10 +343,21 @@ td.num{text-align:right;font-variant-numeric:tabular-nums;}
 .modal h3{font-family:var(--display);font-weight:400;font-size:20px;margin:0 0 6px;}
 .modal p{color:var(--muted);font-size:13.5px;margin:0 0 16px;}
 footer{margin-top:34px;text-align:center;color:var(--faint);font-size:13px;display:flex;flex-direction:column;align-items:center;gap:10px;}
-footer a{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:999px;background:var(--surface);border:1px solid var(--line);
+footer a.author{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:999px;background:var(--surface);border:1px solid var(--line);
   color:var(--text);text-decoration:none;font-weight:600;transition:border-color .2s;}
-footer a:hover{border-color:#2aa3e0;}
-footer a svg{width:18px;height:18px;}
+footer a.author:hover{border-color:#2aa3e0;}
+footer a.author svg{width:18px;height:18px;}
+.ad-slot{position:relative;display:block;width:min(560px,100%);padding:26px 20px 18px;border-radius:18px;text-decoration:none;color:var(--text);
+  border:1.5px dashed var(--line-strong);background:var(--surface);overflow:hidden;transition:border-color .25s,transform .25s;}
+.ad-slot:hover{border-color:var(--accent);transform:translateY(-2px);}
+.ad-slot::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,rgba(124,92,255,.14) 50%,transparent 65%);
+  transform:translateX(-100%);animation:adshine 4.5s ease-in-out infinite;pointer-events:none;}
+@keyframes adshine{0%,55%{transform:translateX(-100%);}100%{transform:translateX(100%);}}
+.ad-slot .ad-tag{position:absolute;top:10px;right:12px;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);}
+.ad-slot b{display:block;font-family:var(--display);font-weight:400;font-size:19px;letter-spacing:.3px;margin-bottom:4px;}
+.ad-slot span{font-size:13px;color:var(--muted);}
+.ad-slot span u{color:var(--accent);text-decoration:none;font-weight:600;}
+.ideas{margin:10px 0 -2px;font-size:13.5px;font-weight:600;color:var(--muted);}
 
 /* ================= НОВОВВЕДЕНИЯ ================= */
 .demo-row{text-align:center;margin-top:12px;}
@@ -684,7 +695,13 @@ footer a svg{width:18px;height:18px;}
   </div>
 
   <footer>
-    <a href="https://t.me/groom005" target="_blank" rel="noopener noreferrer">
+    <a class="ad-slot" href="https://t.me/groom005" target="_blank" rel="noopener noreferrer">
+      <span class="ad-tag">Реклама</span>
+      <b>Здесь могла быть ваша реклама 😁</b>
+      <span>Хотите разместиться? <u>Напишите в Telegram →</u></span>
+    </a>
+    <div class="ideas">💡 Ваши идеи и предложения</div>
+    <a class="author" href="https://t.me/groom005" target="_blank" rel="noopener noreferrer">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#2aa3e0"/><path d="M5.5 11.8l11-4.3c.5-.2 1 .1.8.9l-1.9 8.8c-.1.6-.5.8-1 .5l-2.8-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-2.9 5.3-4.8c.2-.2 0-.3-.3-.1l-6.6 4.1-2.8-.9c-.6-.2-.6-.6.1-.8z" fill="#fff"/></svg>
       Автор — @groom005</a>
     <span>TimDOX · Excel → Word с помощью ИИ</span>

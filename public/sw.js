@@ -1,6 +1,6 @@
 // TimDOX service worker: позволяет установить сайт как приложение
 // и открывать интерфейс даже при плохом интернете. Запросы к ИИ не кэшируются.
-const CACHE = 'timdox-v5';
+const CACHE = 'timdox-v6';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png',
   '/vendor/xlsx.full.min.js', '/vendor/jszip.min.js'];
 
