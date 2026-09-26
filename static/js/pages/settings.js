@@ -1,0 +1,202 @@
+// Настройки: профиль, приватность, оформление, безопасность, данные.
+import { api, state } from "../api.js";
+import { h, icon, avatar } from "../dom.js";
+import { setTitle, toast, toastError, busy, applyTheme, confirmDialog, modal } from "../ui.js";
+import { refreshSidebarUser } from "../components/layout.js";
+import { logout } from "../app-actions.js";
+
+/** Выбор и загрузка аватара или обложки */
+export function uploadProfileImage(kind, onDone) {
+  const input = h("input", { type: "file", accept: "image/jpeg,image/png,image/webp,image/gif", hidden: true });
+  document.body.append(input);
+  input.addEventListener("change", async () => {
+    const file = input.files[0];
+    input.remove();
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) return toast("Файл больше 10 МБ", { error: true });
+    const fd = new FormData();
+    fd.append("file", file);
+    const t = toast("Загружаем…", { duration: 20000 });
+    try {
+      const res = await api.form(`/api/me/${kind}`, fd);
+      t.remove();
+      toast(kind === "avatar" ? "Фото профиля обновлено" : "Обложка обновлена", { icon: "check" });
+      if (kind === "avatar") { state.me.avatar = res.avatar; refreshSidebarUser(); }
+      onDone?.(res[kind]);
+    } catch (e) { t.remove(); toastError(e); }
+  });
+  input.click();
+}
+
+function section(title, desc, ...content) {
+  return h("section.card.settings-section", h("h2", title), desc ? h("p.desc", desc) : null, ...content);
+}
+
+function input(label, name, value, opts = {}) {
+  const id = `s-${name}`;
+  const el = opts.textarea
+    ? h("textarea.textarea", { id, name, rows: 3, maxlength: opts.maxlength, value: value || "" })
+    : h("input.input", { id, name, type: opts.type || "text", value: value || "", maxlength: opts.maxlength, placeholder: opts.placeholder || "" });
+  const control = opts.prefix ? h("div.input-prefix", h("span", opts.prefix), el) : el;
+  return h("div.field", { dataset: { field: name } }, h("label", { for: id }, label), control, h("div.field-error"));
+}
+
+function select(name, value, options, label) {
+  return h("select.select", { name, "aria-label": label }, options.map(([v, t]) => h("option", { value: v, selected: v === value }, t)));
+}
+
+function settingRow(title, hint, control) {
+  return h("div.setting-row", h("div.label-block", h("b", title), hint ? h("small", hint) : null), control);
+}
+
+export async function settingsPage() {
+  setTitle("Настройки");
+  const s = await api.get("/api/me/settings");
+
+  // ---------------------------------------------------------------- Профиль
+  const avatarBox = h("div");
+  const coverBox = h("div.cover-preview");
+  const paintImages = () => {
+    avatarBox.replaceChildren(avatar({ ...state.me, avatar: s.avatar }, "xl", { presence: false }));
+    coverBox.replaceChildren(s.cover ? h("img", { src: s.cover, alt: "Обложка" }) : "");
+  };
+  paintImages();
+  const imgButtons = (kind) => h("div.row", { style: { flexWrap: "wrap" } },
+    h("button.btn.soft.sm", { type: "button", onclick: () => uploadProfileImage(kind, (url) => { s[kind] = url; paintImages(); }) }, icon("camera", "sm"), "Загрузить"),
+    h("button.btn.ghost.sm", {
+      type: "button", onclick: async () => {
+        try { await api.del(`/api/me/${kind}`); s[kind] = null; if (kind === "avatar") { state.me.avatar = null; refreshSidebarUser(); } paintImages(); } catch (e) { toastError(e); }
+      },
+    }, "Удалить"));
+
+  const relOptions = ["", "Не женат / не замужем", "Встречаюсь", "Помолвлен(а)", "Женат / замужем", "В гражданском браке", "Всё сложно", "В активном поиске"];
+  const profileForm = h("form.stack",
+    h("div.avatar-edit-row", avatarBox, h("div.stack", { style: { gap: "6px" } }, h("b", "Фото профиля"), h("small.muted", "Квадратное, от 400×400 px"), imgButtons("avatar"))),
+    h("div.stack", { style: { gap: "8px" } }, h("b", "Обложка"), coverBox, imgButtons("cover")),
+    h("div.grid-2",
+      input("Имя и фамилия", "name", s.name, { maxlength: 60 }),
+      input("Логин", "username", s.username, { maxlength: 30, prefix: "@" })),
+    input("О себе", "bio", s.bio, { textarea: true, maxlength: 500 }),
+    h("div.grid-2",
+      input("Город", "city", s.city, { maxlength: 80, placeholder: "Например, Казань" }),
+      h("div.field", h("label", { for: "s-birth" }, "Дата рождения"), h("input.input", { id: "s-birth", name: "birth_date", type: "date", value: s.birth_date || "", max: new Date().toISOString().slice(0, 10) }),
+        h("label.check", h("input", { type: "checkbox", name: "show_birth_date", checked: s.show_birth_date }), "Показывать в профиле"))),
+    h("div.grid-2",
+      input("Учёба", "education", s.education, { maxlength: 200, placeholder: "Школа, вуз, год выпуска" }),
+      input("Работа", "work", s.work, { maxlength: 200, placeholder: "Компания и должность" })),
+    h("div.field", h("label", { for: "s-rel" }, "Семейное положение"),
+      h("select.select", { id: "s-rel", name: "relationship" }, relOptions.map((o) => h("option", { value: o, selected: o === s.relationship }, o || "Не указано")))),
+    h("div.row", h("div.spacer"), h("button.btn.primary", { type: "submit" }, "Сохранить профиль")));
+  profileForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const f = (n) => profileForm.querySelector(`[name="${n}"]`);
+    const data = {};
+    for (const n of ["name", "username", "bio", "city", "birth_date", "education", "work", "relationship"]) data[n] = f(n).value;
+    data.show_birth_date = f("show_birth_date").checked;
+    busy(profileForm.querySelector("[type=submit]"), async () => {
+      profileForm.querySelectorAll(".field-error").forEach((x) => { x.textContent = ""; });
+      try {
+        const res = await api.patch("/api/me/settings", data);
+        Object.assign(s, res);
+        state.me.name = res.name; state.me.username = res.username;
+        refreshSidebarUser();
+        toast("Профиль сохранён", { icon: "check" });
+      } catch (err) {
+        for (const [k, v] of Object.entries(err.fields || {})) {
+          const fe = profileForm.querySelector(`[data-field="${k}"] .field-error`);
+          if (fe) fe.textContent = v;
+        }
+        toastError(err);
+      }
+    });
+  });
+
+  // ---------------------------------------------------------------- Приватность
+  const privacy = {
+    profile_visibility: select("profile_visibility", s.profile_visibility, [["public", "Все"], ["friends", "Только друзья"]], "Кто видит профиль"),
+    message_privacy: select("message_privacy", s.message_privacy, [["all", "Все"], ["friends", "Только друзья"]], "Кто может писать"),
+    friends_visibility: select("friends_visibility", s.friends_visibility, [["public", "Все"], ["friends", "Только друзья"], ["only_me", "Только я"]], "Кто видит друзей"),
+    default_visibility: select("default_visibility", s.default_visibility, [["public", "Все"], ["friends", "Друзья"], ["only_me", "Только я"]], "Видимость новых записей"),
+  };
+  for (const [k, el] of Object.entries(privacy)) {
+    el.addEventListener("change", async () => {
+      try {
+        await api.patch("/api/me/settings", { [k]: el.value });
+        if (k === "default_visibility") state.me.default_visibility = el.value;
+        toast("Сохранено", { icon: "check", duration: 1800 });
+      } catch (e) { toastError(e); }
+    });
+  }
+
+  // ---------------------------------------------------------------- Оформление
+  const themeSeg = h("div.segmented", { role: "group", "aria-label": "Тема" });
+  const themes = [["system", "Как в системе"], ["light", "Светлая"], ["dark", "Тёмная"]];
+  const paintTheme = (cur) => themeSeg.replaceChildren(...themes.map(([v, t]) => h("button", {
+    type: "button", "aria-pressed": String(v === cur),
+    onclick: async () => { applyTheme(v); paintTheme(v); state.me.theme = v; api.patch("/api/me/settings", { theme: v }).catch(() => {}); },
+  }, t)));
+  paintTheme(s.theme);
+
+  // ---------------------------------------------------------------- Безопасность
+  const pwForm = h("form.stack",
+    h("div.grid-2",
+      h("div.field", h("label", { for: "pw-old" }, "Текущий пароль"), h("input.input", { id: "pw-old", type: "password", autocomplete: "current-password", required: true })),
+      h("div.field", h("label", { for: "pw-new" }, "Новый пароль"), h("input.input", { id: "pw-new", type: "password", autocomplete: "new-password", required: true }))),
+    h("div.row", h("button.btn.ghost.sm", {
+      type: "button", onclick: async () => {
+        try { await api.post("/api/auth/logout-all"); toast("Вы вышли на всех других устройствах", { icon: "check" }); } catch (e) { toastError(e); }
+      },
+    }, icon("logout", "sm"), "Выйти на других устройствах"), h("div.spacer"), h("button.btn.primary", { type: "submit" }, "Сменить пароль")));
+  pwForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    busy(pwForm.querySelector("[type=submit]"), async () => {
+      try {
+        await api.post("/api/auth/change-password", { old_password: pwForm.querySelector("#pw-old").value, new_password: pwForm.querySelector("#pw-new").value });
+        pwForm.reset();
+        toast("Пароль изменён. Другие сеансы завершены.", { icon: "check" });
+      } catch (err) { toastError(err); }
+    });
+  });
+
+  const emailRow = settingRow("E-mail", s.email_verified ? `${s.email} · подтверждён` : `${s.email} · не подтверждён`,
+    s.email_verified ? h("span.status-pill.online", "✓ Подтверждён") : h("button.btn.accent.sm", {
+      type: "button", onclick: async (e) => {
+        try { await api.post("/api/auth/resend"); toast("Письмо отправлено", { icon: "mail" }); e.target.disabled = true; } catch (err) { toastError(err); }
+      },
+    }, "Отправить письмо ещё раз"));
+
+  // ---------------------------------------------------------------- Данные
+  const deleteBtn = h("button.btn.danger", { type: "button" }, icon("trash", "sm"), "Удалить аккаунт");
+  deleteBtn.addEventListener("click", async () => {
+    if (!await confirmDialog({ title: "Удалить аккаунт навсегда?", text: "Будут удалены профиль, записи, фото, комментарии, сообщения и друзья. Восстановить их будет невозможно.", confirm: "Продолжить", danger: true })) return;
+    const pw = h("input.input", { type: "password", autocomplete: "current-password", placeholder: "Пароль" });
+    const go = h("button.btn.danger", { type: "button" }, "Удалить навсегда");
+    const m = modal({ title: "Подтвердите паролем", narrow: true, sheet: false, body: h("div.field", h("label", "Введите пароль"), pw), footer: [h("button.btn.ghost", { type: "button", onclick: () => m.close() }, "Отмена"), go] });
+    go.addEventListener("click", () => busy(go, async () => {
+      try {
+        await api.del("/api/me", { password: pw.value });
+        m.close();
+        toast("Аккаунт удалён. Нам будет вас не хватать!");
+        state.me = null;
+        logout();
+      } catch (err) { toastError(err); }
+    }));
+  });
+
+  return h("div.stack",
+    h("div.page-head", h("h1", "Настройки")),
+    section("Профиль", "Эта информация видна на вашей странице.", profileForm),
+    section("Приватность", "Вы сами решаете, кто и что видит.",
+      settingRow("Кто видит мой профиль и записи", "Закрытый профиль видят только друзья", privacy.profile_visibility),
+      settingRow("Кто может писать мне сообщения", null, privacy.message_privacy),
+      settingRow("Кто видит список моих друзей", null, privacy.friends_visibility),
+      settingRow("Видимость новых записей по умолчанию", "Можно изменить при публикации", privacy.default_visibility)),
+    section("Оформление", null, settingRow("Тема", null, themeSeg)),
+    section("Безопасность", null, emailRow, h("hr.divider"), h("b", "Смена пароля"), pwForm),
+    section("Мои данные", "По закону о персональных данных вы можете получить копию своих данных или удалить их.",
+      h("div.row", { style: { flexWrap: "wrap" } },
+        h("a.btn.outline", { href: "/api/me/export", download: "krug-export.json" }, icon("download", "sm"), "Скачать мои данные"),
+        h("div.spacer"), deleteBtn)),
+    h("div.row", { style: { justifyContent: "center", padding: "8px 0 16px" } },
+      h("button.btn.ghost", { type: "button", onclick: logout }, icon("logout", "sm"), "Выйти из аккаунта")));
+}

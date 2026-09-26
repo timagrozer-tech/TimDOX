@@ -1,0 +1,34 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATA_DIR: /data
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - krug-data:/data
+    ports:
+      - "8000:8000"
+
+  # HTTPS с автоматическим сертификатом Let's Encrypt.
+  # Запуск: DOMAIN=krug.example.ru docker compose --profile https up -d
+  caddy:
+    image: caddy:2
+    profiles: ["https"]
+    restart: unless-stopped
+    depends_on: [app]
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+
+volumes:
+  krug-data:
+  caddy-data:
