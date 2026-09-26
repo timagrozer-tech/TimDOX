@@ -1,7 +1,9 @@
 // Настройки: профиль, приватность, оформление, безопасность, данные.
 import { api, state } from "../api.js";
 import { h, icon, avatar } from "../dom.js";
-import { setTitle, toast, toastError, busy, applyTheme, confirmDialog, modal } from "../ui.js";
+import { setTitle, toast, toastError, busy, applyTheme, confirmDialog, modal, promptDialog } from "../ui.js";
+import { pickFriends } from "../components/people.js";
+import { loadCircles } from "../components/composer.js";
 import { refreshSidebarUser } from "../components/layout.js";
 import { logout } from "../app-actions.js";
 
@@ -82,8 +84,13 @@ export async function settingsPage() {
       h("div.field", h("label", { for: "s-birth" }, "Дата рождения"), h("input.input", { id: "s-birth", name: "birth_date", type: "date", value: s.birth_date || "", max: new Date().toISOString().slice(0, 10) }),
         h("label.check", h("input", { type: "checkbox", name: "show_birth_date", checked: s.show_birth_date }), "Показывать в профиле"))),
     h("div.grid-2",
-      input("Учёба", "education", s.education, { maxlength: 200, placeholder: "Школа, вуз, год выпуска" }),
-      input("Работа", "work", s.work, { maxlength: 200, placeholder: "Компания и должность" })),
+      input("Школа", "school", s.school, { maxlength: 120, placeholder: "Например, «Лицей № 2»" }),
+      input("Год окончания школы", "school_year", s.school_year ?? "", { type: "number", placeholder: "2012" })),
+    h("div.grid-2",
+      input("Вуз или колледж", "university", s.university, { maxlength: 120, placeholder: "Например, «КФУ»" }),
+      input("Год окончания вуза", "university_year", s.university_year ?? "", { type: "number", placeholder: "2017" })),
+    h("p.field-hint", { style: { marginTop: "-6px" } }, "По школе и году выпуска вас смогут найти одноклассники."),
+    input("Работа", "work", s.work, { maxlength: 200, placeholder: "Компания и должность" }),
     h("div.field", h("label", { for: "s-rel" }, "Семейное положение"),
       h("select.select", { id: "s-rel", name: "relationship" }, relOptions.map((o) => h("option", { value: o, selected: o === s.relationship }, o || "Не указано")))),
     h("div.row", h("div.spacer"), h("button.btn.primary", { type: "submit" }, "Сохранить профиль")));
@@ -91,7 +98,7 @@ export async function settingsPage() {
     e.preventDefault();
     const f = (n) => profileForm.querySelector(`[name="${n}"]`);
     const data = {};
-    for (const n of ["name", "username", "bio", "city", "birth_date", "education", "work", "relationship"]) data[n] = f(n).value;
+    for (const n of ["name", "username", "bio", "city", "birth_date", "school", "school_year", "university", "university_year", "work", "relationship"]) data[n] = f(n).value;
     data.show_birth_date = f("show_birth_date").checked;
     busy(profileForm.querySelector("[type=submit]"), async () => {
       profileForm.querySelectorAll(".field-error").forEach((x) => { x.textContent = ""; });
@@ -127,6 +134,33 @@ export async function settingsPage() {
       } catch (e) { toastError(e); }
     });
   }
+
+  const invisible = h("input", { type: "checkbox", checked: s.invisible, "aria-label": "Режим невидимки" });
+  invisible.addEventListener("change", async () => {
+    try { await api.patch("/api/me/settings", { invisible: invisible.checked }); toast("Сохранено", { icon: "check", duration: 1800 }); } catch (e) { toastError(e); }
+  });
+
+  // ---------------------------------------------------------------- Круги
+  const circlesBox = h("div.stack", h("div.spinner"));
+  async function drawCircles(items) {
+    if (!items) items = (await api.get("/api/circles")).items;
+    loadCircles(true);
+    circlesBox.replaceChildren(...items.map((c) => h("div.circle-row",
+      h("div.grow", h("b", c.name), h("div.muted", { style: { fontSize: "13px" } }, c.members.length ? c.members.map((m) => m.name.split(" ")[0]).join(", ") : "Пока никого")),
+      h("button.btn.soft.sm", { type: "button", onclick: async () => {
+        const ids = await pickFriends({ title: `Круг «${c.name}»`, confirm: "Сохранить", selected: c.members.map((m) => m.id), min: 0 });
+        if (ids) try { drawCircles((await api.patch(`/api/circles/${c.id}`, { user_ids: ids })).items); } catch (e) { toastError(e); }
+      } }, "Состав"),
+      h("button.btn.ghost.icon-only.sm", { type: "button", "aria-label": `Удалить круг ${c.name}`, onclick: async () => {
+        if (!await confirmDialog({ title: `Удалить круг «${c.name}»?`, text: "Записи для этого круга станут видны только вам.", confirm: "Удалить", danger: true })) return;
+        try { drawCircles((await api.del(`/api/circles/${c.id}`)).items); } catch (e) { toastError(e); }
+      } }, icon("trash", "sm")))),
+    h("button.btn.outline.sm", { type: "button", style: { alignSelf: "flex-start" }, onclick: async () => {
+      const name = await promptDialog({ title: "Новый круг", label: "Например, «Семья» или «Коллеги»", confirm: "Создать" });
+      if (name) try { drawCircles((await api.post("/api/circles", { name })).items); } catch (e) { toastError(e); }
+    } }, icon("plus", "sm"), "Новый круг"));
+  }
+  drawCircles().catch((e) => circlesBox.replaceChildren(h("p.muted", e.message)));
 
   // ---------------------------------------------------------------- Оформление
   const themeSeg = h("div.segmented", { role: "group", "aria-label": "Тема" });
@@ -190,7 +224,9 @@ export async function settingsPage() {
       settingRow("Кто видит мой профиль и записи", "Закрытый профиль видят только друзья", privacy.profile_visibility),
       settingRow("Кто может писать мне сообщения", null, privacy.message_privacy),
       settingRow("Кто видит список моих друзей", null, privacy.friends_visibility),
-      settingRow("Видимость новых записей по умолчанию", "Можно изменить при публикации", privacy.default_visibility)),
+      settingRow("Видимость новых записей по умолчанию", "Можно изменить при публикации", privacy.default_visibility),
+      settingRow("Режим невидимки", "Не показываться в «Гостях» у других", invisible)),
+    section("Круги", "Списки друзей, для которых можно публиковать отдельно — например, только для близких.", circlesBox),
     section("Оформление", null, settingRow("Тема", null, themeSeg)),
     section("Безопасность", null, emailRow, h("hr.divider"), h("b", "Смена пароля"), pwForm),
     section("Мои данные", "По закону о персональных данных вы можете получить копию своих данных или удалить их.",

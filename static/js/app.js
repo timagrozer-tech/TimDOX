@@ -17,6 +17,9 @@ import { searchPage, tagPage } from "./pages/search.js";
 import { bookmarksPage } from "./pages/bookmarks.js";
 import { settingsPage } from "./pages/settings.js";
 import { legalPage } from "./pages/legal.js";
+import { communitiesPage, communityPage } from "./pages/communities.js";
+import { eventsPage, eventPage } from "./pages/events.js";
+import { guestsPage } from "./pages/guests.js";
 
 // public: доступна без входа; guestOnly: только для гостей
 route("/login", authPages.loginPage, { public: true, guestOnly: true });
@@ -38,6 +41,11 @@ route("/search", searchPage);
 route("/tag/:tag", tagPage);
 route("/bookmarks", bookmarksPage);
 route("/settings", settingsPage);
+route("/communities", communitiesPage);
+route("/c/:slug", communityPage);
+route("/events", eventsPage);
+route("/events/:id", eventPage);
+route("/guests", guestsPage);
 
 const root = document.getElementById("app");
 

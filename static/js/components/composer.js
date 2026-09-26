@@ -16,14 +16,37 @@ export function visibilitySelect(value) {
     Object.entries(VISIBILITY).map(([k, v]) => h("option", { value: k, selected: k === value }, `${v.label}`)));
 }
 
-export function composer({ placeholder = "Что у вас нового?", quote = null, compact = false, onPosted } = {}) {
+let circlesCache = null;
+export async function loadCircles(force = false) {
+  if (!circlesCache || force) {
+    try { circlesCache = (await api.get("/api/circles")).items; } catch { circlesCache = []; }
+  }
+  return circlesCache;
+}
+
+/** Выбор аудитории: Все / Друзья / круги / Только я. value: "public" | "friends" | "only_me" | "circle:ID" */
+export function audienceSelect(value) {
+  const sel = h("select.vis-select", { "aria-label": "Кто видит запись" },
+    h("option", { value: "public", selected: value === "public" }, "Все"),
+    h("option", { value: "friends", selected: value === "friends" }, "Друзья"),
+    h("option", { value: "only_me", selected: value === "only_me" }, "Только я"));
+  loadCircles().then((circles) => {
+    if (!circles.length) return;
+    sel.append(h("optgroup", { label: "Круги" }, circles.map((c) => h("option", { value: `circle:${c.id}` }, `○ ${c.name}`))));
+  });
+  return sel;
+}
+
+export function composer({ placeholder = "Что у вас нового?", quote = null, compact = false, onPosted, community = null } = {}) {
   const photos = []; // {file, url, alt}
   const ta = h("textarea", { placeholder, maxlength: MAX_LEN + 100, rows: 2, "aria-label": "Текст записи" });
   const fit = autosize(ta);
   const counter = h("span.counter");
   const previews = h("div.previews");
   const fileInput = h("input", { type: "file", accept: "image/jpeg,image/png,image/webp,image/gif", multiple: true, hidden: true });
-  const vis = visibilitySelect(state.me?.default_visibility || "public");
+  const vis = community ? null : audienceSelect(state.me?.default_visibility || "public");
+  const canAsCommunity = community && ["admin", "moderator"].includes(community.role);
+  const asCommunity = canAsCommunity ? h("input", { type: "checkbox", checked: true }) : null;
   const submit = h("button.btn.primary", { type: "submit" }, "Опубликовать");
 
   function refresh() {
@@ -71,7 +94,13 @@ export function composer({ placeholder = "Что у вас нового?", quote
       if (submit.disabled) return;
       const fd = new FormData();
       fd.append("text", ta.value);
-      fd.append("visibility", vis.value);
+      if (community) {
+        fd.append("community_id", community.id);
+        fd.append("as_community", asCommunity?.checked ? "1" : "0");
+      } else if (vis.value.startsWith("circle:")) {
+        fd.append("visibility", "friends");
+        fd.append("circle_id", vis.value.slice(7));
+      } else fd.append("visibility", vis.value);
       if (quote) fd.append("quote_of", quote.id);
       for (const p of photos) { fd.append("photos", p.file); fd.append("alts", p.alt || ""); }
       await busy(submit, async () => {
@@ -89,7 +118,7 @@ export function composer({ placeholder = "Что у вас нового?", quote
       });
     },
   },
-  avatar(state.me, "", { presence: false }),
+  community && canAsCommunity ? h("span.avatar.comm-avatar", community.avatar ? h("img", { src: community.avatar, alt: "" }) : community.name[0]) : avatar(state.me, "", { presence: false }),
   h("div.body",
     ta,
     previews,
@@ -97,6 +126,7 @@ export function composer({ placeholder = "Что у вас нового?", quote
     h("div.tools",
       h("button.btn.ghost.icon-only", { type: "button", title: "Добавить фото", "aria-label": "Добавить фото", onclick: () => fileInput.click() }, icon("image")),
       vis,
+      canAsCommunity ? h("label.check", { style: { fontSize: "13px" } }, asCommunity, `От имени сообщества`) : null,
       h("div.spacer"),
       counter,
       submit),

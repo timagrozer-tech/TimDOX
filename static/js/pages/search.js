@@ -2,16 +2,16 @@
 import { api } from "../api.js";
 import { h, icon, pl } from "../dom.js";
 import { infiniteList, setTitle } from "../ui.js";
-import { postCard } from "../components/post.js";
+import { postCard, communityAvatar } from "../components/post.js";
 import { personRow, defaultPersonActions } from "../components/people.js";
 
 export async function searchPage({ query }) {
   setTitle("Поиск");
-  let type = ["people", "posts", "tags"].includes(query.type) ? query.type : "all";
+  let type = ["people", "posts", "tags", "communities"].includes(query.type) ? query.type : "all";
   const input = h("input.input", { type: "search", name: "q", value: query.q || "", placeholder: "Имя, город, место учёбы, #тег или текст записи", "aria-label": "Поисковый запрос", autocomplete: "off" });
   const results = h("div.stack");
   const seg = h("div.segmented", { role: "group", "aria-label": "Что искать" });
-  const types = [["all", "Всё"], ["people", "Люди"], ["posts", "Записи"], ["tags", "Хэштеги"]];
+  const types = [["all", "Всё"], ["people", "Люди"], ["communities", "Сообщества"], ["posts", "Записи"], ["tags", "Хэштеги"]];
   seg.append(...types.map(([id, label]) => h("button", { type: "button", "aria-pressed": String(id === type), onclick: () => { type = id; run(); } }, label)));
 
   let timer = null, gen = 0;
@@ -32,6 +32,9 @@ export async function searchPage({ query }) {
     const blocks = [];
     if (data.people.length) blocks.push(h("section.card", h("div.card-pad", { style: { paddingBottom: 0 } }, h("h2.card-title", icon("users", "sm"), "Люди")),
       h("div.people", data.people.map((p) => personRow(p, defaultPersonActions)))));
+    if (data.communities?.length) blocks.push(h("section.card", h("div.card-pad", { style: { paddingBottom: 0 } }, h("h2.card-title", icon("community", "sm"), "Сообщества")),
+      h("div.people", data.communities.map((c) => h("a.person.comm-row", { href: `/c/${c.slug}` }, communityAvatar(c, "lg"),
+        h("div.who", h("span.name", c.name), h("div.sub", `${c.is_private ? "Закрытое" : "Открытое"} · ${pl(c.members_count, ["участник", "участника", "участников"])}`)))))));
     if (data.tags.length) blocks.push(h("section.card.card-pad", h("h2.card-title", icon("hash", "sm"), "Хэштеги"),
       h("div", data.tags.map((t) => h("a.trend", { href: `/tag/${encodeURIComponent(t.tag)}` }, h("b", `#${t.tag}`), h("small", pl(t.n, ["запись", "записи", "записей"])))))));
     if (data.posts.length) blocks.push(h("section", h("h2.card-title", { style: { padding: "4px 4px 0" } }, icon("edit", "sm"), "Записи"),

@@ -9,7 +9,8 @@ export async function friendsPage({ query }) {
   const tabs = [
     { id: "all", label: "Мои друзья" },
     { id: "requests", label: "Заявки", badge: "friend_requests" },
-    { id: "suggestions", label: "Возможно, знакомы" },
+    { id: "suggestions", label: "Рекомендации" },
+    { id: "classmates", label: "Одноклассники" },
     { id: "blocked", label: "Чёрный список" },
   ];
   const tabBar = h("div.tabs", { role: "tablist" });
@@ -54,6 +55,29 @@ export async function friendsPage({ query }) {
             incoming.length ? h("div.people", incoming) : empty("userPlus", "Новых заявок нет")),
           card(h("div.card-pad", { style: { paddingBottom: 0 } }, h("div.card-title", "Отправленные заявки")),
             outgoing.length ? h("div.people", outgoing) : h("p.muted.card-pad", { style: { paddingTop: 0 } }, "Вы пока никому не отправляли заявок."))));
+      } else if (current === "classmates") {
+        const settings = await api.get("/api/me/settings");
+        const school = h("input.input", { placeholder: "Школа, лицей, гимназия", value: query.school || settings.school || "" });
+        const uni = h("input.input", { placeholder: "Вуз или колледж", value: query.university || settings.university || "" });
+        const year = h("input.input", { type: "number", min: 1940, max: 2040, placeholder: "Год выпуска", value: query.year || settings.school_year || "" });
+        const city = h("input.input", { placeholder: "Город (необязательно)", value: query.city || "" });
+        const results = h("div");
+        const run = async () => {
+          results.replaceChildren(h("div.spinner"));
+          try {
+            const res = await api.get("/api/classmates", { school: school.value.trim(), university: uni.value.trim(), year: year.value, city: city.value.trim() });
+            if (res.need_profile) return results.replaceChildren(empty("book", "Укажите школу или вуз", "Заполните поля выше или добавьте место учёбы в настройках профиля."));
+            results.replaceChildren(res.items.length ? h("div.people", res.items.map((p) => personRow(p, defaultPersonActions)))
+              : empty("search", "Никого не нашли", "Попробуйте написать название короче или убрать год."));
+          } catch (e) { results.replaceChildren(h("p.muted.card-pad", e.message)); }
+        };
+        const form = h("form.stack.card-pad", {
+          onsubmit: (e) => { e.preventDefault(); run(); },
+        }, h("div.card-title", icon("book", "sm"), "Поиск одноклассников и однокурсников"),
+        h("div.grid-2", school, uni), h("div.grid-2", year, city),
+        h("div.row", h("span.muted", { style: { fontSize: "13px" } }, "Совпадения ищутся по части названия"), h("div.spacer"), h("button.btn.primary", { type: "submit" }, icon("search", "sm"), "Найти")));
+        content.replaceChildren(card(form, results));
+        if (school.value || uni.value) run();
       } else if (current === "suggestions") {
         const { items } = await api.get("/api/friends/suggestions");
         content.replaceChildren(card(h("div.card-pad", { style: { paddingBottom: 0 } }, h("div.card-title", "Возможно, вы знакомы"),

@@ -205,3 +205,99 @@ CREATE TABLE IF NOT EXISTS reports (
     status      TEXT NOT NULL DEFAULT 'open',
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
+
+-- ============================================================================
+-- Этап 2
+-- ============================================================================
+
+-- Круги: списки друзей («Близкие друзья», «Семья», «Работа»…) для публикации узкому кругу
+CREATE TABLE IF NOT EXISTS circles (
+    id         INTEGER PRIMARY KEY,
+    owner_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name       TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    UNIQUE (owner_id, name)
+);
+CREATE TABLE IF NOT EXISTS circle_members (
+    circle_id INTEGER NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
+    user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    PRIMARY KEY (circle_id, user_id)
+);
+
+-- Истории на 24 часа
+CREATE TABLE IF NOT EXISTS stories (
+    id         INTEGER PRIMARY KEY,
+    author_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    media      TEXT,                              -- фото (или NULL для текстовой истории)
+    thumb      TEXT,
+    text       TEXT NOT NULL DEFAULT '',
+    background TEXT NOT NULL DEFAULT 'blue',
+    visibility TEXT NOT NULL DEFAULT 'friends' CHECK (visibility IN ('public','friends')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    expires_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_stories_author ON stories(author_id, expires_at);
+CREATE TABLE IF NOT EXISTS story_views (
+    story_id  INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    viewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    viewed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (story_id, viewer_id)
+);
+
+-- Сообщества и паблики
+CREATE TABLE IF NOT EXISTS communities (
+    id             INTEGER PRIMARY KEY,
+    slug           TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    name           TEXT NOT NULL,
+    description    TEXT NOT NULL DEFAULT '',
+    avatar         TEXT,
+    cover          TEXT,
+    is_private     INTEGER NOT NULL DEFAULT 0,    -- закрытое: вступление по заявке, записи видят участники
+    wall_open      INTEGER NOT NULL DEFAULT 0,    -- участники могут публиковать на стене
+    pinned_post_id INTEGER REFERENCES posts(id) ON DELETE SET NULL,
+    created_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE TABLE IF NOT EXISTS community_members (
+    community_id INTEGER NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role         TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin','moderator','member')),
+    status       TEXT NOT NULL DEFAULT 'member' CHECK (status IN ('member','pending')),
+    joined_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (community_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_cm_user ON community_members(user_id, status);
+
+-- Мероприятия
+CREATE TABLE IF NOT EXISTS events (
+    id           INTEGER PRIMARY KEY,
+    creator_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    community_id INTEGER REFERENCES communities(id) ON DELETE CASCADE,
+    title        TEXT NOT NULL,
+    description  TEXT NOT NULL DEFAULT '',
+    place        TEXT NOT NULL DEFAULT '',
+    starts_at    TEXT NOT NULL,
+    ends_at      TEXT,
+    cover        TEXT,
+    visibility   TEXT NOT NULL DEFAULT 'public' CHECK (visibility IN ('public','friends','invited')),
+    created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_events_start ON events(starts_at);
+CREATE TABLE IF NOT EXISTS event_members (
+    event_id   INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status     TEXT NOT NULL CHECK (status IN ('going','maybe','declined','invited')),
+    invited_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (event_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_event_members_user ON event_members(user_id, status);
+
+-- «Гости»: кто заходил на страницу
+CREATE TABLE IF NOT EXISTS profile_visits (
+    visited_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    visitor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    visited_at TEXT NOT NULL,
+    PRIMARY KEY (visited_id, visitor_id)
+);
+CREATE INDEX IF NOT EXISTS idx_visits ON profile_visits(visited_id, visited_at DESC);

@@ -63,7 +63,9 @@ export async function profilePage({ params, query }) {
     if (!data.hidden) {
       if (data.city) info.push(h("span", icon("pin"), data.city));
       if (data.work) info.push(h("span", icon("work"), data.work));
-      if (data.education) info.push(h("span", icon("book"), data.education));
+      if (data.school) info.push(h("span", icon("book"), data.school + (data.school_year ? `, ${data.school_year}` : "")));
+      if (data.university) info.push(h("span", icon("book"), data.university + (data.university_year ? `, ${data.university_year}` : "")));
+      if (data.education && !data.school && !data.university) info.push(h("span", icon("book"), data.education));
       if (data.birth_date) info.push(h("span", icon("gift"), birthDate(data.birth_date)));
       if (data.relationship) info.push(h("span", icon("heartRel"), data.relationship));
     }

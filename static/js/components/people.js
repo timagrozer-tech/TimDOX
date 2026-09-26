@@ -1,7 +1,7 @@
 // Кнопки дружбы/подписки и строки со списками людей.
 import { api, state } from "../api.js";
 import { h, icon, avatar, pl } from "../dom.js";
-import { toastError, toast, showMenu, confirmDialog } from "../ui.js";
+import { toastError, toast, showMenu, confirmDialog, modal } from "../ui.js";
 import { navigate } from "../router.js";
 
 export async function openChat(userId) {
@@ -76,3 +76,33 @@ export function defaultPersonActions(p, row, refill) {
 }
 
 export function isMe(u) { return u && state.me && u.id === state.me.id; }
+
+/** Выбор друзей из списка. Возвращает Promise<number[] | null>. */
+export async function pickFriends({ title = "Выберите друзей", confirm = "Готово", exclude = [], selected = [], min = 1 } = {}) {
+  let items;
+  try {
+    items = (await api.get(`/api/users/${state.me.username}/friends`)).items.filter((f) => !exclude.includes(f.id));
+  } catch (e) { toastError(e); return null; }
+  const chosen = new Set(selected);
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(v); m.close(); } };
+    const filter = h("input.input", { type: "search", placeholder: "Поиск среди друзей", "aria-label": "Поиск среди друзей" });
+    const list = h("div.pick-list");
+    const counter = h("span.muted");
+    const ok = h("button.btn.primary", { type: "button", onclick: () => finish([...chosen]) }, confirm);
+    const draw = () => {
+      const q = filter.value.trim().toLowerCase();
+      list.replaceChildren(...(items.length ? items.filter((f) => !q || f.name.toLowerCase().includes(q)).map((f) => {
+        const cb = h("input", { type: "checkbox", checked: chosen.has(f.id), onchange: () => { cb.checked ? chosen.add(f.id) : chosen.delete(f.id); sync(); } });
+        return h("label.pick-row", cb, avatar(f, "sm"), h("span.grow", f.name));
+      }) : [h("p.muted", "Друзей для выбора нет")]));
+    };
+    const sync = () => { counter.textContent = chosen.size ? `Выбрано: ${chosen.size}` : ""; ok.disabled = chosen.size < min; };
+    filter.addEventListener("input", draw);
+    const m = modal({ title, narrow: true, body: h("div.stack", filter, list),
+      footer: [counter, h("div.spacer"), h("button.btn.ghost", { type: "button", onclick: () => finish(null) }, "Отмена"), ok],
+      onClose: () => finish(null) });
+    draw(); sync();
+  });
+}

@@ -18,12 +18,25 @@ def not_blocked_sql(other: str) -> str:
             f"OR (b.blocker_id = {other} AND b.blocked_id = :v))")
 
 
+def community_visible_sql(cid: str) -> str:
+    """Сообщество открытое или зритель :v — его участник."""
+    return (f"EXISTS (SELECT 1 FROM communities cx WHERE cx.id = {cid} AND (cx.is_private = 0 OR EXISTS ("
+            f"SELECT 1 FROM community_members mx WHERE mx.community_id = cx.id AND mx.user_id = :v AND mx.status = 'member')))")
+
+
+MY_COMMUNITIES_SQL = "SELECT community_id FROM community_members WHERE user_id = :v AND status = 'member'"
+
+
 def visible_post_sql(p: str = "p", pr: str = "pr") -> str:
     """Условие «зритель :v может видеть пост p» (pr — профиль автора)."""
     friend = is_friend_sql(f"{p}.author_id")
+    in_circle = (f"({p}.circle_id IS NULL OR EXISTS (SELECT 1 FROM circle_members ccm "
+                 f"WHERE ccm.circle_id = {p}.circle_id AND ccm.user_id = :v))")
     return f"""({p}.author_id = :v OR ({not_blocked_sql(f"{p}.author_id")} AND (
-        ({p}.visibility = 'public' AND ({pr}.profile_visibility = 'public' OR {friend}))
-        OR ({p}.visibility = 'friends' AND {friend}))))"""
+        ({p}.community_id IS NOT NULL AND {community_visible_sql(f"{p}.community_id")})
+        OR ({p}.community_id IS NULL AND (
+            ({p}.visibility = 'public' AND ({pr}.profile_visibility = 'public' OR {friend}))
+            OR ({p}.visibility = 'friends' AND {friend} AND {in_circle}))))))"""
 
 
 def friend_ids(uid: int) -> list[int]:
@@ -134,6 +147,12 @@ def counters(uid: int) -> dict:
                WHERE cm.user_id = ? AND m.id > cm.last_read_id AND m.sender_id != ?""", (uid, uid)),
         "friend_requests": db.value(
             "SELECT count(*) FROM friendships WHERE addressee_id=? AND status='pending'", (uid,)),
+        "guests": db.value(
+            """SELECT count(*) FROM profile_visits v JOIN profiles p ON p.user_id = v.visited_id
+               WHERE v.visited_id = ? AND v.visited_at > coalesce(p.guests_seen_at, '')""", (uid,)),
+        "events": db.value(
+            """SELECT count(*) FROM event_members em JOIN events e ON e.id = em.event_id
+               WHERE em.user_id = ? AND em.status = 'invited' AND e.starts_at >= ?""", (uid, db.now())),
     }
 
 

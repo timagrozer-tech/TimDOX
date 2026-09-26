@@ -70,10 +70,15 @@ async def profile(request: Request):
             p["message_privacy"] == "all" or rel["status"] == "friends"),
         "friends_visible": _can_see_friends(v, p),
     }
+    if uid != v and not rel["blocked_by_me"]:
+        from .people_extra import record_visit
+        record_visit(uid, v)
     if full:
         data.update({
             "bio": p["bio"], "city": p["city"], "education": p["education"], "work": p["work"],
             "relationship": p["relationship"],
+            "school": p["school"], "school_year": p["school_year"],
+            "university": p["university"], "university_year": p["university_year"],
             "birth_date": p["birth_date"] if (p["show_birth_date"] or uid == v) else None,
         })
     return JSONResponse(data)
@@ -228,7 +233,8 @@ async def requests_list(request: Request):
 async def suggestions(request: Request):
     """«Возможно, вы знакомы»: друзья друзей, затем люди из того же города, затем новички."""
     v = request.state.user["id"]
-    my_city = db.value("SELECT city FROM profiles WHERE user_id=?", (v,)) or ""
+    me = db.one("SELECT city, school, school_year, university FROM profiles WHERE user_id=?", (v,))
+    my_city = me["city"] or ""
     rows = db.all(f"""
         WITH mine AS ({FRIEND_IDS_SQL}),
         fof AS (
@@ -243,8 +249,11 @@ async def suggestions(request: Request):
           AND p.user_id NOT IN (SELECT * FROM mine)
           AND NOT EXISTS (SELECT 1 FROM friendships f2 WHERE f2.user_low=min(:v,p.user_id) AND f2.user_high=max(:v,p.user_id))
           AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id=:v AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=:v))
-        ORDER BY mutual DESC, (p.city != '' AND p.city = :city) DESC, p.user_id DESC
-        LIMIT 12""", {"v": v, "city": my_city})
+        ORDER BY mutual DESC,
+                 (p.school != '' AND p.school = :school AND p.school_year IS :syear) DESC,
+                 (p.university != '' AND p.university = :uni) DESC,
+                 (p.city != '' AND p.city = :city) DESC, p.user_id DESC
+        LIMIT 12""", {"v": v, "city": my_city, "school": me["school"], "syear": me["school_year"], "uni": me["university"]})
     items = _people(rows, v)
     for item, r in zip(items, rows):
         item["mutual"] = r["mutual"]
@@ -261,7 +270,9 @@ async def online_friends(request: Request):
 # ----------------------------------------------------------------------------
 # Настройки
 # ----------------------------------------------------------------------------
-PROFILE_FIELDS = {"name": 60, "bio": 500, "city": 80, "education": 200, "work": 200, "relationship": 40}
+PROFILE_FIELDS = {"name": 60, "bio": 500, "city": 80, "education": 200, "work": 200, "relationship": 40,
+                  "school": 120, "university": 120}
+YEAR_FIELDS = ("school_year", "university_year")
 PRIVACY_FIELDS = {
     "profile_visibility": ("public", "friends"),
     "message_privacy": ("all", "friends"),
@@ -278,6 +289,7 @@ async def settings_get(request: Request):
     p["email"] = u["email"]
     p["email_verified"] = bool(u["email_verified_at"])
     p["show_birth_date"] = bool(p["show_birth_date"])
+    p["invisible"] = bool(p["invisible"])
     return JSONResponse(p)
 
 
@@ -304,6 +316,22 @@ async def settings_update(request: Request):
         else:
             sets.append("birth_date=?")
             params.append(bd)
+    for field in YEAR_FIELDS:
+        if field in data:
+            val = data[field]
+            if val in (None, ""):
+                sets.append(f"{field}=?"); params.append(None)
+            else:
+                try:
+                    year = int(val)
+                    if not 1940 <= year <= 2040:
+                        raise ValueError
+                except (TypeError, ValueError):
+                    errors[field] = "Год от 1940 до 2040"
+                    continue
+                sets.append(f"{field}=?"); params.append(year)
+    if "invisible" in data:
+        sets.append("invisible=?"); params.append(1 if data["invisible"] else 0)
     if "show_birth_date" in data:
         sets.append("show_birth_date=?")
         params.append(1 if data["show_birth_date"] else 0)
@@ -373,6 +401,10 @@ async def export_data(request: Request):
         "friends": db.all("SELECT * FROM friendships WHERE requester_id=? OR addressee_id=?", (v, v)),
         "follows": db.all("SELECT * FROM follows WHERE follower_id=? OR followee_id=?", (v, v)),
         "messages": db.all("SELECT * FROM messages WHERE sender_id=? ORDER BY id", (v,)),
+        "stories": db.all("SELECT * FROM stories WHERE author_id=?", (v,)),
+        "circles": db.all("SELECT c.name, cm.user_id FROM circles c LEFT JOIN circle_members cm ON cm.circle_id=c.id WHERE c.owner_id=?", (v,)),
+        "communities": db.all("SELECT c.slug, c.name, m.role, m.status FROM community_members m JOIN communities c ON c.id=m.community_id WHERE m.user_id=?", (v,)),
+        "events": db.all("SELECT * FROM events WHERE creator_id=?", (v,)),
         "exported_at": db.now(),
     }
     return Response(json.dumps(data, ensure_ascii=False, indent=2), media_type="application/json",
@@ -392,6 +424,10 @@ async def delete_account(request: Request):
         delete_post_files(post_ids)
     prof = db.one("SELECT avatar, cover FROM profiles WHERE user_id=?", (v,))
     media.delete_files(prof["avatar"], prof["cover"])
+    for r in db.all("SELECT media FROM stories WHERE author_id=?", (v,)):
+        media.delete_files(r["media"])
+    for r in db.all("SELECT cover FROM events WHERE creator_id=?", (v,)):
+        media.delete_files(r["cover"])
     db.run("DELETE FROM reports WHERE target_type='user' AND target_id=?", (v,))
     db.run("DELETE FROM users WHERE id=?", (v,))  # остальное удаляется каскадно
     # пустые личные диалоги

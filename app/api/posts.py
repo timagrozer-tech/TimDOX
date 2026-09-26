@@ -11,6 +11,7 @@ from ..web import ApiError, auth, body, int_param, limit, ok, path_int
 REACTIONS = ("like", "love", "haha", "wow", "sad", "angry")
 VISIBILITIES = ("public", "friends", "only_me")
 PAGE = 15
+PUBLIC_COMMUNITY = "(p.community_id IS NULL OR p.community_id IN (SELECT id FROM communities WHERE is_private = 0))"
 
 
 # ----------------------------------------------------------------------------
@@ -54,6 +55,19 @@ def hydrate(rows: list[dict], v: int, depth: int = 0) -> list[dict]:
     bookmarked = {r["post_id"] for r in
                   db.all(f"SELECT post_id FROM bookmarks WHERE user_id=? AND post_id IN ({ph})", (v, *t))}
 
+    comm_ids = {r["community_id"] for r in rows if r.get("community_id")}
+    comms = {c["id"]: c for c in db.all(
+        f"SELECT id, slug, name, avatar, is_private FROM communities WHERE id IN ({db.placeholders(comm_ids)})",
+        tuple(comm_ids))} if comm_ids else {}
+    circ_ids = {r["circle_id"] for r in rows if r.get("circle_id") and r["author_id"] == v}
+    circles = {c["id"]: c["name"] for c in db.all(
+        f"SELECT id, name FROM circles WHERE id IN ({db.placeholders(circ_ids)})", tuple(circ_ids))} if circ_ids else {}
+    can_mod = set()
+    if comm_ids:
+        can_mod = {r["community_id"] for r in db.all(
+            f"""SELECT community_id FROM community_members WHERE user_id=? AND role IN ('admin','moderator')
+                AND status='member' AND community_id IN ({db.placeholders(comm_ids)})""", (v, *comm_ids))}
+
     quotes = {}
     if depth == 0:
         q_ids = [r["quote_of"] for r in rows if r["quote_of"]]
@@ -79,6 +93,10 @@ def hydrate(rows: list[dict], v: int, depth: int = 0) -> list[dict]:
             "reposted": r["id"] in reposted,
             "bookmarked": r["id"] in bookmarked,
             "is_mine": r["author_id"] == v,
+            "community": comms.get(r.get("community_id")),
+            "as_community": bool(r.get("as_community")),
+            "circle": circles.get(r.get("circle_id")) if r.get("circle_id") else None,
+            "can_moderate": r.get("community_id") in can_mod,
         }
         if r["quote_of"] and depth == 0:
             item["quote"] = quotes.get(r["quote_of"]) or {"unavailable": True}
@@ -100,6 +118,18 @@ def get_visible_post(post_id: int, v: int) -> dict:
     return row
 
 
+def is_shareable(post: dict) -> bool:
+    """Можно ли репостить/цитировать: публичная запись не из закрытого сообщества и не для круга."""
+    if post["community_id"]:
+        return not db.value("SELECT is_private FROM communities WHERE id=?", (post["community_id"],))
+    return post["visibility"] == "public"
+
+
+def community_role(community_id: int, v: int) -> str | None:
+    return db.value("SELECT role FROM community_members WHERE community_id=? AND user_id=? AND status='member'",
+                    (community_id, v))
+
+
 def _profile_by_username(username: str) -> dict:
     row = db.one("SELECT * FROM profiles WHERE username=?", (username,))
     if not row:
@@ -117,9 +147,10 @@ async def feed(request: Request):
     rows = db.all(f"""
         SELECT p.* FROM posts p JOIN profiles pr ON pr.user_id = p.author_id
         WHERE p.id < :cursor
-          AND (p.author_id = :v
-               OR p.author_id IN ({social.FRIEND_IDS_SQL})
-               OR p.author_id IN (SELECT followee_id FROM follows WHERE follower_id = :v))
+          AND ((p.community_id IS NULL AND (p.author_id = :v
+                    OR p.author_id IN ({social.FRIEND_IDS_SQL})
+                    OR p.author_id IN (SELECT followee_id FROM follows WHERE follower_id = :v)))
+               OR p.community_id IN ({social.MY_COMMUNITIES_SQL}))
           AND {visible_post_sql()}
         ORDER BY p.id DESC LIMIT :lim""", {"v": v, "cursor": cursor, "lim": PAGE + 1})
     return JSONResponse(_page(rows, v))
@@ -155,7 +186,7 @@ async def user_posts(request: Request):
     cursor = int_param(request, "cursor", 2**62)
     rows = db.all(f"""
         SELECT p.* FROM posts p JOIN profiles pr ON pr.user_id = p.author_id
-        WHERE p.author_id = :uid AND p.id < :cursor AND {visible_post_sql()}
+        WHERE p.author_id = :uid AND p.community_id IS NULL AND p.id < :cursor AND {visible_post_sql()}
         ORDER BY p.id DESC LIMIT :lim""", {"v": v, "uid": prof["user_id"], "cursor": cursor, "lim": PAGE + 1})
     return JSONResponse(_page(rows, v))
 
@@ -170,7 +201,7 @@ async def user_photos(request: Request):
     rows = db.all(f"""
         SELECT m.id, m.post_id, m.path AS url, m.thumb, m.width, m.height, m.alt
         FROM post_media m JOIN posts p ON p.id = m.post_id JOIN profiles pr ON pr.user_id = p.author_id
-        WHERE p.author_id = :uid AND m.id < :cursor AND {visible_post_sql()}
+        WHERE p.author_id = :uid AND p.community_id IS NULL AND m.id < :cursor AND {visible_post_sql()}
         ORDER BY m.id DESC LIMIT 31""", {"v": v, "uid": prof["user_id"], "cursor": cursor})
     return JSONResponse({"items": rows[:30], "next_cursor": rows[29]["id"] if len(rows) > 30 else None})
 
@@ -207,16 +238,16 @@ async def bookmarks(request: Request):
 
 @auth()
 async def trends(request: Request):
-    rows = db.all("""
+    rows = db.all(f"""
         SELECT h.tag, count(*) AS n FROM post_hashtags ph
         JOIN hashtags h ON h.id = ph.hashtag_id JOIN posts p ON p.id = ph.post_id
-        WHERE p.visibility = 'public' AND p.created_at >= ?
+        WHERE p.visibility = 'public' AND p.created_at >= ? AND {PUBLIC_COMMUNITY}
         GROUP BY h.id ORDER BY n DESC, max(p.id) DESC LIMIT 8""", (db.future(hours=-24),))
     if len(rows) < 3:  # если за сутки мало — берём неделю
-        rows = db.all("""
+        rows = db.all(f"""
             SELECT h.tag, count(*) AS n FROM post_hashtags ph
             JOIN hashtags h ON h.id = ph.hashtag_id JOIN posts p ON p.id = ph.post_id
-            WHERE p.visibility = 'public' AND p.created_at >= ?
+            WHERE p.visibility = 'public' AND p.created_at >= ? AND {PUBLIC_COMMUNITY}
             GROUP BY h.id ORDER BY n DESC LIMIT 8""", (db.future(days=-7),))
     return JSONResponse({"items": rows})
 
@@ -238,7 +269,7 @@ def _index_text(post_id: int, author_id: int, text: str, visibility: str, notify
             continue
         uid = row["user_id"]
         db.run("INSERT OR IGNORE INTO mentions (post_id, user_id) VALUES (?,?)", (post_id, uid))
-        can_see = visibility == "public" or (visibility == "friends" and social.are_friends(author_id, uid))
+        can_see = bool(_fetch_visible([post_id], uid))
         if notify_mentions and can_see and uid not in old:
             social.notify(uid, author_id, "mention", post_id=post_id)
 
@@ -273,7 +304,7 @@ async def _create_post(request: Request, v: int, form):
         target = get_visible_post(quote_of, v)
         if target["is_repost"] and target["quote_of"]:
             target = get_visible_post(target["quote_of"], v)
-        if target["visibility"] != "public":
+        if not is_shareable(target):
             raise ApiError(403, "Цитировать можно только публичные записи")
         quote_of = target["id"]
     else:
@@ -281,6 +312,34 @@ async def _create_post(request: Request, v: int, form):
 
     if not text and not files and not quote_of:
         raise ApiError(400, "Напишите текст или добавьте фото")
+
+    community_id = form.get("community_id")
+    as_community = 0
+    circle_id = None
+    if community_id:
+        try:
+            community_id = int(community_id)
+        except ValueError:
+            raise ApiError(400, "Некорректное сообщество")
+        comm = db.one("SELECT * FROM communities WHERE id=?", (community_id,))
+        if not comm:
+            raise ApiError(404, "Сообщество не найдено")
+        role = community_role(community_id, v)
+        if role in ("admin", "moderator"):
+            as_community = 1 if form.get("as_community", "1") == "1" else 0
+        elif not (role == "member" and comm["wall_open"]):
+            raise ApiError(403, "Публиковать в этом сообществе могут только администраторы")
+        visibility = "public"
+    else:
+        community_id = None
+        if form.get("circle_id"):
+            try:
+                circle_id = int(form.get("circle_id"))
+            except ValueError:
+                raise ApiError(400, "Некорректный круг")
+            if not db.value("SELECT 1 FROM circles WHERE id=? AND owner_id=?", (circle_id, v)):
+                raise ApiError(404, "Круг не найден")
+            visibility = "friends"
 
     if files:
         limit(request, "upload")
@@ -294,8 +353,8 @@ async def _create_post(request: Request, v: int, form):
         raise
 
     with db.tx() as c:
-        cur = c.execute("INSERT INTO posts (author_id, text, visibility, quote_of) VALUES (?,?,?,?)",
-                        (v, text, visibility, quote_of))
+        cur = c.execute("""INSERT INTO posts (author_id, text, visibility, quote_of, community_id, as_community, circle_id)
+                           VALUES (?,?,?,?,?,?,?)""", (v, text, visibility, quote_of, community_id, as_community, circle_id))
         pid = cur.lastrowid
         for i, s in enumerate(saved):
             alt = clean_text(alts[i] if i < len(alts) and isinstance(alts[i], str) else "", 300)
@@ -331,11 +390,14 @@ async def update_post(request: Request):
     visibility = data.get("visibility", row["visibility"])
     if visibility not in VISIBILITIES:
         raise ApiError(400, "Неизвестная настройка видимости")
+    if row["community_id"]:
+        visibility = "public"
+    circle_id = row["circle_id"] if visibility == "friends" else None
     has_media = db.value("SELECT 1 FROM post_media WHERE post_id=?", (pid,))
     if not text and not has_media and not row["quote_of"]:
         raise ApiError(400, "Запись не может быть пустой")
-    db.run("UPDATE posts SET text=?, visibility=?, edited_at=? WHERE id=?",
-           (text, visibility, db.now() if text != row["text"] else row["edited_at"], pid))
+    db.run("UPDATE posts SET text=?, visibility=?, circle_id=?, edited_at=? WHERE id=?",
+           (text, visibility, circle_id, db.now() if text != row["text"] else row["edited_at"], pid))
     _index_text(pid, v, text, visibility, notify_mentions=True)
     return JSONResponse(hydrate([db.one("SELECT * FROM posts WHERE id=?", (pid,))], v)[0])
 
@@ -350,7 +412,8 @@ async def delete_post(request: Request):
     v = request.state.user
     pid = path_int(request)
     row = db.one("SELECT * FROM posts WHERE id=?", (pid,))
-    if not row or (row["author_id"] != v["id"] and not v["is_admin"]):
+    is_mod = bool(row and row["community_id"] and community_role(row["community_id"], v["id"]) in ("admin", "moderator"))
+    if not row or (row["author_id"] != v["id"] and not v["is_admin"] and not is_mod):
         raise ApiError(404, "Запись не найдена")
     delete_post_files([pid])
     # простые репосты удалённой записи теряют смысл — удаляем их тоже
@@ -407,7 +470,7 @@ async def repost(request: Request):
     post = get_visible_post(path_int(request), v)
     if post["is_repost"] and post["quote_of"]:
         post = get_visible_post(post["quote_of"], v)
-    if post["visibility"] != "public":
+    if not is_shareable(post):
         raise ApiError(403, "Делиться можно только публичными записями")
     if post["author_id"] == v:
         raise ApiError(400, "Нельзя сделать репост своей записи — используйте цитату")

@@ -216,6 +216,132 @@ MESSAGES = [
 ]
 
 
+SCHOOLS = {
+    "anna": ("Лицей № 131", 2011, "КФУ", 2016), "boris": ("Лицей № 131", 2011, "КНИТУ-КАИ", 2014),
+    "sergey": ("Лицей № 131", 2012, "", None), "maria": ("Школа № 1567", 2006, "МПГУ", 2011),
+    "olga": ("Гимназия № 1514", 2007, "РНИМУ им. Пирогова", 2013), "dmitry": ("Школа № 239", 2009, "ИТМО", 2015),
+    "alexey": ("Лицей № 40", 2013, "ННГУ", 2018), "tatiana": ("Школа № 7", 2012, "", None),
+}
+
+
+def seed_stage2(ids: dict) -> None:
+    for un, (school, sy, uni, uy) in SCHOOLS.items():
+        db.run("UPDATE profiles SET school=?, school_year=?, university=?, university_year=? WHERE user_id=?",
+               (school, sy, uni, uy, ids[un]))
+
+    # Истории
+    for un, kind, seed_, text, bg, hours in [
+        ("boris", "landscape", 70, "Утренняя пробежка по набережной", "blue", 2),
+        ("boris", None, 0, "Кто завтра на велопрогулку? 🚴", "orange", 1),
+        ("tatiana", "landscape", 72, "Сочи сегодня 🌊", "blue", 5),
+        ("maria", None, 0, "Читаю «Мастера и Маргариту» в пятый раз и снова нахожу новое", "purple", 3),
+        ("sergey", "city", 73, "", "dark", 7),
+        ("dmitry", None, 0, "Новый рекорд: 21 км! 🏃", "green", 9),
+    ]:
+        m = image(kind, seed_, "story") if kind else None
+        db.run("""INSERT INTO stories (author_id, media, thumb, text, background, visibility, created_at, expires_at)
+                  VALUES (?,?,?,?,?, 'friends', ?, ?)""",
+               (ids[un], m["path"] if m else None, m["thumb"] if m else None, text, bg, ts(hours), db.future(hours=24 - hours)))
+    db.run("INSERT INTO story_views (story_id, viewer_id) SELECT id, ? FROM stories WHERE author_id=?", (ids["anna"], ids["dmitry"]))
+
+    # Сообщества
+    def community(slug, name, desc, owner, members, private=False, wall=False, seed_=0):
+        ava = _process(avatar_img(seed_), "avatar")["path"]
+        cov = _process(cover_img(seed_ + 7), "cover")["path"]
+        cid = db.run("""INSERT INTO communities (slug, name, description, avatar, cover, is_private, wall_open, created_by, created_at)
+                        VALUES (?,?,?,?,?,?,?,?,?)""", (slug, name, desc, ava, cov, int(private), int(wall), ids[owner], ts(24 * 40))).lastrowid
+        db.run("INSERT INTO community_members (community_id, user_id, role) VALUES (?,?, 'admin')", (cid, ids[owner]))
+        for un in members:
+            db.run("INSERT INTO community_members (community_id, user_id) VALUES (?,?)", (cid, ids[un]))
+        return cid
+
+    kazan = community("kazan", "Казань — город контрастов", "Новости, афиша и лучшие фото Казани. Присылайте свои снимки!",
+                      "sergey", ["anna", "boris", "dmitry", "tatiana", "igor"], wall=True, seed_=11)
+    books = community("book_club", "Книжный клуб «Страница»", "Читаем одну книгу в месяц и обсуждаем по пятницам.",
+                      "maria", ["anna", "olga", "alexey", "natasha"], seed_=12)
+    alumni = community("lyceum131", "Выпускники лицея № 131", "Закрытое сообщество выпускников. Вступление по заявке.",
+                       "anna", ["boris", "sergey"], private=True, seed_=13)
+    db.run("INSERT INTO community_members (community_id, user_id, status) VALUES (?,?, 'pending')", (alumni, ids["elena"]))
+    db.run("INSERT INTO notifications (user_id, actor_id, type, extra, created_at) VALUES (?,?, 'community_request', ?, ?)",
+           (ids["anna"], ids["elena"], '{"slug": "lyceum131", "name": "Выпускники лицея № 131"}', ts(1)))
+
+    def cpost(cid, author, text, hours, img=None, as_comm=1):
+        pid = db.run("""INSERT INTO posts (author_id, text, visibility, community_id, as_community, created_at)
+                        VALUES (?,?, 'public', ?, ?, ?)""", (ids[author], text, cid, as_comm, ts(hours))).lastrowid
+        if img:
+            m = image(*img)
+            db.run("INSERT INTO post_media (post_id, path, thumb, width, height, alt, position) VALUES (?,?,?,?,?,?,0)",
+                   (pid, m["path"], m["thumb"], m["width"], m["height"], ""))
+        for tag in extract_hashtags(text):
+            db.run("INSERT OR IGNORE INTO hashtags (tag) VALUES (?)", (tag,))
+            db.run("INSERT OR IGNORE INTO post_hashtags VALUES (?, (SELECT id FROM hashtags WHERE tag=?))", (pid, tag))
+        return pid
+
+    pinned = cpost(kazan, "sergey", "Правила сообщества: публикуем фото Казани, указываем место съёмки, уважаем друг друга. Лучшие снимки недели — в пятничной подборке! #Казань", 24 * 30)
+    db.run("UPDATE communities SET pinned_post_id=? WHERE id=?", (pinned, kazan))
+    cpost(kazan, "sergey", "Подборка недели: осенний Кремль, Старо-Татарская слобода и закат над Казанкой 🍂 #Казань #фото", 4, ("city", 81))
+    cpost(kazan, "boris", "Открылась новая велодорожка вдоль Казанки — проехал всю, 12 км, очень рекомендую! #Казань", 8, ("landscape", 82), as_comm=0)
+    cpost(books, "maria", "Книга октября — «Лето Господне» Ивана Шмелёва. Обсуждаем в пятницу 31-го в 19:00. Кто с нами? #книги", 6)
+    cpost(alumni, "anna", "Друзья, в декабре — 15 лет выпуска! Собираем встречу, пишите в комментариях, кто сможет 🎓", 20)
+
+    # Беседа
+    conv = db.run("INSERT INTO conversations (is_group, title, created_by, last_message_at) VALUES (1, 'Поход на Алтай 2027', ?, ?)",
+                  (ids["anna"], ts(0.5))).lastrowid
+    for un in ("anna", "boris", "dmitry", "tatiana"):
+        db.run("INSERT INTO conversation_members (conversation_id, user_id) VALUES (?,?)", (conv, ids[un]))
+    last = None
+    for k, (un, text, kind) in enumerate([
+        ("anna", "Анна Смирнова создал(а) беседу «Поход на Алтай 2027»", "system"),
+        ("anna", "Всем привет! Предлагаю следующим летом повторить Алтай, но уже вчетвером 🏔", "text"),
+        ("dmitry", "Я за! Только давайте в июле, в июне у меня марафон", "text"),
+        ("tatiana", "Июль идеально. Беру на себя палатки ⛺", "text"),
+        ("boris", "Тогда я — маршрут и газовые горелки 🔥", "text"),
+    ]):
+        last = db.run("INSERT INTO messages (conversation_id, sender_id, text, kind, created_at) VALUES (?,?,?,?,?)",
+                      (conv, ids[un], text, kind, ts(3 - k * 0.5))).lastrowid
+    db.run("UPDATE conversation_members SET last_read_id=? WHERE conversation_id=? AND user_id != ?", (last, conv, ids["anna"]))
+    db.run("UPDATE conversation_members SET last_read_id=? WHERE conversation_id=? AND user_id = ?", (last - 1, conv, ids["anna"]))
+
+    # Мероприятия
+    def event(creator, title, desc, place, days, hour, vis="public", cid=None, cover=None, going=(), invited=()):
+        start = (NOW + timedelta(days=days)).replace(hour=hour - 3, minute=0, second=0, microsecond=0)  # hour — по Москве
+        cov = image(*cover, preset="event")["path"] if cover else None
+        eid = db.run("""INSERT INTO events (creator_id, community_id, title, description, place, starts_at, ends_at, cover, visibility)
+                        VALUES (?,?,?,?,?,?,?,?,?)""",
+                     (ids[creator], cid, title, desc, place, start.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                      (start + timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M:%S.000Z"), cov, vis)).lastrowid
+        db.run("INSERT INTO event_members (event_id, user_id, status) VALUES (?,?, 'going')", (eid, ids[creator]))
+        for un in going:
+            db.run("INSERT INTO event_members (event_id, user_id, status) VALUES (?,?, 'going')", (eid, ids[un]))
+        for un in invited:
+            db.run("INSERT INTO event_members (event_id, user_id, status, invited_by) VALUES (?,?, 'invited', ?)", (eid, ids[un], ids[creator]))
+            db.run("INSERT INTO notifications (user_id, actor_id, type, extra, created_at) VALUES (?,?, 'event_invite', ?, ?)",
+                   (ids[un], ids[creator], f'{{"event_id": {eid}, "title": "{title}"}}', ts(1.5)))
+        return eid
+
+    event("sergey", "Фотопрогулка по Старо-Татарской слободе", "Неспешная прогулка с камерами: покажу лучшие ракурсы и расскажу, как снимать на закате. Подходит для любых фотоаппаратов и телефонов.",
+          "Казань, ул. Каюма Насыйри, 17", 3, 17, cid=kazan, cover=("city", 90), going=("boris", "tatiana"), invited=("anna",))
+    event("maria", "Книжный клуб: «Лето Господне»", "Обсуждаем книгу октября. Чай и пироги — с меня!", "Москва, кафе «Чеховъ»", 5, 19,
+          vis="friends", cid=books, going=("olga", "alexey"))
+    event("anna", "Встреча выпускников — 15 лет!", "Собираемся всем выпуском. Место уточним в беседе.", "Казань, ресторан «Дом татарской кулинарии»",
+          70, 18, vis="invited", cover=("landscape", 91), going=("boris",), invited=("sergey",))
+
+    # Круги Анны
+    close = db.run("INSERT INTO circles (owner_id, name) VALUES (?, 'Близкие друзья')", (ids["anna"],)).lastrowid
+    for un in ("boris", "maria"):
+        db.run("INSERT INTO circle_members VALUES (?,?)", (close, ids[un]))
+    fam = db.run("INSERT INTO circles (owner_id, name) VALUES (?, 'Походная компания')", (ids["anna"],)).lastrowid
+    for un in ("boris", "dmitry", "tatiana"):
+        db.run("INSERT INTO circle_members VALUES (?,?)", (fam, ids[un]))
+    db.run("INSERT INTO posts (author_id, text, visibility, circle_id, created_at) VALUES (?,?, 'friends', ?, ?)",
+           (ids["anna"], "Только для своих: нашла потрясающий маршрут на Шавлинские озёра, скину в беседу 🤫", fam, ts(0.8)))
+
+    # Гости
+    for un, hours in (("elena", 0.3), ("pavel", 2), ("igor", 26), ("natasha", 50)):
+        db.run("INSERT INTO profile_visits (visited_id, visitor_id, visited_at) VALUES (?,?,?)", (ids["anna"], ids[un], ts(hours)))
+    db.run("UPDATE profiles SET guests_seen_at=? WHERE user_id=?", (ts(10), ids["anna"]))
+
+
 def reset():
     if config.DB_PATH.exists():
         for suffix in ("", "-wal", "-shm"):
@@ -226,7 +352,7 @@ def reset():
     config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def image(kind: str, seed: int, preset: str = "post") -> dict:
+def image(kind: str, seed: int, preset: str = "post") -> dict:  # noqa: D401
     data = {"landscape": landscape, "food": food, "city": city}[kind](seed)
     return _process(data, preset)
 
@@ -329,6 +455,7 @@ def main():
         if a != "tatiana":
             db.run("UPDATE conversation_members SET last_read_id=? WHERE conversation_id=? AND user_id=?", (last, conv, ids[b]))
 
+    seed_stage2(ids)
     print(f"Готово: {len(USERS)} пользователей, {db.value('SELECT count(*) FROM posts')} записей.")
     print("Вход: anna@example.com / demo12345 (или любой другой логин из списка: boris, maria, dmitry …)")
 

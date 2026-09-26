@@ -3,6 +3,17 @@
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+// Встроенные append/prepend/replaceChildren превращают null в текст «null».
+// Пропускаем пустые значения, чтобы условная разметка (cond ? node : null) работала везде.
+for (const proto of [Element.prototype, DocumentFragment.prototype]) {
+  for (const method of ["append", "prepend", "replaceChildren"]) {
+    const original = proto[method];
+    proto[method] = function (...nodes) {
+      return original.apply(this, nodes.flat().filter((n) => n != null && n !== false));
+    };
+  }
+}
+
 /** h("div.card.pad", {onclick}, child1, [child2, child3], "текст") */
 export function h(tag, props, ...children) {
   if (props == null || typeof props !== "object" || props instanceof Node || Array.isArray(props)) {
@@ -89,6 +100,8 @@ const ICONS = {
   chevronRight: '<polyline points="9 18 15 12 9 6"/>',
   heartRel: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.2l7.8-7.7 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>',
   at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.9 7.9"/>',
+  community: '<circle cx="12" cy="8" r="3.2"/><circle cx="5" cy="15" r="2.6"/><circle cx="19" cy="15" r="2.6"/><path d="M8.5 21a3.5 3.5 0 0 1 7 0"/><path d="M1.5 21.5a3 3 0 0 1 4.5-2.3"/><path d="M22.5 21.5a3 3 0 0 0-4.5-2.3"/>',
+  menu: '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>',
   shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
 };
 

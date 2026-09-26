@@ -27,7 +27,37 @@ def connect(path: Path | str | None = None) -> sqlite3.Connection:
     _conn.execute("PRAGMA busy_timeout = 5000")
     schema = (Path(__file__).parent / "schema.sql").read_text(encoding="utf-8")
     _conn.executescript(schema)
+    _migrate(_conn)
     return _conn
+
+
+# Новые столбцы для баз, созданных до Этапа 2: (таблица, столбец, определение)
+MIGRATIONS = [
+    ("posts", "community_id", "INTEGER REFERENCES communities(id) ON DELETE CASCADE"),
+    ("posts", "as_community", "INTEGER NOT NULL DEFAULT 0"),
+    ("posts", "circle_id", "INTEGER REFERENCES circles(id) ON DELETE SET NULL"),
+    ("profiles", "school", "TEXT NOT NULL DEFAULT ''"),
+    ("profiles", "school_year", "INTEGER"),
+    ("profiles", "university", "TEXT NOT NULL DEFAULT ''"),
+    ("profiles", "university_year", "INTEGER"),
+    ("profiles", "invisible", "INTEGER NOT NULL DEFAULT 0"),
+    ("profiles", "guests_seen_at", "TEXT"),
+    ("conversations", "title", "TEXT"),
+    ("conversations", "created_by", "INTEGER REFERENCES users(id) ON DELETE SET NULL"),
+    ("messages", "kind", "TEXT NOT NULL DEFAULT 'text'"),
+]
+POST_MIGRATION_SQL = """
+CREATE INDEX IF NOT EXISTS idx_posts_community ON posts(community_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_school ON profiles(school_year);
+"""
+
+
+def _migrate(c: sqlite3.Connection) -> None:
+    for table, column, ddl in MIGRATIONS:
+        cols = {r["name"] for r in c.execute(f"PRAGMA table_info({table})").fetchall()}
+        if column not in cols:
+            c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
+    c.executescript(POST_MIGRATION_SQL)
 
 
 def conn() -> sqlite3.Connection:

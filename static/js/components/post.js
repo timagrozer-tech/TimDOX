@@ -33,15 +33,25 @@ export function gallery(media, { compact = false } = {}) {
 }
 
 // ---------------------------------------------------------------- Шапка
+export function communityAvatar(c, size = "") {
+  return h(`span.avatar.comm-avatar${size ? "." + size : ""}`, c.avatar ? h("img", { src: c.avatar.replace(/\.webp$/, "_t.webp"), alt: "" }) : c.name[0]);
+}
+
 function head(post, menuBtn) {
   const v = VISIBILITY[post.visibility];
+  const c = post.community;
+  const asComm = c && post.as_community;
   return h("div.post-head",
-    h("a", { href: `/u/${post.author.username}`, "aria-label": post.author.name }, avatar(post.author)),
+    asComm ? h("a", { href: `/c/${c.slug}`, "aria-label": c.name }, communityAvatar(c))
+      : h("a", { href: `/u/${post.author.username}`, "aria-label": post.author.name }, avatar(post.author)),
     h("div.who",
-      h("a.name", { href: `/u/${post.author.username}` }, post.author.name),
+      asComm ? h("a.name", { href: `/c/${c.slug}` }, c.name)
+        : h("div", h("a.name", { href: `/u/${post.author.username}` }, post.author.name),
+          c ? h("span.muted", { style: { fontSize: "14px" } }, " в ", h("a", { href: `/c/${c.slug}` }, c.name)) : null),
       h("div.meta",
         h("a", { href: `/post/${post.id}`, title: fullDate(post.created_at) }, h("time", { datetime: post.created_at }, timeAgo(post.created_at))),
-        v && post.visibility !== "public" ? h("span", { title: v.hint, class: "row", style: { gap: "4px" } }, "·", icon(v.icon, "sm")) : null,
+        post.circle ? h("span", { title: `Видит круг «${post.circle}»`, class: "row", style: { gap: "4px" } }, "·", icon("users", "sm"), post.circle)
+          : v && post.visibility !== "public" && !c ? h("span", { title: v.hint, class: "row", style: { gap: "4px" } }, "·", icon(v.icon, "sm")) : null,
         post.edited_at ? h("span.post-edited", "· изменено") : null)),
     menuBtn);
 }
@@ -66,7 +76,9 @@ function quoteCard(q) {
   if (q.unavailable) return h("div.quote-card.unavailable", icon("lock", "sm"), " Запись недоступна или удалена");
   if (q.nested) return h("a.quote-card.unavailable", { href: `/post/${q.id}` }, "Цитата другой записи →");
   return h("a.quote-card", { href: `/post/${q.id}` },
-    h("div.row", avatar(q.author, "xs", { presence: false }), h("b", q.author.name), h("span.muted", `· ${timeAgo(q.created_at)}`)),
+    q.community && q.as_community
+      ? h("div.row", communityAvatar(q.community, "xs"), h("b", q.community.name), h("span.muted", `· ${timeAgo(q.created_at)}`))
+      : h("div.row", avatar(q.author, "xs", { presence: false }), h("b", q.author.name), h("span.muted", `· ${timeAgo(q.created_at)}`)),
     q.text ? richText(q.text.length > 400 ? q.text.slice(0, 400) + "…" : q.text, "post-text") : null,
     gallery(q.media, { compact: true }));
 }
@@ -160,7 +172,7 @@ export function postCard(input, opts = {}) {
     const commentBtn = h("button.action", { type: "button", onclick: () => toggleComments(p) }, icon("comment"), h("span", "Комментарий"));
     const repostBtn = h(`button.action${p.reposted ? ".reposted" : ""}`, { type: "button", "aria-haspopup": "menu" }, icon("repeat"), h("span", "Репост"));
     repostBtn.addEventListener("click", () => {
-      if (p.visibility !== "public") return toast("Поделиться можно только публичной записью");
+      if (p.visibility !== "public" || p.community?.is_private) return toast("Поделиться можно только публичной записью");
       showMenu(repostBtn, [
         p.author.id === state.me.id ? null : p.reposted
           ? { label: "Отменить репост", icon: "x", onClick: () => doRepost(p, false) }
@@ -207,12 +219,17 @@ export function postCard(input, opts = {}) {
 
   async function openPostMenu(btn, p) {
     const mine = p.author.id === state.me.id;
+    const mod = p.can_moderate;
     showMenu(btn, [
+      mod ? { label: "Закрепить в сообществе", icon: "pin", onClick: async () => {
+        try { await api.patch(`/api/communities/${p.community.slug}`, { pinned_post_id: p.id }); toast("Запись закреплена", { icon: "pin" }); opts.onPin?.(p); } catch (e) { toastError(e); }
+      } } : null,
       { label: "Открыть запись", icon: "chevronRight", onClick: () => navigate(`/post/${p.id}`) },
       { label: "Скопировать ссылку", icon: "link", onClick: () => copyLink(p) },
       mine ? "-" : null,
       mine ? { label: "Редактировать", icon: "edit", onClick: () => editPost(p) } : null,
       mine ? { label: "Удалить", icon: "trash", danger: true, onClick: () => deletePost(p) } : null,
+      !mine && mod ? { label: "Удалить (модерация)", icon: "trash", danger: true, onClick: () => deletePost(p) } : null,
       !mine ? { label: "Пожаловаться", icon: "flag", danger: true, onClick: () => report("post", p.id) } : null,
     ]);
   }

@@ -41,11 +41,11 @@ async def search(request: Request):
     v = request.state.user["id"]
     q = (request.query_params.get("q") or "").strip()[:100]
     kind = request.query_params.get("type", "all")
-    if kind not in ("all", "people", "posts", "tags"):
+    if kind not in ("all", "people", "posts", "tags", "communities"):
         raise ApiError(400, "Неизвестный тип поиска")
     if not q:
-        return JSONResponse({"people": [], "posts": [], "tags": []})
-    result = {"people": [], "posts": [], "tags": []}
+        return JSONResponse({"people": [], "posts": [], "tags": [], "communities": []})
+    result = {"people": [], "posts": [], "tags": [], "communities": []}
     term = q.lstrip("@#")
     like = _like(term.lower())
     params = {"v": v, "like": like, "exact": term.lower()}
@@ -72,6 +72,13 @@ async def search(request: Request):
             SELECT h.tag, count(ph.post_id) AS n FROM hashtags h LEFT JOIN post_hashtags ph ON ph.hashtag_id = h.id
             WHERE h.tag LIKE :like ESCAPE '\\' GROUP BY h.id ORDER BY (h.tag = :exact) DESC, n DESC
             LIMIT 10""", params)
+
+    if kind in ("all", "communities") and term:
+        rows = db.all(f"""SELECT c.*, (SELECT count(*) FROM community_members m WHERE m.community_id = c.id AND m.status='member') AS n
+                          FROM communities c WHERE ulower(c.name) LIKE :like ESCAPE '\\' OR ulower(c.description) LIKE :like ESCAPE '\\'
+                          OR c.slug LIKE :like ESCAPE '\\' ORDER BY n DESC LIMIT {20 if kind == 'communities' else 5}""", params)
+        result["communities"] = [{"id": r["id"], "slug": r["slug"], "name": r["name"], "avatar": r["avatar"],
+                                  "is_private": bool(r["is_private"]), "members_count": r["n"]} for r in rows]
 
     if kind in ("all", "posts") and term:
         rows = db.all(f"""

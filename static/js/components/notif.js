@@ -14,11 +14,18 @@ export function notifText(n) {
     case "follow": return "подписался(-ась) на ваши обновления";
     case "repost": return "поделился(-ась) вашей записью";
     case "quote": return "процитировал(а) вашу запись";
+    case "community_request": return `хочет вступить в сообщество «${n.extra?.name || ""}»`;
+    case "community_approved": return `одобрил(а) вашу заявку в сообщество «${n.extra?.name || ""}»`;
+    case "event_invite": return `приглашает вас на мероприятие «${n.extra?.title || ""}»`;
+    case "event_going": return `пойдёт на ваше мероприятие «${n.extra?.title || ""}»`;
     default: return "новое событие";
   }
 }
 
 export function notifLink(n) {
+  if (n.type === "community_request") return `/c/${n.extra?.slug}?tab=members`;
+  if (n.type === "community_approved") return `/c/${n.extra?.slug}`;
+  if (n.type.startsWith("event_")) return `/events/${n.extra?.event_id}`;
   if (n.post_id) return `/post/${n.post_id}${n.comment_id ? "?comments=1" : ""}`;
   if (n.type === "friend_request") return "/friends?tab=requests";
   return `/u/${n.actor.username}`;
@@ -31,6 +38,8 @@ export function notifBadge(n) {
     comment: ["comment", ""], reply: ["comment", ""], mention: ["at", ""],
     friend_request: ["userPlus", "orange"], friend_accept: ["userCheck", "green"],
     follow: ["user", ""], repost: ["repeat", "green"], quote: ["quote", ""],
+    community_request: ["users", "orange"], community_approved: ["users", "green"],
+    event_invite: ["calendar", "orange"], event_going: ["calendar", "green"],
   };
   const [ic, color] = map[n.type] || ["bell", ""];
   return h(`span.n-type${color ? "." + color : ""}`, icon(ic));

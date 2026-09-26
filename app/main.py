@@ -1,4 +1,5 @@
 """Точка входа приложения «Круг»."""
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -10,7 +11,7 @@ from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from . import config, db
-from .api import auth_routes, messages, misc, posts, users
+from .api import auth_routes, communities, events, messages, misc, people_extra, posts, stories, users
 from .security import load_extra_banned
 from .web import ApiError, load_session
 
@@ -98,17 +99,34 @@ async def health(request: Request):
     return JSONResponse({"status": "ok"})
 
 
+async def housekeeping():
+    """Раз в 10 минут удаляет истёкшие истории и старые сессии."""
+    while True:
+        try:
+            removed = stories.cleanup_expired()
+            db.run("DELETE FROM sessions WHERE expires_at < ?", (db.now(),))
+            db.run("DELETE FROM profile_visits WHERE visited_at < ?", (db.future(days=-90),))
+            if removed:
+                log.info("Удалено истёкших историй: %s", removed)
+        except Exception:
+            log.exception("Ошибка фоновой очистки")
+        await asyncio.sleep(600)
+
+
 @asynccontextmanager
 async def lifespan(app):
     db.connect()
     load_extra_banned(config.DATA_DIR / "banned_words.txt")
+    task = asyncio.create_task(housekeeping())
     log.info("«%s» запущен: %s", config.APP_NAME, config.APP_URL)
     yield
+    task.cancel()
 
 
 routes = [
     Route("/api/health", health),
     *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
+    *stories.routes, *communities.routes, *events.routes, *people_extra.routes,
     Mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static"),
     Mount("/uploads", StaticFiles(directory=config.UPLOAD_DIR, check_dir=False), name="uploads"),
     Route("/{path:path}", spa, methods=["GET"]),

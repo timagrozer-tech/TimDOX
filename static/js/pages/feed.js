@@ -5,6 +5,7 @@ import { infiniteList, setTitle, toast, toastError } from "../ui.js";
 import { setCleanup, navigate } from "../router.js";
 import { composer } from "../components/composer.js";
 import { postCard } from "../components/post.js";
+import { storiesBar } from "../components/stories.js";
 
 export function verifyBanner() {
   if (!state.me || state.me.email_verified) return null;
@@ -58,7 +59,7 @@ export async function feedPage({ path, query }) {
       h("a.btn.soft", { href: "/friends?tab=suggestions" }, icon("userPlus", "sm"), "Найти друзей"),
       h("button.btn.ghost", { type: "button", onclick: (e) => { e.target.closest(".card").remove(); history.replaceState({}, "", "/"); } }, "Позже"))) : null;
 
-  return h("div.stack", verifyBanner(), welcome, tabs, list.el);
+  return h("div.stack", verifyBanner(), welcome, storiesBar(), tabs, list.el);
 }
 
 export { navigate };
