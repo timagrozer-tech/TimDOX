@@ -90,10 +90,16 @@ def process() -> None:
     results = []
     for i, line in enumerate(req.get("lines", [])):
         engine = "edge"
-        try:
-            audio = _edge(line, req.get("voice", "ru-RU-DmitryNeural"), req.get("rate", "+6%"), req.get("pitch", "+0Hz"))
-        except Exception as e:
-            log.warning("TTS edge: %s", e)
+        audio, err = None, None
+        for _attempt in range(3):
+            try:
+                audio = _edge(line, req.get("voice", "ru-RU-DmitryNeural"), req.get("rate", "+6%"), req.get("pitch", "+0Hz"))
+                break
+            except Exception as e:
+                err = e
+                time.sleep(2)
+        if audio is None:
+            log.warning("TTS edge: %s", err)
             engine = "google"
             try:
                 audio = _google(line)

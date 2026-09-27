@@ -98,8 +98,9 @@ def calendar() -> None:
 
 def tick() -> None:
     try:
-        from . import tts
+        from . import trailer, tts
         tts.process()
+        trailer.process()
     except Exception:
         log.exception("Озвучка")
     publish_due()
