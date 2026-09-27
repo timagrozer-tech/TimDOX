@@ -60,7 +60,8 @@ def _post(p: dict, messages: list, max_tokens: int, want_json: bool) -> tuple[st
         payload["reasoning_effort"] = "low"  # меньше скрытых «размышлений» — меньше токенов
     if want_json and p["json"]:
         payload["response_format"] = {"type": "json_object"}
-    headers = {"content-type": "application/json"}
+    # без своего User-Agent Cloudflare перед API отвечает 403 на запросы Python
+    headers = {"content-type": "application/json", "user-agent": "KrugWorld/1.0 (+https://krug-social.onrender.com)", "accept": "application/json"}
     if p["key"]:
         headers["authorization"] = f"Bearer {p['key']}"
     if p["name"] == "openrouter":
@@ -82,8 +83,11 @@ def complete(system: str, user: str, max_tokens: int = 1500, want_json: bool = F
     for p in providers():
         try:
             text, used = _post(p, messages, max_tokens, want_json)
+        except urllib.error.HTTPError as e:
+            log.warning("LLM %s недоступен: %s %s", p["name"], e.code, e.read()[:200])
+            continue
         except (urllib.error.URLError, TimeoutError, KeyError, ValueError, OSError) as e:
-            log.warning("LLM %s недоступен: %s", p["name"], getattr(e, "code", e))
+            log.warning("LLM %s недоступен: %s", p["name"], e)
             continue
         _set_state(f"tokens:{db.now()[:10]}", str(used_today() + used))
         _set_state("llm:last", f"{p['name']} {db.now()}")
