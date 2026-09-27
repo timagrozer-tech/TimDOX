@@ -14,10 +14,14 @@ from ..web import ApiError, auth, body, limit, ok
 MAX_LIKES = 2000
 
 
-async def _call(fn, *args, default=None):
-    """Запрос к внешнему источнику в отдельном потоке; при недоступности — default или 503."""
+async def _call(fn, *args, default=None, wait: float | None = None):
+    """Запрос к внешнему источнику в отдельном потоке; при недоступности — default или 503.
+    wait — сколько ждать ответа: если источник медлит, отдаём default, а данные досчитаются в фоне и попадут в кэш."""
     try:
-        return await run_in_threadpool(fn, *args)
+        job = run_in_threadpool(fn, *args)
+        return await (asyncio.wait_for(asyncio.shield(asyncio.ensure_future(job)), wait) if wait else job)
+    except asyncio.TimeoutError:
+        return default if default is not None else []
     except music.Unavailable:
         if default is not None:
             return default
@@ -75,12 +79,12 @@ def _friends_listen(v: int, limit_n: int = 12) -> list[dict]:
 async def home(request: Request):
     v = request.state.user["id"]
     trending, fresh, lists, chart, albums, stations = await asyncio.gather(
-        _call(music.trending, "", "week", 12, default=[]),
-        _call(music.underground, 14, default=[]),
-        _call(music.playlists, 10, default=[]),
-        _call(music.ru_chart, 100, default=[]),
-        _call(music.ru_albums, 16, default=[]),
-        _call(music.radio, "", 12, default=[]))
+        _call(music.trending, "", "week", 12, default=[], wait=7),
+        _call(music.underground, 14, default=[], wait=7),
+        _call(music.playlists, 10, default=[], wait=7),
+        _call(music.ru_chart, 100, default=[], wait=9),
+        _call(music.ru_albums, 16, default=[], wait=6),
+        _call(music.radio, "", 12, default=[], wait=6))
     artists = await _call(music.ru_artists, 16, default=[]) if chart else []
     return JSONResponse({
         "ru": {"chart": chart, "artists": artists, "albums": albums, "radio": stations, "legends": music.LEGENDS},
