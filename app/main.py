@@ -16,6 +16,7 @@ from starlette.staticfiles import StaticFiles
 from . import collection, config, db, media
 from .api import admin, auth_routes, collection_routes, reels, stickers, communities, events, messages, misc, people_extra, posts, stories, users
 from .security import load_extra_banned
+from .world import api as world_api, engine as world_engine
 from .web import ApiError, load_session
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -90,10 +91,15 @@ class SecurityMiddleware:
         # после действий пользователя проверяем, не заработал ли он новый коллекционный предмет
         user = getattr(request.state, "user", None) if path.startswith("/api/") else None
         if user and (scope["method"] not in SAFE_METHODS or path == "/api/auth/me"):
+            new_items = []
             try:
-                collection.check(user["id"])
+                new_items = collection.check(user["id"])
             except Exception:  # награды не должны ломать основной запрос
                 log.exception("Не удалось проверить коллекцию")
+            try:
+                world_engine.on_request(user["id"], scope["method"], path, new_items)
+            except Exception:
+                log.exception("Мир Круга: ошибка отклика")
 
     @staticmethod
     async def _reject(scope, receive, send, message, status=403):
@@ -218,16 +224,19 @@ async def lifespan(app):
     from .starter_stickers import ensure_starter_pack
     await asyncio.to_thread(ensure_starter_pack)
     task = asyncio.create_task(housekeeping())
+    world_task = asyncio.create_task(world_engine.loop()) if world_engine.ENABLED else None
     log.info("«%s» запущен: %s", config.APP_NAME, config.APP_URL)
     yield
     task.cancel()
+    if world_task:
+        world_task.cancel()
 
 
 routes = [
     Route("/api/health", health),
     Route("/sw.js", service_worker),
     Route("/manifest.webmanifest", manifest),
-    *admin.routes, *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
+    *admin.routes, *world_api.routes, *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
     *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *collection_routes.routes, *reels.routes, *stickers.routes,
     Mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static"),
     Route("/uploads/{path:path}", uploads, methods=["GET", "HEAD"]),

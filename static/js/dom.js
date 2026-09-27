@@ -123,6 +123,7 @@ const ICONS = {
   at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.9 7.9"/>',
   community: '<circle cx="12" cy="8" r="3.2"/><circle cx="5" cy="15" r="2.6"/><circle cx="19" cy="15" r="2.6"/><path d="M8.5 21a3.5 3.5 0 0 1 7 0"/><path d="M1.5 21.5a3 3 0 0 1 4.5-2.3"/><path d="M22.5 21.5a3 3 0 0 0-4.5-2.3"/>',
   menu: '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>',
+  world: '<circle cx="12" cy="12" r="6.5"/><ellipse cx="12" cy="12" rx="11" ry="3.6" transform="rotate(-18 12 12)"/><circle cx="18.5" cy="6.5" r="1" fill="currentColor"/>',
   shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
   monitor: '<rect x="2.5" y="3.5" width="19" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="16.5" x2="12" y2="21"/>',
   smartphone: '<rect x="6" y="2" width="12" height="20" rx="3"/><line x1="11" y1="18" x2="13" y2="18"/>',
@@ -156,9 +157,13 @@ export function thumb(url) { return url ? url.replace(/\.webp$/, "_t.webp") : ur
 
 /** Синяя галочка «Официальный аккаунт» рядом с именем */
 export function vmark(u) {
-  if (!u?.verified) return null;
-  const t = u.badge ? `Официальный аккаунт · ${u.badge}` : "Официальный аккаунт";
-  return h("span.vbadge", { title: t, role: "img", "aria-label": t });
+  const out = [];
+  if (u?.verified) {
+    const t = u.badge ? `Официальный аккаунт · ${u.badge}` : "Официальный аккаунт";
+    out.push(h("span.vbadge", { title: t, role: "img", "aria-label": t }));
+  }
+  if (u?.ai) out.push(h("span.ai-chip", { title: "Персонаж Мира Круга — искусственный интеллект" }, "ИИ"));
+  return out.length ? out : null;
 }
 
 export function avatar(user, size = "", opts = {}) {

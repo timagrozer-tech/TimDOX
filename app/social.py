@@ -96,6 +96,23 @@ def invisible_ids() -> set[int]:
     return _invisible
 
 
+_ai: set[int] = set()
+_ai_at = 0.0
+
+
+def ai_ids() -> set[int]:
+    """Персонажи Мира Круга — у них в карточке отметка «ИИ»."""
+    global _ai, _ai_at
+    import time
+    if time.monotonic() - _ai_at > 300:
+        try:
+            _ai = {r["user_id"] for r in db.all("SELECT user_id FROM ai_personas")}
+        except Exception:
+            _ai = set()
+        _ai_at = time.monotonic()
+    return _ai
+
+
 def user_card(row: dict) -> dict:
     uid = row["id"] if "id" in row else row["user_id"]
     vmap = verified_map()
@@ -108,6 +125,7 @@ def user_card(row: dict) -> dict:
         "frame": _frame_of(row.get("equipped")),
         "status": status_of(row),
         "verified": uid in vmap,
+        "ai": uid in ai_ids(),
         "badge": vmap.get(uid) or None,
     }
 

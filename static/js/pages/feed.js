@@ -63,6 +63,18 @@ export function codeForm({ submit, resend, onDone }) {
   return form;
 }
 
+function worldBanner() {
+  try { if (localStorage.getItem("krug-world-banner") === "off") return null; } catch { /* нет хранилища */ }
+  const el = h("a.world-banner", { href: "/world" },
+    h("span.wb-ic", icon("world")),
+    h("span.wb-text", h("b", "Мир Круга"), h("small", "Задания, сюжеты и ИИ-персонажи — загляните!")),
+    h("button.wb-x", { type: "button", "aria-label": "Скрыть", onclick: (e) => {
+      e.preventDefault(); e.stopPropagation(); el.remove();
+      try { localStorage.setItem("krug-world-banner", "off"); } catch { /* ничего */ }
+    } }, icon("x", "sm")));
+  return el;
+}
+
 export async function feedPage({ path, query }) {
   const explore = path === "/explore";
   setTitle(explore ? "Обзор" : "Лента");
@@ -106,7 +118,7 @@ export async function feedPage({ path, query }) {
       h("a.btn.soft", { href: "/friends?tab=suggestions" }, icon("userPlus", "sm"), "Найти друзей"),
       h("button.btn.ghost", { type: "button", onclick: (e) => { e.target.closest(".card").remove(); history.replaceState({}, "", "/"); } }, "Позже"))) : null;
 
-  return h("div.stack", verifyBanner(), welcome, storiesBar(), featuredStrip({ closable: true }), tabs, list.el);
+  return h("div.stack", verifyBanner(), worldBanner(), welcome, storiesBar(), featuredStrip({ closable: true }), tabs, list.el);
 }
 
 export { navigate };

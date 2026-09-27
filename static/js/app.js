@@ -63,6 +63,7 @@ import { communitiesPage, communityPage } from "./pages/communities.js";
 import { eventsPage, eventPage } from "./pages/events.js";
 import { guestsPage } from "./pages/guests.js";
 import { adminPage } from "./pages/admin.js";
+import { worldPage } from "./pages/world.js";
 
 // public: доступна без входа; guestOnly: только для гостей
 route("/login", authPages.loginPage, { public: true, guestOnly: true });
@@ -90,6 +91,7 @@ route("/events", eventsPage);
 route("/events/:id", eventPage);
 route("/guests", guestsPage);
 route("/admin", adminPage);
+route("/world", worldPage);
 route("/collection", collectionPage);
 route("/reels", reelsPage);
 route("/reels/:id", reelsPage);

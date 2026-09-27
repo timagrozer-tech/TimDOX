@@ -452,3 +452,91 @@ CREATE INDEX IF NOT EXISTS idx_posts_circle ON posts(circle_id);
 ALTER TABLE reports DROP CONSTRAINT IF EXISTS reports_target_type_check;
 ALTER TABLE reports ADD CONSTRAINT reports_target_type_check CHECK (target_type IN ('post','comment','user','reel','reel_comment','message','story','community'));
 CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(status, target_type, target_id);
+
+-- ============================================================================
+-- Мир Круга: ИИ-организации, персонажи, очередь контента, задания, репутация, память, сюжеты
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS ai_orgs (
+    id           BIGSERIAL PRIMARY KEY,
+    slug         TEXT NOT NULL UNIQUE,
+    name         TEXT NOT NULL,
+    motto        TEXT NOT NULL DEFAULT '',
+    color        TEXT NOT NULL DEFAULT '#7c5cff',
+    emoji        TEXT NOT NULL DEFAULT '✦',
+    community_id BIGINT REFERENCES communities(id) ON DELETE SET NULL,
+    influence    INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS ai_personas (
+    user_id        BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    slug           TEXT NOT NULL UNIQUE,
+    org_id         BIGINT REFERENCES ai_orgs(id) ON DELETE SET NULL,
+    role           TEXT NOT NULL DEFAULT '',
+    specialty      TEXT NOT NULL DEFAULT '',
+    state          TEXT NOT NULL DEFAULT 'rest',
+    energy         INTEGER NOT NULL DEFAULT 3,
+    reputation     INTEGER NOT NULL DEFAULT 0,
+    next_action_at TEXT
+);
+CREATE TABLE IF NOT EXISTS ai_queue (
+    id         BIGSERIAL PRIMARY KEY,
+    persona_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL,
+    payload    TEXT NOT NULL DEFAULT '{}',
+    run_at     TEXT NOT NULL,
+    status     TEXT NOT NULL DEFAULT 'pending',
+    source     TEXT NOT NULL DEFAULT 'template',
+    created_at TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE INDEX IF NOT EXISTS idx_ai_queue_due ON ai_queue(status, run_at);
+CREATE TABLE IF NOT EXISTS ai_quests (
+    id          BIGSERIAL PRIMARY KEY,
+    code        TEXT NOT NULL UNIQUE,
+    org_id      BIGINT REFERENCES ai_orgs(id) ON DELETE CASCADE,
+    persona_id  BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    title       TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    rule        TEXT NOT NULL DEFAULT '{}',
+    reward      INTEGER NOT NULL DEFAULT 10,
+    secret      INTEGER NOT NULL DEFAULT 0,
+    starts_at   TEXT NOT NULL,
+    ends_at     TEXT
+);
+CREATE TABLE IF NOT EXISTS ai_quest_progress (
+    user_id      BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    quest_id     BIGINT NOT NULL REFERENCES ai_quests(id) ON DELETE CASCADE,
+    status       TEXT NOT NULL DEFAULT 'open',
+    progress     INTEGER NOT NULL DEFAULT 0,
+    completed_at TEXT,
+    PRIMARY KEY (user_id, quest_id)
+);
+CREATE TABLE IF NOT EXISTS ai_rep (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    org_id  BIGINT NOT NULL REFERENCES ai_orgs(id) ON DELETE CASCADE,
+    points  INTEGER NOT NULL DEFAULT 0,
+    week_points INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, org_id)
+);
+CREATE TABLE IF NOT EXISTS ai_memory (
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    persona_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    closeness  INTEGER NOT NULL DEFAULT 0,
+    facts      TEXT NOT NULL DEFAULT '[]',
+    chats_day  TEXT NOT NULL DEFAULT '',
+    last_at    TEXT,
+    PRIMARY KEY (user_id, persona_id)
+);
+CREATE TABLE IF NOT EXISTS ai_arcs (
+    id       BIGSERIAL PRIMARY KEY,
+    code     TEXT NOT NULL UNIQUE,
+    org_id   BIGINT REFERENCES ai_orgs(id) ON DELETE CASCADE,
+    title    TEXT NOT NULL,
+    stage    TEXT NOT NULL DEFAULT 'start',
+    post_id  BIGINT REFERENCES posts(id) ON DELETE SET NULL,
+    status   TEXT NOT NULL DEFAULT 'active',
+    history  TEXT NOT NULL DEFAULT '[]',
+    next_at  TEXT
+);
+CREATE TABLE IF NOT EXISTS ai_state (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL DEFAULT ''
+);

@@ -97,6 +97,7 @@ export async function profilePage({ params, query }) {
             !isMe && rel.follows_you && rel.status !== "friends" ? h("span.status-pill", "подписан(а) на вас") : null),
           h("div.handle", `@${u.username}`, u.badge ? h("span.official-chip", u.badge) : null),
           statusChip()),
+        u.ai ? personaBox() : null,
         data.bio && !data.hidden ? h("p.profile-bio", data.bio) : null,
         info.length > 3 ? h("div.profile-info.collapsible", ...info,
           h("button.info-more", { type: "button", onclick: (ev) => { ev.currentTarget.parentElement.classList.add("open"); ev.currentTarget.remove(); } }, "Подробнее…"))
@@ -108,6 +109,18 @@ export async function profilePage({ params, query }) {
           stat(data.counts.followers, ["подписчик", "подписчика", "подписчиков"], () => showFollows("followers")),
           stat(data.counts.following, ["подписка", "подписки", "подписок"], () => showFollows("following"))),
         !isMe && data.mutual_friends ? h("div.mutual-line", icon("users", "sm"), pl(data.mutual_friends, ["общий друг", "общих друга", "общих друзей"])) : null));
+  }
+
+  function personaBox() {
+    const box = h("div.persona-box");
+    api.get(`/api/world/persona/${encodeURIComponent(u.username)}`).then((p) => {
+      box.style.setProperty("--oc", p.org.color);
+      box.replaceChildren(
+        h("a.pb-org", { href: "/world" }, h("span", p.org.emoji), h("b", p.org.name), h("small", p.role)),
+        !isMe ? h("div.pb-rel", h("span", `Ваше звание: `, h("b", p.title), ` (${p.rep})`), p.closeness ? h("span", `💜 близость ${p.closeness}`) : null) : null,
+        p.facts?.length ? h("div.pb-facts", h("small", "Помнит о вас: "), p.facts.join(" · ")) : null);
+    }).catch(() => box.remove());
+    return box;
   }
 
   function stat(n, forms, onClick) {
