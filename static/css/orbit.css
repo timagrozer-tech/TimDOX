@@ -1281,3 +1281,10 @@ body.on-search .aside-search { display: none; }
 .install-steps ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
 .install-steps p { margin: 0; }
 @media (min-width: 720px) and (max-width: 1099px) { .install-side { display: none; } }
+/* Точка «в сети»: на большой аватарке профиля не рисуем (рядом с именем есть «в сети»),
+   на маленьких — аккуратно на краю, а не на лице */
+.avatar.xl[data-online="true"]::after, .profile-top .avatar[data-online="true"]::after { display: none; }
+.avatar[data-online="true"]::after { right: -1px; bottom: -1px; width: 24%; height: 24%; min-width: 9px; min-height: 9px; max-width: 14px; max-height: 14px;
+  border-width: 2.5px; border-color: var(--surface); }
+.avatar.lg[data-online="true"]::after { right: 0; bottom: 0; }
+.avatar[data-frame][data-online="true"]::after { right: -4px; bottom: -4px; }
