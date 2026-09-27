@@ -170,7 +170,16 @@ async def like(request: Request):
 async def status(request: Request):
     """Проверка источников музыки (для мониторинга): сколько треков и станций сейчас доступно."""
     tracks, stations = await asyncio.gather(_call(music.trending, "", "week", 60, default=[]), _call(music.radio, "", 60, default=[]))
-    return JSONResponse({"catalog": len(tracks), "radio": len(stations), "ok": bool(tracks) and bool(stations)})
+    out = {"catalog": len(tracks), "radio": len(stations), "ok": bool(tracks) and bool(stations)}
+    if not stations:  # подсказка, что не так с радио
+        try:
+            raw = await run_in_threadpool(music._radio, "/stations/search", countrycode="RU", hidebroken="true", order="clickcount", reverse="true", limit=20)
+            out["radio_raw"] = len(raw or [])
+            out["radio_https"] = sum(1 for s in raw or [] if str(s.get("url_resolved") or "").startswith("https://"))
+            out["radio_sample"] = [str(s.get("url_resolved") or "")[:60] for s in (raw or [])[:3]]
+        except Exception as e:
+            out["radio_error"] = str(e)[:200]
+    return JSONResponse(out)
 
 
 routes = [
