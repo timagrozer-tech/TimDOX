@@ -85,19 +85,26 @@ def process() -> None:
     if not raw:
         return
     db.run("DELETE FROM ai_state WHERE key='tts:req'")
-    db.run("DELETE FROM ai_state WHERE key LIKE 'tts:out:%' OR key='tts:done'")
     req = json.loads(raw)
+    start = int(req.get("start", 0))  # номер первой строки (чтобы переозвучить часть, не трогая остальные)
+    if req.get("keep"):
+        for i in range(start, start + len(req.get("lines", []))):
+            db.run("DELETE FROM ai_state WHERE key LIKE ?", (f"tts:out:{i}:%",))
+        db.run("DELETE FROM ai_state WHERE key='tts:done'")
+    else:
+        db.run("DELETE FROM ai_state WHERE key LIKE 'tts:out:%' OR key='tts:done'")
     results = []
-    for i, line in enumerate(req.get("lines", [])):
+    for i, line in enumerate(req.get("lines", []), start):
         engine = "edge"
         audio, err = None, None
-        for _attempt in range(3):
+        for attempt in range(4):
             try:
                 audio = _edge(line, req.get("voice", "ru-RU-DmitryNeural"), req.get("rate", "+6%"), req.get("pitch", "+0Hz"))
                 break
-            except Exception as e:
+            except Exception as e:  # сервис ограничивает частые подключения — ждём дольше с каждой попыткой
                 err = e
-                time.sleep(2)
+                time.sleep(4 + attempt * 8)
+        time.sleep(1.5)
         if audio is None:
             log.warning("TTS edge: %s", err)
             engine = "google"
