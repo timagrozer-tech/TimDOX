@@ -62,6 +62,10 @@ export function parseTrackName(filename) {
 
 // ---------------------------------------------------------------- Плеер музыки
 let playing = null; // одновременно играет только один трек
+/** Сообщить музыкальному плееру Круга, что заиграло что-то другое, — он встанет на паузу */
+const announce = () => window.dispatchEvent(new Event("krug:local-play"));
+/** Поставить на паузу вложения (музыка, голосовые, видео в чатах) — когда включается плеер Круга */
+export function pauseLocalMedia() { try { playing?.pause(); } catch { /* ничего */ } }
 
 /** Остановить музыку, голосовые и видео — при уходе со страницы */
 export function stopAllMedia() {
@@ -99,7 +103,7 @@ export function audioPlayer(m) {
       audio.play().catch(() => {});
     } else audio.pause();
   });
-  audio.addEventListener("play", () => { btn.replaceChildren(icon("pause")); btn.setAttribute("aria-label", "Пауза"); el.classList.add("playing"); });
+  audio.addEventListener("play", () => { btn.replaceChildren(icon("pause")); btn.setAttribute("aria-label", "Пауза"); el.classList.add("playing"); announce(); });
   audio.addEventListener("pause", () => { btn.replaceChildren(icon("play")); btn.setAttribute("aria-label", "Слушать"); el.classList.remove("playing"); });
   audio.addEventListener("timeupdate", paint);
   audio.addEventListener("ended", () => { audio.currentTime = 0; paint(); });
@@ -123,7 +127,7 @@ export function videoPlayer(m) {
   const ratio = m.w && m.h ? `${m.w} / ${m.h}` : "16 / 9";
   const v = h("video.chat-video", { src: m.url, poster: m.poster || "", controls: true, playsinline: true, preload: "none",
     style: { aspectRatio: ratio } });
-  v.addEventListener("play", () => { if (playing && playing !== v) playing.pause(); playing = v; });
+  v.addEventListener("play", () => { if (playing && playing !== v) playing.pause(); playing = v; announce(); });
   return h("div.video-wrap", v, m.duration ? h("span.video-dur", fmtDur(m.duration)) : null);
 }
 
@@ -163,7 +167,7 @@ export function voicePlayer(m) {
     audio.playbackRate = SPEEDS[speed];
     speedBtn.textContent = `${SPEEDS[speed]}×`;
   });
-  audio.addEventListener("play", () => { btn.replaceChildren(icon("pause")); el.classList.add("playing"); });
+  audio.addEventListener("play", () => { btn.replaceChildren(icon("pause")); el.classList.add("playing"); announce(); });
   audio.addEventListener("pause", () => { btn.replaceChildren(icon("play")); el.classList.remove("playing"); });
   audio.addEventListener("timeupdate", paint);
   audio.addEventListener("ended", () => { audio.currentTime = 0; paint(); });

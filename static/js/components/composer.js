@@ -3,6 +3,7 @@ import { api, state, emit } from "../api.js";
 import { h, icon, avatar, autosize } from "../dom.js";
 import { toast, toastError, busy, modal, promptDialog, showMenu } from "../ui.js";
 import { attachMentions } from "./mentions.js";
+import { musicAttachment, pickTrack } from "../music/kit.js";
 
 const MAX_LEN = 5000;
 const MAX_PHOTOS = 10;
@@ -54,7 +55,7 @@ export function audienceSelect(value, { withCircles = true } = {}) {
   return btn;
 }
 
-export function composer({ placeholder = "Что у вас нового?", quote = null, compact = false, onPosted, community = null } = {}) {
+export function composer({ placeholder = "Что у вас нового?", quote = null, compact = false, onPosted, community = null, music = null } = {}) {
   const photos = []; // {file, url, alt}
   const ta = attachMentions(h("textarea", { placeholder, maxlength: MAX_LEN + 100, rows: 2, "aria-label": "Текст записи" }));
   const fit = autosize(ta);
@@ -100,12 +101,23 @@ export function composer({ placeholder = "Что у вас нового?", quote
     pollBox.querySelector("input")?.focus();
   } }, icon("poll"));
 
+  // ---- музыка
+  const musicBox = h("div.compose-music");
+  function paintMusic() {
+    musicBox.replaceChildren(music ? musicAttachment(music, { removable: () => { music = null; paintMusic(); } }) : "");
+    refresh();
+  }
+  const musicBtn = h("button.btn.ghost.icon-only", { type: "button", title: "Музыка", "aria-label": "Добавить музыку", onclick: async () => {
+    const t = await pickTrack();
+    if (t) { music = t; paintMusic(); }
+  } }, icon("music"));
+
   function refresh() {
     const len = ta.value.length;
     counter.textContent = len > MAX_LEN - 300 ? `${len} / ${MAX_LEN}` : "";
     counter.classList.toggle("over", len > MAX_LEN);
     const pollOk = !poll || poll.options.filter((o) => o.trim()).length >= 2;
-    submit.disabled = (!ta.value.trim() && !photos.length && !quote && !poll) || len > MAX_LEN || !pollOk;
+    submit.disabled = (!ta.value.trim() && !photos.length && !quote && !poll && !music) || len > MAX_LEN || !pollOk;
     previews.replaceChildren(...photos.map((p, i) => h("div.preview",
       h("img", { src: p.url, alt: p.alt || `Фото ${i + 1}` }),
       h("button.remove", { type: "button", "aria-label": "Убрать фото", onclick: () => { URL.revokeObjectURL(p.url); photos.splice(i, 1); refresh(); } }, icon("x", "sm")),
@@ -166,6 +178,7 @@ export function composer({ placeholder = "Что у вас нового?", quote
         fd.append("circle_id", vis.value.slice(7));
       } else fd.append("visibility", vis.value);
       if (quote) fd.append("quote_of", quote.id);
+      if (music) fd.append("music", music.key);
       if (poll) fd.append("poll", JSON.stringify({ options: poll.options.map((o) => o.trim()).filter(Boolean), multiple: poll.multiple, days: poll.days }));
       for (const p of photos) { fd.append("photos", p.file); fd.append("alts", p.alt || ""); }
       await busy(submit, async () => {
@@ -174,6 +187,7 @@ export function composer({ placeholder = "Что у вас нового?", quote
           photos.forEach((p) => URL.revokeObjectURL(p.url));
           photos.length = 0;
           poll = null; paintPoll();
+          music = null; paintMusic();
           ta.value = "";
           clearTimeout(draftTimer); writeDraft("");
           fit();
@@ -189,11 +203,13 @@ export function composer({ placeholder = "Что у вас нового?", quote
   h("div.body",
     ta,
     previews,
+    musicBox,
     quote ? null : pollBox,
     quote ? quote.node : null,
     h("div.tools",
       h("button.btn.ghost.icon-only", { type: "button", title: "Добавить фото", "aria-label": "Добавить фото", onclick: () => fileInput.click() }, icon("image")),
       quote ? null : pollBtn,
+      quote ? null : musicBtn,
       vis,
       canAsCommunity ? h("label.check", { style: { fontSize: "13px" } }, asCommunity, `От имени сообщества`) : null,
       h("div.spacer"),
@@ -201,6 +217,7 @@ export function composer({ placeholder = "Что у вас нового?", quote
       submit),
     fileInput));
   refresh();
+  if (music) paintMusic();
   form.focusInput = () => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); };
   form.dispose = () => { writeDraft(ta.value); photos.forEach((p) => URL.revokeObjectURL(p.url)); };
   return form;
@@ -209,6 +226,6 @@ export function composer({ placeholder = "Что у вас нового?", quote
 export function openComposerModal(opts = {}) {
   let m;
   const c = composer({ ...opts, onPosted: (p) => { m.close(); opts.onPosted?.(p); } });
-  m = modal({ title: opts.quote ? "Цитировать запись" : "Новая запись", body: c, onClose: () => c.dispose() });
+  m = modal({ title: opts.quote ? "Цитировать запись" : opts.music ? "Поделиться музыкой" : "Новая запись", body: c, onClose: () => c.dispose() });
   setTimeout(() => c.focusInput(), 50);
 }

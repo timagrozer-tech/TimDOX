@@ -1,9 +1,10 @@
 """Посты, лента, реакции, комментарии, репосты, закладки, хэштеги, жалобы."""
+import json
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from .. import collection, config, db, media, polls, social
+from .. import collection, config, db, media, music, polls, social
 from ..security import censor, clean_text, extract_hashtags, extract_mentions
 from ..social import is_friend_sql, not_blocked_sql, visible_post_sql
 from ..web import ApiError, auth, body, int_param, limit, ok, path_int
@@ -100,6 +101,7 @@ def hydrate(rows: list[dict], v: int, depth: int = 0) -> list[dict]:
             "circle": circles.get(r.get("circle_id")) if r.get("circle_id") else None,
             "can_moderate": r.get("community_id") in can_mod,
             "poll": poll_by.get(r["id"]),
+            "music": _music(r.get("music")),
         }
         if r["quote_of"] and depth == 0:
             item["quote"] = quotes.get(r["quote_of"]) or {"unavailable": True}
@@ -107,6 +109,16 @@ def hydrate(rows: list[dict], v: int, depth: int = 0) -> list[dict]:
             item["quote"] = {"id": r["quote_of"], "nested": True}
         out.append(item)
     return out
+
+
+def _music(raw) -> dict | None:
+    if not raw:
+        return None
+    try:
+        t = json.loads(raw)
+    except (TypeError, ValueError):
+        return None
+    return t if isinstance(t, dict) and t.get("key") else None
 
 
 def _page(rows: list[dict], v: int) -> dict:
@@ -316,7 +328,14 @@ async def _create_post(request: Request, v: int, form):
     poll = polls.parse(form.get("poll"))
     if poll and not poll["question"]:
         poll["question"] = text[:200]
-    if not text and not files and not quote_of and not poll:
+    music_json = None
+    if form.get("music"):  # трек из раздела «Музыка»: данные берём из источника, а не от клиента
+        from starlette.concurrency import run_in_threadpool
+        track = music.public(await run_in_threadpool(music.resolve, str(form.get("music"))[:100]))
+        if not track:
+            raise ApiError(400, "Трек недоступен — попробуйте другой")
+        music_json = json.dumps(track, ensure_ascii=False)
+    if not text and not files and not quote_of and not poll and not music_json:
         raise ApiError(400, "Напишите текст или добавьте фото")
 
     community_id = form.get("community_id")
@@ -359,8 +378,8 @@ async def _create_post(request: Request, v: int, form):
         raise
 
     with db.tx() as c:
-        cur = c.execute("""INSERT INTO posts (author_id, text, visibility, quote_of, community_id, as_community, circle_id)
-                           VALUES (?,?,?,?,?,?,?)""", (v, text, visibility, quote_of, community_id, as_community, circle_id))
+        cur = c.execute("""INSERT INTO posts (author_id, text, visibility, quote_of, community_id, as_community, circle_id, music)
+                           VALUES (?,?,?,?,?,?,?,?)""", (v, text, visibility, quote_of, community_id, as_community, circle_id, music_json))
         pid = cur.lastrowid
         for i, s in enumerate(saved):
             alt = clean_text(alts[i] if i < len(alts) and isinstance(alts[i], str) else "", 300)

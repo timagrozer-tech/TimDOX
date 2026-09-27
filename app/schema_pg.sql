@@ -135,7 +135,8 @@ CREATE TABLE IF NOT EXISTS posts (
     edited_at    TEXT,
     community_id BIGINT REFERENCES communities(id) ON DELETE CASCADE,
     as_community INTEGER NOT NULL DEFAULT 0,
-    circle_id    BIGINT REFERENCES circles(id) ON DELETE SET NULL
+    circle_id    BIGINT REFERENCES circles(id) ON DELETE SET NULL,
+    music        TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_posts_author ON posts(author_id, id DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_quote ON posts(quote_of);
@@ -540,3 +541,14 @@ CREATE TABLE IF NOT EXISTS ai_state (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL DEFAULT ''
 );
+
+-- Музыка: любимые треки (копия данных трека из источника — Audius или радио)
+CREATE TABLE IF NOT EXISTS music_likes (
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    track_key  TEXT NOT NULL,
+    data       TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT krug_now(),
+    PRIMARY KEY (user_id, track_key)
+);
+CREATE INDEX IF NOT EXISTS idx_music_likes_key ON music_likes(track_key, created_at);
+CREATE INDEX IF NOT EXISTS idx_music_likes_time ON music_likes(created_at);

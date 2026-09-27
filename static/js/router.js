@@ -53,7 +53,8 @@ export function pushOverlay(close) {
 
 export function navigate(url, { replace = false } = {}) {
   // на сервере вышло обновление — открываем страницу заново, чтобы подтянулся новый интерфейс
-  if (window.__krugUpdate) { location[replace ? "replace" : "assign"](url); return; }
+  // …но не посреди песни: пока играет музыка Круга, обновимся при следующем переходе
+  if (window.__krugUpdate && !window.__krugMusicPlaying) { location[replace ? "replace" : "assign"](url); return; }
   if (pendingBack || history.state?.overlay) { pendingBack = false; replace = true; } // запись окна заменяем новой страницей
   if (url === location.pathname + location.search && !replace) { render(true); return; }
   if (!replace) leaveHook?.(curKey);

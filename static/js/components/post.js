@@ -6,6 +6,7 @@ import { navigate } from "../router.js";
 import { VISIBILITY, visibilitySelect, openComposerModal } from "./composer.js";
 import { attachMentions } from "./mentions.js";
 import { burst } from "../fx.js";
+import { musicAttachment } from "../music/kit.js";
 
 export const REACTIONS = [
   { type: "like", emoji: "👍", label: "Нравится" },
@@ -71,6 +72,7 @@ function body(post, { clamp = true } = {}) {
   const g = gallery(post.media);
   if (g) parts.push(g);
   if (post.poll) parts.push(pollView(post.poll, post.text));
+  if (post.music) parts.push(musicAttachment(post.music));
   return parts;
 }
 

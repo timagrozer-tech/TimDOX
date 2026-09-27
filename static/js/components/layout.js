@@ -15,6 +15,7 @@ const NAV = [
   { href: "/messages", icon: "message", label: "Сообщения", badge: "messages", match: (p) => p.startsWith("/messages") },
   { href: "/", icon: "home", label: "Лента", match: (p) => p === "/" || p === "/explore" },
   { href: "/reels", icon: "film", label: "Клипы", match: (p) => p.startsWith("/reels") },
+  { href: "/music", icon: "music", label: "Музыка", cls: "nav-music", match: (p) => p.startsWith("/music") },
   { href: "/world", icon: "world", label: "Мир Круга", cls: "nav-world", match: (p) => p.startsWith("/world") },
   { href: "/friends", icon: "users", label: "Друзья", badge: "friend_requests", match: (p) => p.startsWith("/friends") },
   { href: "/notifications", icon: "bell", label: "Уведомления", badge: "notifications", match: (p) => p === "/notifications" },

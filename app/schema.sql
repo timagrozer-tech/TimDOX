@@ -506,3 +506,14 @@ CREATE TABLE IF NOT EXISTS ai_state (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL DEFAULT ''
 );
+
+-- Музыка: любимые треки (копия данных трека из источника — Audius или радио)
+CREATE TABLE IF NOT EXISTS music_likes (
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    track_key  TEXT NOT NULL,
+    data       TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (user_id, track_key)
+);
+CREATE INDEX IF NOT EXISTS idx_music_likes_key ON music_likes(track_key, created_at);
+CREATE INDEX IF NOT EXISTS idx_music_likes_time ON music_likes(created_at);

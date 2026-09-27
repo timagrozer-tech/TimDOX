@@ -14,7 +14,7 @@ from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from . import collection, config, db, media
-from .api import admin, auth_routes, collection_routes, reels, stickers, communities, events, messages, misc, people_extra, posts, stats, stories, users
+from .api import admin, auth_routes, collection_routes, reels, stickers, communities, events, messages, misc, music as music_api, people_extra, posts, stats, stories, users
 from .security import load_extra_banned
 from .world import api as world_api, engine as world_engine
 from .web import ApiError, load_session
@@ -23,7 +23,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("krug")
 
 _CDN = f" {config.SUPABASE_URL}" if config.MEDIA_STORAGE == "supabase" else ""
-CSP = (f"default-src 'self'; img-src 'self' data: blob:{_CDN}; media-src 'self' blob:{_CDN}; "
+# обложки и потоки раздела «Музыка» приходят с серверов Audius и радиостанций — разрешаем любые https-источники картинок и звука
+CSP = (f"default-src 'self'; img-src 'self' data: blob: https:{_CDN}; media-src 'self' blob: https:{_CDN}; "
        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; "
        "script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'")
 
@@ -237,7 +238,7 @@ routes = [
     Route("/sw.js", service_worker),
     Route("/manifest.webmanifest", manifest),
     *admin.routes, *world_api.routes, *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
-    *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *stats.routes, *collection_routes.routes, *reels.routes, *stickers.routes,
+    *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *stats.routes, *music_api.routes, *collection_routes.routes, *reels.routes, *stickers.routes,
     Mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static"),
     Route("/uploads/{path:path}", uploads, methods=["GET", "HEAD"]),
     Route("/{path:path}", spa, methods=["GET"]),
