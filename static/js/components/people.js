@@ -121,7 +121,7 @@ export function featuredCard(p) {
   return h("div.featured-card",
     h("a", { href: `/u/${p.username}`, "aria-label": p.name }, avatar(p, "lg", { presence: false })),
     h("a.name", { href: `/u/${p.username}` }, p.name, vmark(p)),
-    h("span.badge-line", p.badge || "Официальный аккаунт"),
+    p.badge ? h("span.badge-line", p.badge) : null,
     h("span.sub", p.followers ? pl(p.followers, ["подписчик", "подписчика", "подписчиков"]) : `@${p.username}`),
     btn);
 }

@@ -33,9 +33,8 @@ export async function profilePage({ params, query }) {
 
     const actions = h("div.profile-actions");
     const adminItems = data.can_verify ? ["-", u.verified
-      ? { label: "Изменить подпись у галочки", icon: "edit", onClick: grantVerify }
-      : { label: "Выдать галочку «Официальный аккаунт»", icon: "check", onClick: grantVerify },
-      u.verified ? { label: "Снять галочку", icon: "x", danger: true, onClick: revokeVerify } : null] : [];
+      ? { label: "Снять галочку", icon: "x", danger: true, onClick: revokeVerify }
+      : { label: "Выдать галочку", icon: "check", onClick: grantVerify }] : [];
     if (isMe) {
       actions.append(h("a.btn.outline", { href: "/settings" }, icon("edit", "sm"), "Редактировать профиль"));
       if (data.can_verify) {
@@ -95,7 +94,7 @@ export async function profilePage({ params, query }) {
         h("div.profile-name",
           h("h1", u.name, vmark(u), statusText ? h("span.status-pill.online", statusText) : null,
             !isMe && rel.follows_you && rel.status !== "friends" ? h("span.status-pill", "подписан(а) на вас") : null),
-          h("div.handle", `@${u.username}`, u.badge ? h("span.official-chip", u.badge) : u.verified ? h("span.official-chip", "Официальный аккаунт") : null),
+          h("div.handle", `@${u.username}`, u.badge ? h("span.official-chip", u.badge) : null),
           statusChip()),
         data.bio && !data.hidden ? h("p.profile-bio", data.bio) : null,
         h("div.profile-info", info),
@@ -170,13 +169,10 @@ export async function profilePage({ params, query }) {
   }
 
   async function grantVerify() {
-    const badge = await promptDialog({ title: `Галочка для ${u.name}`, label: "Подпись рядом с галочкой (необязательно), например «Создатель KRUG» или «Музыкант»",
-      value: u.badge || "", confirm: u.verified ? "Сохранить" : "Выдать галочку", allowEmpty: true });
-    if (badge === null || badge === undefined) return;
     try {
-      const res = await api.post(`/api/admin/users/${u.id}/verify`, { badge });
+      const res = await api.post(`/api/admin/users/${u.id}/verify`, { badge: u.badge || "" });
       Object.assign(data.user, res.user);
-      toast(`${u.name} теперь официальный аккаунт`, { icon: "check" });
+      toast(`${u.name} получил(а) галочку`, { icon: "check" });
       renderHeader();
     } catch (e) { toastError(e); }
   }
