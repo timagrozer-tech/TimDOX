@@ -33,6 +33,9 @@ SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 APP_VERSION = (os.environ.get("RENDER_GIT_COMMIT") or str(int(time.time())))[:12].encode()
 
 
+MAX_BODY = (max(config.MAX_VIDEO_MB, config.MAX_UPLOAD_MB * 10) + 5) * 1024 * 1024
+
+
 class SecurityMiddleware:
     """Загружает сессию, проверяет CSRF и Origin, добавляет заголовки безопасности."""
 
@@ -45,6 +48,13 @@ class SecurityMiddleware:
         request = Request(scope)
         path = scope["path"]
         if path.startswith("/api/"):
+            # слишком большое тело отклоняем сразу, до того как сервер начнёт его принимать
+            try:
+                length = int(request.headers.get("content-length") or 0)
+            except ValueError:
+                length = 0
+            if length > MAX_BODY:
+                return await self._reject(scope, receive, send, "Файл слишком большой", status=413)
             load_session(request)
             if scope["method"] not in SAFE_METHODS:
                 origin = request.headers.get("origin")
@@ -86,8 +96,8 @@ class SecurityMiddleware:
                 log.exception("Не удалось проверить коллекцию")
 
     @staticmethod
-    async def _reject(scope, receive, send, message):
-        resp = JSONResponse({"error": message, "code": "csrf"}, status_code=403)
+    async def _reject(scope, receive, send, message, status=403):
+        resp = JSONResponse({"error": message, "code": "csrf" if status == 403 else "too_large"}, status_code=status)
         await resp(scope, receive, send)
 
 
@@ -105,6 +115,12 @@ async def http_error(request: Request, exc: HTTPException):
 
 
 async def server_error(request: Request, exc: Exception):
+    if request.url.path.startswith("/api/"):
+        if isinstance(exc, (ValueError, TypeError)):  # например, текст вместо числа в запросе
+            log.warning("Некорректные данные: %s %s: %s", request.method, request.url.path, exc)
+            return JSONResponse({"error": "Некорректные данные в запросе"}, status_code=400)
+        if type(exc).__name__ in ("IntegrityError", "UniqueViolation"):  # двойное нажатие и похожие гонки
+            return JSONResponse({"error": "Это действие уже выполнено"}, status_code=409)
     log.exception("Необработанная ошибка: %s %s", request.method, request.url.path)
     return JSONResponse({"error": "Внутренняя ошибка сервера. Попробуйте ещё раз."}, status_code=500)
 
@@ -123,14 +139,33 @@ async def uploads(request: Request):
     cdn = media.public_url(rel)
     if cdn:
         return RedirectResponse(cdn, status_code=301, headers={"Cache-Control": "public, max-age=31536000, immutable"})
-    data = media.read_file(rel)
-    if data is None:
-        return Response(status_code=404)
     ctype = media.content_type_of(rel)
-    headers = {"Cache-Control": "public, max-age=31536000, immutable", "Accept-Ranges": "bytes"}
+    headers = {"Cache-Control": "public, max-age=31536000, immutable", "Accept-Ranges": "bytes", "ETag": f'"{rel}"'}
+    if request.headers.get("if-none-match") == headers["ETag"]:
+        return Response(status_code=304, headers=headers)
     # видео и музыка: браузеры запрашивают куски (Range) — без этого не работает перемотка
     rng = request.headers.get("range", "")
     m = re.match(r"bytes=(\d*)-(\d*)$", rng.strip())
+    if m and (m.group(1) or m.group(2)) and config.MEDIA_STORAGE == "db":
+        # из базы читаем только нужный кусок
+        size = media.file_size(rel)
+        if size is None:
+            return Response(status_code=404)
+        if m.group(1):
+            start = int(m.group(1))
+            end = min(int(m.group(2)) if m.group(2) else size - 1, size - 1, start + 4 * 1024 * 1024 - 1)
+        else:
+            start, end = max(0, size - int(m.group(2))), size - 1
+        if start >= size or start > end:
+            return Response(status_code=416, headers={"Content-Range": f"bytes */{size}"})
+        part = media.read_range(rel, start, end)
+        if part is None:
+            return Response(status_code=404)
+        headers["Content-Range"] = f"bytes {start}-{end}/{size}"
+        return Response(part, status_code=206, media_type=ctype, headers=headers)
+    data = media.read_file(rel)
+    if data is None:
+        return Response(status_code=404)
     if m and (m.group(1) or m.group(2)):
         size = len(data)
         if m.group(1):

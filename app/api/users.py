@@ -91,10 +91,14 @@ async def profile(request: Request):
 
 def _people(rows: list[dict], v: int) -> list[dict]:
     my_friends = set(social.friend_ids(v))
+    ids = [r["id"] for r in rows]
+    closed = {x["user_id"] for x in db.all(
+        f"SELECT user_id FROM profiles WHERE profile_visibility <> 'public' AND user_id IN ({db.placeholders(ids)})", tuple(ids))} if ids else set()
     out = []
     for r in rows:
         c = social.user_card(r)
-        c["city"] = r.get("city", "")
+        hide = r["id"] in closed and r["id"] not in my_friends and r["id"] != v
+        c["city"] = "" if hide else r.get("city", "")
         c["is_friend"] = r["id"] in my_friends
         c["is_me"] = r["id"] == v
         out.append(c)
@@ -551,6 +555,8 @@ async def settings_update(request: Request):
         return JSONResponse({"error": "Проверьте поля формы", "fields": errors}, status_code=422)
     if sets:
         db.run(f"UPDATE profiles SET {', '.join(sets)} WHERE user_id=?", (*params, v))
+        if "invisible" in data:
+            social.reset_verified_cache()
     return await settings_get(request)
 
 
@@ -634,10 +640,18 @@ async def delete_account(request: Request):
     for r in db.all("SELECT cover FROM events WHERE creator_id=?", (v,)):
         media.delete_files(r["cover"])
     db.run("DELETE FROM reports WHERE target_type='user' AND target_id=?", (v,))
+    # сообщества не должны остаться без администратора: передаём права самому давнему модератору или участнику
+    from .communities import ensure_admin
+    my_admin_of = [r["community_id"] for r in db.all(
+        "SELECT community_id FROM community_members WHERE user_id=? AND role='admin'", (v,))]
+    my_convs = [r["conversation_id"] for r in db.all("SELECT conversation_id FROM conversation_members WHERE user_id=?", (v,))]
     db.run("DELETE FROM users WHERE id=?", (v,))  # остальное удаляется каскадно
-    # пустые личные диалоги
-    db.run("""DELETE FROM conversations WHERE id NOT IN (SELECT conversation_id FROM conversation_members
-              GROUP BY conversation_id HAVING count(*) >= 2)""")
+    for cid in my_admin_of:
+        ensure_admin(cid)
+    # удаляем только диалоги, где никого не осталось; переписка собеседника сохраняется
+    if my_convs:
+        db.run(f"""DELETE FROM conversations WHERE id IN ({db.placeholders(my_convs)})
+                   AND NOT EXISTS (SELECT 1 FROM conversation_members m WHERE m.conversation_id = conversations.id)""", tuple(my_convs))
     resp = JSONResponse({"ok": True})
     resp.delete_cookie(config.SESSION_COOKIE, path="/")
     return resp

@@ -434,3 +434,17 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status_until TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS verified INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS badge TEXT;
 ALTER TABLE stories ADD COLUMN IF NOT EXISTS style TEXT;
+-- индексы для частых запросов и каскадных удалений
+CREATE INDEX IF NOT EXISTS idx_notif_post ON notifications(post_id);
+CREATE INDEX IF NOT EXISTS idx_notif_comment ON notifications(comment_id);
+CREATE INDEX IF NOT EXISTS idx_notif_actor ON notifications(actor_id);
+CREATE INDEX IF NOT EXISTS idx_notif_unread ON notifications(user_id) WHERE read_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_comments_author ON comments(author_id);
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_reactions_user ON reactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_mentions_user ON mentions(user_id);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_post ON bookmarks(post_id);
+CREATE INDEX IF NOT EXISTS idx_reel_likes_user ON reel_likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_story_views_viewer ON story_views(viewer_id);
+CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at);
+CREATE INDEX IF NOT EXISTS idx_posts_circle ON posts(circle_id);

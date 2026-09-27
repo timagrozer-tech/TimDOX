@@ -150,6 +150,9 @@ async def install(request: Request):
     if request.method == "DELETE":
         db.run("DELETE FROM user_sticker_packs WHERE user_id=? AND pack_id=?", (v, p["id"]))
     else:
+        # добавить чужой набор можно только зная ссылку на него (slug), а не перебирая номера
+        if p["owner_id"] != v and str((await body(request)).get("slug") or "") != p["slug"]:
+            raise ApiError(404, "Набор не найден")
         if db.value("SELECT count(*) FROM user_sticker_packs WHERE user_id=?", (v,)) >= 100:
             raise ApiError(400, "Слишком много наборов — удалите ненужные")
         db.run("INSERT OR IGNORE INTO user_sticker_packs (user_id, pack_id) VALUES (?,?)", (v, p["id"]))

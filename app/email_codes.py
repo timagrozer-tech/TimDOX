@@ -3,7 +3,7 @@ import hmac
 import secrets
 
 from . import db
-from .security import token_hash
+from .security import LIMITS, rate_limiter, token_hash
 from .web import ApiError
 
 TTL_MINUTES = 60
@@ -15,7 +15,11 @@ def _hash(uid: int, purpose: str, code: str) -> str:
 
 
 def issue(uid: int, purpose: str, new_email: str | None = None) -> str:
-    """Создаёт новый код (старые коды того же назначения аннулируются)."""
+    """Создаёт новый код (старые коды того же назначения аннулируются).
+    Новых кодов — не больше нескольких в сутки, иначе повторная отправка обнуляла бы счётчик попыток и код можно было бы подобрать."""
+    n, window = LIMITS["codes_day"]
+    if not rate_limiter.hit(f"codes_day:{uid}", n, window):
+        raise ApiError(429, "Слишком много кодов за сутки. Попробуйте завтра или напишите в поддержку.")
     db.run("DELETE FROM email_codes WHERE user_id=? AND purpose=?", (uid, purpose))
     code = f"{secrets.randbelow(10 ** 6):06d}"
     db.run("INSERT INTO email_codes (user_id, purpose, code_hash, new_email, expires_at) VALUES (?,?,?,?,?)",

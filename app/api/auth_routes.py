@@ -8,7 +8,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from .. import config, db, email_codes, mailer, social
-from ..security import (USERNAME_RE, hash_password, new_token, token_hash,
+from ..security import (LIMITS, USERNAME_RE, hash_password, new_token, rate_limiter, token_hash,
                         validate_password, verify_password)
 from ..web import ApiError, auth, body, limit, ok
 
@@ -116,9 +116,14 @@ async def login(request: Request):
     data = await body(request)
     login_ = str(data.get("email", "")).strip().lstrip("@")
     password = str(data.get("password", ""))
+    acct_key = f"login_account:{login_.lower()}"
+    n, window = LIMITS["login_account"]
+    if not rate_limiter.check(acct_key, n, window):
+        raise ApiError(429, "Слишком много неудачных попыток входа. Попробуйте через 15 минут или восстановите пароль.")
     row = db.one("""SELECT u.id, u.password_hash, u.is_banned FROM users u JOIN profiles p ON p.user_id=u.id
                     WHERE u.email=? OR p.username=?""", (login_.lower(), login_))
     if not row or not verify_password(password, row["password_hash"]):
+        rate_limiter.hit(acct_key, n, window)
         raise ApiError(400, "Неверный e-mail или пароль")
     if row["is_banned"]:
         raise ApiError(403, "Аккаунт заблокирован администрацией")
@@ -181,7 +186,8 @@ async def forgot(request: Request):
     data = await body(request)
     email = str(data.get("email", "")).strip().lower()
     row = db.one("SELECT id FROM users WHERE email=?", (email,))
-    if row:
+    n, window = LIMITS["mail_address"]
+    if row and rate_limiter.hit(f"mail_address:{email}", n, window):
         await _send_token_email(row["id"], email, "reset")
     # одинаковый ответ, чтобы нельзя было проверить, зарегистрирован ли адрес
     return ok()

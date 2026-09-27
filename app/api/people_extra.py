@@ -5,7 +5,8 @@ from starlette.routing import Route
 
 from .. import db, social
 from ..security import censor, clean_text
-from ..social import not_blocked_sql
+from ..social import is_friend_sql, not_blocked_sql
+from .misc import _like
 from ..web import ApiError, auth, body, limit, path_int
 
 MAX_CIRCLES = 20
@@ -132,10 +133,10 @@ async def classmates(request: Request):
     conds, params = [], {"v": v}
     if school:
         conds.append("ulower(p.school) LIKE :school ESCAPE '\\'")
-        params["school"] = f"%{school}%"
+        params["school"] = _like(school)
     if university:
         conds.append("ulower(p.university) LIKE :uni ESCAPE '\\'")
-        params["uni"] = f"%{university}%"
+        params["uni"] = _like(university)
     where = "(" + " OR ".join(conds) + ")"
     if year:
         try:
@@ -145,10 +146,11 @@ async def classmates(request: Request):
         where += " AND (p.school_year = :year OR p.university_year = :year)"
     if city:
         where += " AND ulower(p.city) LIKE :city ESCAPE '\\'"
-        params["city"] = f"%{city}%"
+        params["city"] = _like(city)
     rows = db.all(f"""SELECT p.user_id AS id, p.username, p.name, p.avatar, p.city, p.school, p.school_year,
                              p.university, p.university_year FROM profiles p
                       WHERE p.user_id != :v AND {where} AND {not_blocked_sql('p.user_id')}
+                        AND (p.profile_visibility = 'public' OR {is_friend_sql('p.user_id')})
                       ORDER BY p.name LIMIT 100""", params)
     friends = set(social.friend_ids(v))
     items = []

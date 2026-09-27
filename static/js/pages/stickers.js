@@ -34,7 +34,7 @@ export async function showPackPreview(slug) {
     paint();
     addBtn.onclick = () => busy(addBtn, async () => {
       try {
-        if (p.installed) await api.del(`/api/sticker-packs/${p.id}/install`); else await api.post(`/api/sticker-packs/${p.id}/install`);
+        if (p.installed) await api.del(`/api/sticker-packs/${p.id}/install`); else await api.post(`/api/sticker-packs/${p.id}/install`, { slug: p.slug });
         p.installed = !p.installed;
         emit("stickers-changed");
         toast(p.installed ? `Набор «${p.title}» добавлен` : "Набор удалён", { icon: "check" });
@@ -120,7 +120,7 @@ export async function stickersPage({ params, query }) {
     };
     btn.onclick = () => busy(btn, async () => {
       try {
-        if (p.installed) await api.del(`/api/sticker-packs/${p.id}/install`); else await api.post(`/api/sticker-packs/${p.id}/install`);
+        if (p.installed) await api.del(`/api/sticker-packs/${p.id}/install`); else await api.post(`/api/sticker-packs/${p.id}/install`, { slug: p.slug });
         p.installed = !p.installed; emit("stickers-changed"); paint();
         toast(p.installed ? "Набор добавлен — ищите его в чате во вкладке «Стикеры»" : "Набор удалён", { icon: "check" });
       } catch (e) { toastError(e); }

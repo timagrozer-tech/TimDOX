@@ -57,7 +57,9 @@ class Stage4Test(unittest.TestCase):
         view = self.zoya.get(f"/api/sticker-packs/by-slug/{pack['slug']}").json()
         self.assertFalse(view["installed"])
         self.assertEqual(view["count"], 2)
-        self.zoya.post(f"/api/sticker-packs/{pack['id']}/install")
+        # без ссылки (slug) чужой набор по номеру не добавить
+        self.assertEqual(self.zoya.post(f"/api/sticker-packs/{pack['id']}/install", json={}).status_code, 404)
+        self.zoya.post(f"/api/sticker-packs/{pack['id']}/install", json={"slug": pack["slug"]})
         self.assertTrue(any(p["id"] == pack["id"] for p in self.zoya.get("/api/stickers").json()["packs"]))
         # стикер в переписке
         msg = self.zoya.post(f"/api/conversations/{self.conv}/messages", {"sticker_id": st.json()["id"]})

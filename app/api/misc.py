@@ -4,7 +4,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from .. import db, social
-from ..social import not_blocked_sql, visible_post_sql
+from ..social import is_friend_sql, not_blocked_sql, visible_post_sql
 from ..web import ApiError, auth, int_param, ok
 from .posts import hydrate
 
@@ -52,17 +52,20 @@ async def search(request: Request):
 
     if kind in ("all", "people") and term:
         rows = db.all(f"""
-            SELECT p.user_id AS id, p.username, p.name, p.avatar, p.city FROM profiles p
+            SELECT p.user_id AS id, p.username, p.name, p.avatar, p.city,
+                   (p.user_id = :v OR p.profile_visibility = 'public' OR {is_friend_sql('p.user_id')}) AS open_profile
+            FROM profiles p
             WHERE (ulower(p.name) LIKE :like ESCAPE '\\' OR ulower(p.username) LIKE :like ESCAPE '\\'
-                   OR ulower(p.city) LIKE :like ESCAPE '\\' OR ulower(p.work) LIKE :like ESCAPE '\\'
-                   OR ulower(p.education) LIKE :like ESCAPE '\\')
+                   OR ((p.profile_visibility = 'public' OR {is_friend_sql('p.user_id')})
+                       AND (ulower(p.city) LIKE :like ESCAPE '\\' OR ulower(p.work) LIKE :like ESCAPE '\\'
+                            OR ulower(p.education) LIKE :like ESCAPE '\\')))
               AND {not_blocked_sql('p.user_id')}
             ORDER BY (ulower(p.username) = :exact) DESC, (ulower(p.name) LIKE :exact || '%') DESC, p.name
             LIMIT {20 if kind == 'people' else 6}""", params)
         friends = set(social.friend_ids(v))
         for r in rows:
             c = social.user_card(r)
-            c["city"] = r["city"]
+            c["city"] = r["city"] if r["open_profile"] else ""  # город закрытого профиля видят только друзья
             c["is_friend"] = r["id"] in friends
             c["is_me"] = r["id"] == v
             result["people"].append(c)

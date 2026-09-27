@@ -117,10 +117,66 @@ def _conv_view(conv_id: int, v: int) -> dict:
     other = others[0]["user_id"] if others else None
     card = social.cards_by_ids([other]).get(other) if other else None
     if card:
-        card = {**card, "last_seen_at": db.value("SELECT last_seen_at FROM users WHERE id=?", (other,))}
+        hidden = other in social.invisible_ids() or social.blocked_between(v, other)
+        card = {**card, "last_seen_at": None if hidden else db.value("SELECT last_seen_at FROM users WHERE id=?", (other,))}
     return {**base, "user": card or {"id": None, "name": "Удалённый пользователь", "username": "", "avatar": None, "online": False},
             "title": card["name"] if card else "Удалённый пользователь",
             "can_write": bool(other) and _can_message(v, other)[0]}
+
+
+def _conv_views(ids: list[int], v: int) -> list[dict]:
+    """Список диалогов за несколько запросов вместо ~8 на каждый диалог."""
+    if not ids:
+        return []
+    ph = db.placeholders(ids)
+    convs = {c["id"]: c for c in db.all(f"SELECT * FROM conversations WHERE id IN ({ph})", tuple(ids))}
+    members: dict[int, list[dict]] = {}
+    for r in db.all(f"SELECT conversation_id, user_id, last_read_id FROM conversation_members WHERE conversation_id IN ({ph})", tuple(ids)):
+        members.setdefault(r["conversation_id"], []).append(r)
+    lasts = {m["conversation_id"]: m for m in db.all(
+        f"SELECT * FROM messages WHERE id IN (SELECT max(id) FROM messages WHERE conversation_id IN ({ph}) GROUP BY conversation_id)", tuple(ids))}
+    unread = {r["conversation_id"]: r["n"] for r in db.all(f"""
+        SELECT m.conversation_id, count(*) AS n FROM messages m
+        JOIN conversation_members cm ON cm.conversation_id = m.conversation_id AND cm.user_id = ?
+        WHERE m.conversation_id IN ({ph}) AND m.id > cm.last_read_id AND m.sender_id <> ?
+        GROUP BY m.conversation_id""", (v, *ids, v))}
+    people = {r["user_id"] for ms in members.values() for r in ms} | {m["sender_id"] for m in lasts.values()}
+    cards = social.cards_by_ids(list(people))
+    direct_others = [next((r["user_id"] for r in members.get(i, []) if r["user_id"] != v), None)
+                     for i in ids if not convs.get(i, {}).get("is_group")]
+    direct_others = [x for x in direct_others if x]
+    seen = {r["id"]: r["last_seen_at"] for r in db.all(
+        f"SELECT id, last_seen_at FROM users WHERE id IN ({db.placeholders(direct_others)})", tuple(direct_others))} if direct_others else {}
+    blocked = {r["other"] for r in db.all(
+        f"""SELECT CASE WHEN blocker_id = ? THEN blocked_id ELSE blocker_id END AS other FROM blocks
+            WHERE (blocker_id = ? AND blocked_id IN ({db.placeholders(direct_others)}))
+               OR (blocked_id = ? AND blocker_id IN ({db.placeholders(direct_others)}))""",
+        (v, v, *direct_others, v, *direct_others))} if direct_others else set()
+    out = []
+    for i in ids:
+        conv = convs.get(i)
+        if not conv:
+            continue
+        ms = members.get(i, [])
+        others = [r for r in ms if r["user_id"] != v]
+        last = lasts.get(i)
+        base = {"id": i, "is_group": bool(conv["is_group"]), "last_message": _msg_view(last) if last else None,
+                "unread": unread.get(i, 0), "other_last_read_id": max((r["last_read_id"] for r in others), default=0)}
+        if conv["is_group"]:
+            if last:
+                base["last_sender"] = cards.get(last["sender_id"])
+            mem = [cards[r["user_id"]] for r in ms if r["user_id"] in cards]
+            out.append({**base, "title": conv["title"] or "Беседа", "user": None, "can_write": True,
+                        "members": sorted(mem, key=lambda m: m["name"]), "created_by": conv["created_by"]})
+            continue
+        other = others[0]["user_id"] if others else None
+        card = cards.get(other) if other else None
+        if card:
+            card = {**card, "last_seen_at": None if other in blocked or other in social.invisible_ids() else seen.get(other)}
+        out.append({**base, "user": card or {"id": None, "name": "Удалённый пользователь", "username": "", "avatar": None, "online": False},
+                    "title": card["name"] if card else "Удалённый пользователь",
+                    "can_write": bool(other) and other not in blocked})
+    return out
 
 
 def direct_conversation(v: int, other: int) -> int:
@@ -165,7 +221,7 @@ async def list_conversations(request: Request):
     ids = [r["conversation_id"] for r in db.all("""
         SELECT cm.conversation_id FROM conversation_members cm JOIN conversations c ON c.id = cm.conversation_id
         WHERE cm.user_id=? AND c.last_message_at IS NOT NULL ORDER BY c.last_message_at DESC LIMIT 100""", (v,))]
-    return JSONResponse({"items": [_conv_view(i, v) for i in ids]})
+    return JSONResponse({"items": _conv_views(ids, v)})
 
 
 @auth()

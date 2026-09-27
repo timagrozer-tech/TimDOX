@@ -74,8 +74,26 @@ def verified_map() -> dict[int, str]:
 
 
 def reset_verified_cache() -> None:
-    global _verified_at
+    global _verified_at, _invisible_at
     _verified_at = 0.0
+    _invisible_at = 0.0
+
+
+# «Режим невидимки»: такие люди не показываются «в сети» и без времени последнего визита
+_invisible: set[int] = set()
+_invisible_at = 0.0
+
+
+def invisible_ids() -> set[int]:
+    global _invisible, _invisible_at
+    import time
+    if time.monotonic() - _invisible_at > 60:
+        try:
+            _invisible = {r["user_id"] for r in db.all("SELECT user_id FROM profiles WHERE invisible=1")}
+        except Exception:
+            _invisible = set()
+        _invisible_at = time.monotonic()
+    return _invisible
 
 
 def user_card(row: dict) -> dict:
@@ -86,7 +104,7 @@ def user_card(row: dict) -> dict:
         "username": row["username"],
         "name": row["name"],
         "avatar": row.get("avatar"),
-        "online": hub.is_online(uid),
+        "online": hub.is_online(uid) and uid not in invisible_ids(),
         "frame": _frame_of(row.get("equipped")),
         "status": status_of(row),
         "verified": uid in vmap,

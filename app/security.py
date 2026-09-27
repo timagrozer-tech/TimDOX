@@ -53,6 +53,9 @@ class RateLimiter:
     def hit(self, key: str, limit: int, window: float) -> bool:
         """True — запрос разрешён; False — лимит превышен."""
         now = time.monotonic()
+        if len(self._hits) > 50000:  # редкая уборка: выбрасываем пустые и давно неактивные ключи
+            for k in [k for k, q in self._hits.items() if not q or q[-1] < now - 86400]:
+                del self._hits[k]
         q = self._hits[key]
         while q and q[0] <= now - window:
             q.popleft()
@@ -60,6 +63,16 @@ class RateLimiter:
             return False
         q.append(now)
         return True
+
+    def check(self, key: str, limit: int, window: float) -> bool:
+        """Проверка без записи попытки: True — ещё можно."""
+        now = time.monotonic()
+        q = self._hits.get(key)
+        if not q:
+            return True
+        while q and q[0] <= now - window:
+            q.popleft()
+        return len(q) < limit
 
     def reset(self):
         self._hits.clear()
@@ -70,6 +83,9 @@ rate_limiter = RateLimiter()
 # Лимиты: (кол-во запросов, окно в секундах)
 LIMITS = {
     "auth": (10, 60),        # вход, регистрация, сброс пароля
+    "login_account": (10, 900),  # неудачные входы в один аккаунт — не зависит от IP
+    "mail_address": (4, 3600),   # писем на один адрес в час
+    "codes_day": (8, 86400),     # новых кодов из писем на пользователя в сутки
     "write": (60, 60),       # посты, комментарии, реакции
     "message": (40, 60),     # сообщения
     "upload": (20, 60),      # загрузка файлов

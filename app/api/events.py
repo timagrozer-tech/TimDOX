@@ -13,12 +13,16 @@ from ..web import ApiError, auth, body, limit, ok, path_int
 STATUSES = ("going", "maybe", "declined")
 
 
-def _visible_sql() -> str:
-    """Зритель :v видит мероприятие e."""
-    invited = "EXISTS (SELECT 1 FROM event_members emx WHERE emx.event_id = e.id AND emx.user_id = :v)"
-    return f"""(e.creator_id = :v OR {invited} OR ({not_blocked_sql("e.creator_id")} AND (
+def _visible_sql(with_invites: bool = True) -> str:
+    """Зритель :v видит мероприятие e. Блокировка важнее приглашения."""
+    invited = "EXISTS (SELECT 1 FROM event_members emx WHERE emx.event_id = e.id AND emx.user_id = :v) OR " if with_invites else ""
+    return f"""(e.creator_id = :v OR ({not_blocked_sql("e.creator_id")} AND ({invited}
         (e.community_id IS NOT NULL AND {community_visible_sql("e.community_id")})
         OR (e.community_id IS NULL AND (e.visibility = 'public' OR (e.visibility = 'friends' AND {is_friend_sql("e.creator_id")}))))))"""
+
+
+def _sees_without_invite(event_id: int, uid: int) -> bool:
+    return bool(db.value(f"SELECT 1 FROM events e WHERE e.id = :id AND {_visible_sql(False)}", {"id": event_id, "v": uid}))
 
 
 def _parse_dt(value, field: str) -> str | None:
@@ -111,7 +115,10 @@ async def create_event(request: Request):
             errors["visibility"] = "Недопустимое значение"
         community_id = form.get("community_id") or None
         if community_id:
-            community_id = int(community_id)
+            try:
+                community_id = int(community_id)
+            except ValueError:
+                raise ApiError(400, "Некорректное сообщество")
             role = db.value("SELECT role FROM community_members WHERE community_id=? AND user_id=? AND status='member'", (community_id, v))
             if role not in ("admin", "moderator"):
                 raise ApiError(403, "Создавать мероприятия сообщества могут администраторы")
@@ -148,13 +155,24 @@ async def update_event(request: Request):
     if e["creator_id"] != v:
         raise ApiError(403, "Изменять мероприятие может только организатор")
     data = await body(request)
-    sets, params = [], []
+    sets, params, errors = [], [], {}
     for field, n in (("title", 120), ("description", 3000), ("place", 200)):
         if field in data:
-            sets.append(f"{field}=?"); params.append(censor(clean_text(data[field], n)))
-    for field in ("starts_at", "ends_at"):
+            val = censor(clean_text(data[field], n))
+            if field == "title" and len(val) < 3:
+                errors["title"] = "Название — от 3 символов"
+            sets.append(f"{field}=?"); params.append(val)
+    starts = _parse_dt(data["starts_at"], "начало") if "starts_at" in data else e["starts_at"]
+    ends = _parse_dt(data["ends_at"], "окончание") if "ends_at" in data else e["ends_at"]
+    if not starts:
+        errors["starts_at"] = "Укажите дату и время начала"
+    elif ends and ends < starts:
+        errors["ends_at"] = "Окончание раньше начала"
+    if errors:
+        return JSONResponse({"error": "Проверьте поля формы", "fields": errors}, status_code=422)
+    for field, val in (("starts_at", starts), ("ends_at", ends)):
         if field in data:
-            sets.append(f"{field}=?"); params.append(_parse_dt(data[field], field))
+            sets.append(f"{field}=?"); params.append(val)
     if "visibility" in data and data["visibility"] in ("public", "friends", "invited"):
         sets.append("visibility=?"); params.append(data["visibility"])
     if sets:
@@ -178,6 +196,10 @@ async def rsvp(request: Request):
     v = request.state.user["id"]
     e = _get(path_int(request), v)
     status = (await body(request)).get("status")
+    if status == "none" and e["creator_id"] != v:  # отменить свой ответ
+        db.run("DELETE FROM event_members WHERE event_id=? AND user_id=? AND status<>'invited'", (e["id"], v))
+        social.push_counters(v)
+        return JSONResponse(_view([e], v)[0])
     if status not in STATUSES:
         raise ApiError(400, "Неизвестный ответ")
     db.run("""INSERT INTO event_members (event_id, user_id, status) VALUES (?,?,?)
@@ -199,9 +221,15 @@ async def invite(request: Request):
     data = await body(request)
     friends = set(social.friend_ids(v))
     added = 0
-    for uid in data.get("user_ids") or []:
-        uid = int(uid)
-        if uid not in friends:
+    for uid in (data.get("user_ids") or [])[:200]:
+        try:
+            uid = int(uid)
+        except (TypeError, ValueError):
+            continue
+        if uid not in friends or social.blocked_between(uid, e["creator_id"]):
+            continue
+        # приглашение не должно открывать то, что человеку видеть нельзя: закрытое сообщество, «для друзей» организатора
+        if e["visibility"] != "invited" and not _sees_without_invite(e["id"], uid):
             continue
         cur = db.run("INSERT OR IGNORE INTO event_members (event_id, user_id, status, invited_by) VALUES (?,?, 'invited', ?)",
                      (e["id"], uid, v))

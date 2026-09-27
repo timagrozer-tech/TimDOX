@@ -49,13 +49,24 @@ def _admin_ids(cid: int) -> list[int]:
         "SELECT user_id FROM community_members WHERE community_id=? AND role='admin' AND status='member'", (cid,))]
 
 
+def ensure_admin(community_id: int) -> None:
+    """Если у сообщества не осталось администратора — назначаем самого давнего модератора, иначе самого давнего участника."""
+    if db.value("SELECT 1 FROM community_members WHERE community_id=? AND role='admin' AND status='member'", (community_id,)):
+        return
+    heir = db.value("""SELECT user_id FROM community_members WHERE community_id=? AND status='member'
+                       ORDER BY (role='moderator') DESC, joined_at LIMIT 1""", (community_id,))
+    if heir:
+        db.run("UPDATE community_members SET role='admin' WHERE community_id=? AND user_id=?", (community_id, heir))
+
+
 @auth()
 async def list_communities(request: Request):
     v = request.state.user["id"]
     tab = request.query_params.get("tab", "my")
     q = (request.query_params.get("q") or "").strip().lower()[:80]
     if q:
-        like = "%" + q.replace("%", "").replace("_", "\\_") + "%"
+        from .misc import _like
+        like = _like(q.lower())
         rows = db.all("""SELECT c.* FROM communities c WHERE ulower(c.name) LIKE ? ESCAPE '\\'
                          OR ulower(c.description) LIKE ? ESCAPE '\\' OR c.slug LIKE ? ESCAPE '\\' LIMIT 30""", (like, like, like))
     elif tab == "my":
@@ -195,7 +206,7 @@ async def join(request: Request):
         if m:
             return JSONResponse(_card(c, v))
         status = "pending" if c["is_private"] else "member"
-        db.run("INSERT INTO community_members (community_id, user_id, status) VALUES (?,?,?)", (c["id"], v, status))
+        db.run("INSERT OR IGNORE INTO community_members (community_id, user_id, status) VALUES (?,?,?)", (c["id"], v, status))
         if status == "pending":
             for admin in _admin_ids(c["id"]):
                 social.notify(admin, v, "community_request", extra={"slug": c["slug"], "name": c["name"]})

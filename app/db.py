@@ -82,6 +82,19 @@ MIGRATIONS = [
 POST_MIGRATION_SQL = """
 CREATE INDEX IF NOT EXISTS idx_posts_community ON posts(community_id, id DESC);
 CREATE INDEX IF NOT EXISTS idx_profiles_school ON profiles(school_year);
+CREATE INDEX IF NOT EXISTS idx_notif_post ON notifications(post_id);
+CREATE INDEX IF NOT EXISTS idx_notif_comment ON notifications(comment_id);
+CREATE INDEX IF NOT EXISTS idx_notif_actor ON notifications(actor_id);
+CREATE INDEX IF NOT EXISTS idx_notif_unread ON notifications(user_id) WHERE read_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_comments_author ON comments(author_id);
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_reactions_user ON reactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_mentions_user ON mentions(user_id);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_post ON bookmarks(post_id);
+CREATE INDEX IF NOT EXISTS idx_reel_likes_user ON reel_likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_story_views_viewer ON story_views(viewer_id);
+CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at);
+CREATE INDEX IF NOT EXISTS idx_posts_circle ON posts(circle_id);
 """
 
 

@@ -1,6 +1,7 @@
 """Обработка изображений: проверка, удаление EXIF (геометки), сжатие, превью."""
 import io
 import secrets
+from collections import OrderedDict
 from datetime import datetime
 
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -10,6 +11,7 @@ from . import config
 from .web import ApiError
 
 Image.MAX_IMAGE_PIXELS = 40_000_000  # защита от «бомб» распаковки
+MAX_PIXELS = 40_000_000  # больше — отказ сразу (иначе картинка займёт в памяти сотни мегабайт)
 ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP", "GIF", "MPO"}
 ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
@@ -29,6 +31,8 @@ def _process(data: bytes, kind: str) -> dict:
     try:
         probe = Image.open(io.BytesIO(data))
         fmt = probe.format
+        if probe.size[0] * probe.size[1] > MAX_PIXELS:
+            raise ApiError(400, "Изображение слишком большое — не больше 40 мегапикселей")
         probe.verify()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         raise ApiError(400, "Файл не является изображением или повреждён")
@@ -103,7 +107,8 @@ def _put(rel: str, data: bytes, ctype: str) -> None:
                           {"content-type": ctype, "cache-control": "31536000", "x-upsert": "true"})
     elif config.MEDIA_STORAGE == "db":
         from . import db
-        db.run("INSERT INTO media_files (path, content_type, data) VALUES (?, ?, ?)", (rel, ctype, data))
+        # RETURNING path — иначе PostgreSQL вернул бы обратно весь файл
+        db.run("INSERT INTO media_files (path, content_type, data) VALUES (?, ?, ?) RETURNING path", (rel, ctype, data))
     else:
         target = config.UPLOAD_DIR / rel
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -122,13 +127,55 @@ def process_and_store(data: bytes, kind: str) -> dict:
     return _store(_process(data, kind))
 
 
+# Небольшой кэш часто запрашиваемых файлов из базы (аватарки, превью): база не гоняет одно и то же по сети
+_cache: "OrderedDict[str, bytes]" = OrderedDict()
+_cache_size = 0
+CACHE_LIMIT = 48 * 1024 * 1024
+CACHE_ITEM_MAX = 1536 * 1024
+
+
+def _cache_put(rel: str, data: bytes) -> None:
+    global _cache_size
+    if len(data) > CACHE_ITEM_MAX:
+        return
+    _cache[rel] = data
+    _cache_size += len(data)
+    while _cache_size > CACHE_LIMIT and _cache:
+        _, old = _cache.popitem(last=False)
+        _cache_size -= len(old)
+
+
+def file_size(rel: str) -> int | None:
+    """Размер файла из базы без загрузки содержимого (для перемотки видео)."""
+    if rel in _cache:
+        return len(_cache[rel])
+    from . import db
+    return db.value("SELECT length(data) FROM media_files WHERE path=?", (rel,))
+
+
+def read_range(rel: str, start: int, end: int) -> bytes | None:
+    """Кусок файла из базы: для видео не читаем весь ролик ради пары мегабайт."""
+    if rel in _cache:
+        return _cache[rel][start:end + 1]
+    from . import db
+    row = db.one("SELECT substr(data, ?, ?) AS part FROM media_files WHERE path=?", (start + 1, end - start + 1, rel))
+    return bytes(row["part"]) if row and row["part"] is not None else None
+
+
 def read_file(rel: str) -> bytes | None:
     if config.MEDIA_STORAGE == "supabase":
         return None  # раздаёт CDN — см. public_url
     if config.MEDIA_STORAGE == "db":
+        if rel in _cache:
+            _cache.move_to_end(rel)
+            return _cache[rel]
         from . import db
         row = db.one("SELECT data FROM media_files WHERE path=?", (rel,))
-        return bytes(row["data"]) if row else None
+        if not row:
+            return None
+        data = bytes(row["data"])
+        _cache_put(rel, data)
+        return data
     p = (config.UPLOAD_DIR / rel).resolve()
     if config.UPLOAD_DIR.resolve() in p.parents and p.is_file():
         return p.read_bytes()
@@ -238,6 +285,8 @@ def _process_sticker(data: bytes) -> dict:
     try:
         probe = Image.open(io.BytesIO(data))
         fmt = probe.format
+        if probe.size[0] * probe.size[1] > MAX_PIXELS:
+            raise ApiError(400, "Изображение слишком большое — не больше 40 мегапикселей")
         probe.verify()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         raise ApiError(400, "Файл не является изображением или повреждён")

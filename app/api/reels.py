@@ -43,6 +43,9 @@ def _reel(reel_id: int, v: int) -> dict:
     r = db.one("SELECT * FROM reels WHERE id=?", (reel_id,))
     if not r or social.blocked_between(v, r["author_id"]):
         raise ApiError(404, "Клип не найден")
+    if r["author_id"] != v and not social.are_friends(v, r["author_id"]) and \
+            db.value("SELECT profile_visibility FROM profiles WHERE user_id=?", (r["author_id"],)) != "public":
+        raise ApiError(404, "Клип доступен только друзьям автора")
     return r
 
 
@@ -51,7 +54,9 @@ async def list_reels(request: Request):
     v = request.state.user["id"]
     cursor = int_param(request, "cursor")
     username = request.query_params.get("user")
-    where, params = ["NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id=? AND b.blocked_id=r.author_id) OR (b.blocker_id=r.author_id AND b.blocked_id=?))"], [v, v]
+    where, params = ["NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id=? AND b.blocked_id=r.author_id) OR (b.blocker_id=r.author_id AND b.blocked_id=?))",
+                     """(r.author_id=? OR EXISTS (SELECT 1 FROM profiles pr WHERE pr.user_id=r.author_id AND pr.profile_visibility='public')
+                        OR EXISTS (SELECT 1 FROM friendships f WHERE f.status='accepted' AND f.user_low=least(?, r.author_id) AND f.user_high=greatest(?, r.author_id)))"""], [v, v, v, v, v]
     if username:
         uid = db.value("SELECT user_id FROM profiles WHERE username=?", (username,))
         if not uid:
@@ -123,7 +128,11 @@ async def like(request: Request):
     r = _reel(path_int(request), v)
     if request.method == "DELETE":
         db.run("DELETE FROM reel_likes WHERE reel_id=? AND user_id=?", (r["id"], v))
-        social.unnotify(r["author_id"], v, "reel_like")
+        # убираем уведомление только об этом клипе, а не обо всех лайках человека
+        cur = db.run("DELETE FROM notifications WHERE user_id=? AND actor_id=? AND type='reel_like' AND extra LIKE ?",
+                     (r["author_id"], v, f'%"reel_id": {r["id"]}}}%'))
+        if cur.rowcount:
+            social.push_counters(r["author_id"])
     else:
         cur = db.run("INSERT OR IGNORE INTO reel_likes (reel_id, user_id) VALUES (?,?)", (r["id"], v))
         if cur.rowcount:
@@ -137,7 +146,9 @@ async def like(request: Request):
 async def view(request: Request):
     v = request.state.user["id"]
     r = _reel(path_int(request), v)
-    if r["author_id"] != v:
+    from ..security import rate_limiter
+    # один просмотр от человека раз в 6 часов — счётчик нельзя накрутить
+    if r["author_id"] != v and rate_limiter.hit(f"reel_view:{v}:{r['id']}", 1, 6 * 3600):
         db.run("UPDATE reels SET views=views+1 WHERE id=?", (r["id"],))
     return ok()
 
