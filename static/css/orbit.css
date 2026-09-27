@@ -1338,3 +1338,113 @@ body.on-search .aside-search { display: none; }
 .verify-flow { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .verify-hint { font-size: 12.5px; color: var(--text-2); }
 .verify-banner { flex-wrap: wrap; }
+
+/* ==========================================================================
+   Профиль: статистика, статус-настроение
+   ========================================================================== */
+.profile-counts { display: flex; gap: 6px; margin-top: 14px; flex-wrap: nowrap; }
+.stat { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px; border: 0; border-radius: 14px;
+  background: var(--surface-2); cursor: pointer; color: var(--text-3); transition: background-color .2s, transform .15s; }
+.stat:hover { background: var(--primary-soft); }
+.stat:active { transform: scale(.96); }
+.stat b { font-size: 18px; color: var(--text); font-family: var(--font-display); line-height: 1.1; }
+.stat span { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.mutual-line { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 13px; color: var(--text-3); }
+.profile-status { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 5px 12px 5px 8px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); font-size: 13.5px; font-weight: 600; max-width: 100%; }
+button.profile-status { cursor: pointer; }
+button.profile-status:hover { border-color: var(--primary); }
+.profile-status span:not(.ps-emoji) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ps-emoji { font-size: 17px; line-height: 1; }
+.profile-status.empty { border-style: dashed; color: var(--text-3); padding: 5px 12px; }
+.status-editor .st-presets { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.st-presets button { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text); font-size: 13.5px; font-weight: 600; cursor: pointer; text-align: left; }
+.st-presets button:hover { border-color: var(--primary); background: var(--primary-soft); }
+.st-presets span { font-size: 18px; }
+.st-emoji { display: flex; flex-wrap: wrap; gap: 4px; }
+.st-emoji button { width: 36px; height: 36px; border-radius: 10px; border: 1.5px solid transparent; background: none; font-size: 20px; cursor: pointer; }
+.st-emoji button.on { border-color: var(--primary); background: var(--primary-soft); }
+.st-dur { flex-wrap: wrap; }
+.st-dur button { flex: 1; }
+
+/* ==========================================================================
+   Опросы
+   ========================================================================== */
+.poll { margin-top: 10px; padding: 12px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+.poll-head { display: flex; flex-direction: column; gap: 2px; }
+.poll-q { font-size: 15px; }
+.poll-head small { font-size: 12px; }
+.poll-options { display: flex; flex-direction: column; gap: 6px; }
+.poll-option { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 8px 14px; border-radius: 12px; border: 1.5px solid var(--border-strong);
+  background: var(--surface); color: var(--text); font-weight: 600; font-size: 14.5px; cursor: pointer; text-align: left; transition: border-color .15s, background-color .15s, transform .12s; }
+.poll-option:hover { border-color: var(--primary); color: var(--primary); }
+.poll-option:active { transform: scale(.98); }
+.poll-option.picked { border-color: var(--primary); background: var(--primary-soft); }
+.poll-box { width: 18px; height: 18px; border-radius: 5px; border: 2px solid var(--border-strong); flex: none; }
+.poll-option.picked .poll-box { background: var(--primary); border-color: var(--primary); box-shadow: inset 0 0 0 2px var(--surface); }
+.poll-result { position: relative; display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 12px; border-radius: 12px; overflow: hidden; background: var(--surface); font-size: 14.5px; }
+.poll-bar { position: absolute; left: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--primary) 16%, transparent); border-radius: inherit; animation: bar-grow .6s cubic-bezier(.2, .8, .2, 1); }
+.poll-result.top .poll-bar { background: color-mix(in srgb, var(--primary) 26%, transparent); }
+@keyframes bar-grow { from { width: 0 !important; } }
+.poll-text { position: relative; flex: 1; display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.poll-result.mine .poll-text { color: var(--primary); }
+.poll-pct { position: relative; font-weight: 800; font-variant-numeric: tabular-nums; }
+.poll-foot { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-3); flex-wrap: wrap; }
+.poll-retract { font-size: 12.5px; color: var(--primary); }
+.poll-editor { padding: 10px; border-radius: 14px; border: 1px dashed var(--border-strong); display: flex; flex-direction: column; gap: 6px; }
+.pe-head { display: flex; align-items: center; gap: 6px; color: var(--primary); }
+.pe-head small { font-weight: 500; }
+.pe-row { display: flex; gap: 4px; align-items: center; }
+.pe-row .input { flex: 1; height: 38px; }
+.pe-add { align-self: flex-start; }
+.pe-opts { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13.5px; }
+.pe-days { width: auto; height: 34px; padding: 0 10px; font-size: 13px; }
+
+/* ==========================================================================
+   Жесты: свайп для ответа, «потяните, чтобы обновить»
+   ========================================================================== */
+.msg.swipe-ready::before, .msg-sticker.swipe-ready::before, .msg-bigemoji.swipe-ready::before { content: "↩"; position: absolute; right: -34px; top: 50%; transform: translateY(-50%);
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--primary); color: #fff; font-size: 14px; }
+.ptr { position: fixed; top: 0; left: 50%; z-index: 90; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--surface); box-shadow: var(--shadow); transform: translate(-50%, -60px); transition: transform .2s; pointer-events: none; }
+.ptr-spin { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid var(--border-strong); border-top-color: var(--primary); }
+.ptr.ready .ptr-spin { border-color: var(--primary); border-top-color: transparent; }
+.ptr.loading { transform: translate(-50%, 70px) !important; }
+.ptr.loading .ptr-spin { animation: spin .7s linear infinite; }
+
+/* ==========================================================================
+   Телефон: меню — снизу экрана, профиль — по-новому
+   ========================================================================== */
+@media (max-width: 719px) {
+  .menu { left: 8px !important; right: 8px !important; top: auto !important; bottom: calc(8px + env(safe-area-inset-bottom)) !important; min-width: 0; max-height: 70vh; overflow-y: auto;
+    border-radius: 22px; padding: 8px; box-shadow: 0 -10px 40px rgba(0, 0, 0, .25), 0 0 0 100vmax rgba(0, 0, 0, .35); animation: sheet-up .25s cubic-bezier(.2, .9, .3, 1); }
+  .menu button { padding: 13px 14px; font-size: 15px; }
+  @keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } }
+
+  /* профиль: аватар → имя → статус → о себе → данные → статистика → кнопки → коллекция */
+  .profile-main { display: flex; flex-direction: column; align-items: center; }
+  .profile-top { display: contents; }
+  .profile-top > .avatar-slot, .profile-top > div:first-child { order: 1; margin-top: -58px; }
+  .profile-name { order: 2; }
+  .profile-bio { order: 3; }
+  .profile-info { order: 4; }
+  .profile-counts { order: 5; width: 100%; }
+  .mutual-line { order: 6; }
+  .profile-actions { order: 7; margin-top: 14px; }
+  .showcase { order: 8; width: 100%; }
+  .profile-name .handle { font-size: 14px; }
+  .cover { height: 140px; }
+  .cover .cover-btn { width: 36px; height: 36px; padding: 0; border-radius: 50%; justify-content: center; top: 10px; right: 10px; }
+  .cover-btn-text { display: none; }
+  .profile-top .avatar-edit { left: auto; top: auto; right: 2px; bottom: 6px; width: 34px; height: 34px; z-index: 4; border: 2px solid var(--surface);
+    background: var(--grad); color: #fff; box-shadow: var(--shadow-sm); }
+  .profile-info { gap: 6px 14px; font-size: 13.5px; }
+  .stat { padding: 7px 2px; }
+  .stat b { font-size: 16px; }
+  .stat span { font-size: 11px; }
+  .profile-card + .card .tabs button, .profile-card + .card .tabs a { flex: 1; justify-content: center; padding-left: 6px; padding-right: 6px; font-size: 13.5px; }
+  .profile-card + .card .tabs { -webkit-mask: none; mask: none; padding-right: 8px; }
+  .profile-card + .card .tabs .icon { display: none; }
+}
+@media (max-width: 719px) { .stat span { font-size: 10.5px; font-weight: 600; letter-spacing: -.01em; } .profile-counts { gap: 4px; } }

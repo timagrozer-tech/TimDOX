@@ -404,3 +404,30 @@ CREATE TABLE IF NOT EXISTS message_reactions (
 );
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to BIGINT;
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited_at TEXT;
+
+-- Опросы в записях
+CREATE TABLE IF NOT EXISTS polls (
+    id        BIGSERIAL PRIMARY KEY,
+    post_id   BIGINT NOT NULL UNIQUE REFERENCES posts(id) ON DELETE CASCADE,
+    question  TEXT NOT NULL DEFAULT '',
+    multiple  INTEGER NOT NULL DEFAULT 0,
+    closes_at TEXT
+);
+CREATE TABLE IF NOT EXISTS poll_options (
+    id       BIGSERIAL PRIMARY KEY,
+    poll_id  BIGINT NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
+    text     TEXT NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_poll_options ON poll_options(poll_id, position);
+CREATE TABLE IF NOT EXISTS poll_votes (
+    poll_id    BIGINT NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
+    option_id  BIGINT NOT NULL REFERENCES poll_options(id) ON DELETE CASCADE,
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT krug_now(),
+    PRIMARY KEY (option_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_poll_votes ON poll_votes(poll_id, user_id);
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status_emoji TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status_text TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status_until TEXT;

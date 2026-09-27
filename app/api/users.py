@@ -351,6 +351,28 @@ async def settings_get(request: Request):
     return JSONResponse(p)
 
 
+@auth()
+async def set_status(request: Request):
+    """Статус-настроение: эмодзи + короткий текст, по желанию — на время (1, 4, 24 часа, неделя)."""
+    limit(request, "write")
+    v = request.state.user["id"]
+    if request.method == "DELETE":
+        db.run("UPDATE profiles SET status_emoji=NULL, status_text=NULL, status_until=NULL WHERE user_id=?", (v,))
+        return JSONResponse({"status": None})
+    data = await body(request)
+    emoji = clean_text(str(data.get("emoji") or ""), 8).strip()
+    text = censor(clean_text(str(data.get("text") or ""), 60)).strip()
+    if not emoji and not text:
+        raise ApiError(400, "Выберите эмодзи или напишите статус")
+    try:
+        hours = int(data.get("hours") or 0)
+    except (TypeError, ValueError):
+        hours = 0
+    until = db.future(hours=hours) if hours in (1, 4, 24, 168) else None
+    db.run("UPDATE profiles SET status_emoji=?, status_text=?, status_until=? WHERE user_id=?", (emoji or None, text or None, until, v))
+    return JSONResponse({"status": {"emoji": emoji, "text": text, "until": until}})
+
+
 def _mask(email: str) -> str:
     name, _, domain = email.partition("@")
     return (name[:2] + "•" * max(1, len(name) - 2)) + "@" + domain
@@ -586,6 +608,7 @@ routes = [
     Route("/api/friends/online", online_friends, methods=["GET"]),
     Route("/api/me/settings", settings_get, methods=["GET"]),
     Route("/api/me/settings", settings_update, methods=["PATCH"]),
+    Route("/api/me/status", set_status, methods=["PATCH", "DELETE"]),
     Route("/api/me/email", email_change, methods=["POST"]),
     Route("/api/me/email/confirm", email_confirm, methods=["POST"]),
     Route("/api/me/{kind}", upload_image, methods=["POST", "DELETE"]),

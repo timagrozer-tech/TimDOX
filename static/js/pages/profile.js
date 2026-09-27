@@ -29,7 +29,7 @@ export async function profilePage({ params, query }) {
   function renderHeader() {
     const rel = data.relation;
     const cover = h("div.cover", data.cover ? h("img", { src: data.cover, alt: "" }) : null,
-      isMe ? h("button.btn.sm.cover-btn", { type: "button", onclick: () => uploadProfileImage("cover", (url) => { data.cover = url; renderHeader(); }) }, icon("camera", "sm"), data.cover ? "Изменить обложку" : "Добавить обложку") : null);
+      isMe ? h("button.btn.sm.cover-btn", { type: "button", onclick: () => uploadProfileImage("cover", (url) => { data.cover = url; renderHeader(); }) }, icon("camera", "sm"), h("span.cover-btn-text", data.cover ? "Изменить обложку" : "Добавить обложку")) : null);
 
     const actions = h("div.profile-actions");
     if (isMe) {
@@ -82,15 +82,67 @@ export async function profilePage({ params, query }) {
         h("div.profile-name",
           h("h1", u.name, statusText ? h("span.status-pill.online", statusText) : null,
             !isMe && rel.follows_you && rel.status !== "friends" ? h("span.status-pill", "подписан(а) на вас") : null),
-          h("div.handle", `@${u.username}`)),
+          h("div.handle", `@${u.username}`),
+          statusChip()),
         data.bio && !data.hidden ? h("p.profile-bio", data.bio) : null,
         h("div.profile-info", info),
         showcaseRow(),
         h("div.profile-counts",
-          h("a", { href: "#", onclick: (e) => { e.preventDefault(); selectTab("friends"); } }, h("b", data.counts.friends), " ", pl(data.counts.friends, ["друг", "друга", "друзей"]).split(" ")[1]),
-          h("a", { href: "#", onclick: (e) => { e.preventDefault(); showFollows("followers"); } }, h("b", data.counts.followers), " ", pl(data.counts.followers, ["подписчик", "подписчика", "подписчиков"]).split(" ")[1]),
-          h("a", { href: "#", onclick: (e) => { e.preventDefault(); showFollows("following"); } }, h("b", data.counts.following), " ", pl(data.counts.following, ["подписка", "подписки", "подписок"]).split(" ")[1]),
-          !isMe && data.mutual_friends ? h("span", pl(data.mutual_friends, ["общий друг", "общих друга", "общих друзей"])) : null)));
+          stat(data.counts.posts, ["запись", "записи", "записей"], () => selectTab("posts")),
+          stat(data.counts.friends, ["друг", "друга", "друзей"], () => selectTab("friends")),
+          stat(data.counts.followers, ["подписчик", "подписчика", "подписчиков"], () => showFollows("followers")),
+          stat(data.counts.following, ["подписка", "подписки", "подписок"], () => showFollows("following"))),
+        !isMe && data.mutual_friends ? h("div.mutual-line", icon("users", "sm"), pl(data.mutual_friends, ["общий друг", "общих друга", "общих друзей"])) : null));
+  }
+
+  function stat(n, forms, onClick) {
+    if (n == null) return null;
+    return h("button.stat", { type: "button", onclick: onClick }, h("b", String(n)), h("span", pl(n, forms).split(" ")[1]));
+  }
+
+  function statusChip() {
+    const st = u.status;
+    if (st) {
+      return h(isMe ? "button.profile-status" : "div.profile-status", isMe ? { type: "button", onclick: editStatus, title: "Изменить статус" } : {},
+        st.emoji ? h("span.ps-emoji", st.emoji) : null, st.text ? h("span", st.text) : null);
+    }
+    return isMe ? h("button.profile-status.empty", { type: "button", onclick: editStatus }, "＋ Статус") : null;
+  }
+
+  function editStatus() {
+    const PRESETS = [["🏖", "В отпуске"], ["💼", "На работе"], ["📚", "Учусь"], ["🏃", "На тренировке"], ["🎮", "Играю"],
+      ["🎧", "Слушаю музыку"], ["✈️", "В дороге"], ["🤒", "Болею"], ["😴", "Сплю"], ["🎉", "Праздную"], ["☕", "Пью кофе"], ["🔕", "Не беспокоить"]];
+    const EMOJI = "😊 😎 🥳 😴 🤔 😍 🔥 ❤️ 💼 📚 🏖 ✈️ 🎮 🎧 🏃 ☕ 🍕 🎬 🤒 🔕".split(" ");
+    let emoji = u.status?.emoji || "😊";
+    let hours = 24;
+    const text = h("input.input", { maxlength: 60, placeholder: "Что у вас происходит?", value: u.status?.text || "" });
+    const emojiRow = h("div.st-emoji");
+    const paintEmoji = () => emojiRow.replaceChildren(...EMOJI.map((e) => h(`button${e === emoji ? ".on" : ""}`, { type: "button", onclick: () => { emoji = e; paintEmoji(); } }, e)));
+    paintEmoji();
+    const dur = h("div.segmented.st-dur");
+    const paintDur = () => dur.replaceChildren(...[[1, "1 час"], [4, "4 часа"], [24, "Сутки"], [168, "Неделя"], [0, "Всегда"]].map(([v, t]) =>
+      h("button", { type: "button", "aria-pressed": String(v === hours), onclick: () => { hours = v; paintDur(); } }, t)));
+    paintDur();
+    const save = h("button.btn.primary", { type: "button" }, "Сохранить");
+    const m = modal({
+      title: "Статус", narrow: true,
+      body: h("div.stack.status-editor",
+        h("div.st-presets", PRESETS.map(([e, t]) => h("button", { type: "button", onclick: () => { emoji = e; text.value = t; paintEmoji(); } }, h("span", e), t))),
+        emojiRow, text,
+        h("div.field", h("label", "Показывать"), dur)),
+      footer: [
+        u.status ? h("button.btn.ghost", { type: "button", onclick: async () => {
+          try { await api.del("/api/me/status"); u.status = null; m.close(); renderHeader(); } catch (e) { toastError(e); }
+        } }, "Убрать") : h("button.btn.ghost", { type: "button", onclick: () => m.close() }, "Отмена"),
+        save],
+    });
+    save.addEventListener("click", async () => {
+      try {
+        const res = await api.patch("/api/me/status", { emoji, text: text.value, hours });
+        u.status = res.status; m.close(); renderHeader();
+        toast("Статус обновлён", { icon: "check", duration: 1500 });
+      } catch (e) { toastError(e); }
+    });
   }
 
   function showcaseRow() {

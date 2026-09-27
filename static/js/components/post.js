@@ -1,6 +1,6 @@
 // Карточка записи: текст, фото, цитата, реакции, комментарии, репост, закладки.
 import { api, state } from "../api.js";
-import { h, icon, avatar, richText, timeAgo, fullDate, pl, autosize } from "../dom.js";
+import { h, icon, avatar, richText, timeAgo, fullDate, pl, plural, autosize } from "../dom.js";
 import { toast, toastError, showMenu, modal, confirmDialog, promptDialog, lightbox } from "../ui.js";
 import { navigate } from "../router.js";
 import { VISIBILITY, visibilitySelect, openComposerModal } from "./composer.js";
@@ -69,7 +69,57 @@ function body(post, { clamp = true } = {}) {
   }
   const g = gallery(post.media);
   if (g) parts.push(g);
+  if (post.poll) parts.push(pollView(post.poll, post.text));
   return parts;
+}
+
+/** Опрос: до голосования — варианты, после — полоски с процентами */
+function pollView(initial, postText) {
+  let poll = initial;
+  const box = h("div.poll");
+  const vote = async (ids) => {
+    try {
+      poll = await api.post(`/api/polls/${poll.id}/vote`, { option_ids: ids });
+      paint();
+    } catch (e) { toastError(e); }
+  };
+  function paint() {
+    const showResults = poll.voted.length > 0 || poll.closed;
+    const total = poll.options.reduce((a, o) => a + o.votes, 0) || 0;
+    const maxVotes = Math.max(...poll.options.map((o) => o.votes), 0);
+    const picked = new Set();
+    const head = h("div.poll-head",
+      poll.question && poll.question !== postText ? h("b.poll-q", poll.question) : null,
+      h("small.muted", poll.multiple ? "Можно выбрать несколько" : "Один ответ"));
+    const list = h("div.poll-options", poll.options.map((o) => {
+      if (showResults) {
+        const pct = total ? Math.round((o.votes / total) * 100) : 0;
+        const mine = poll.voted.includes(o.id);
+        return h(`div.poll-result${mine ? ".mine" : ""}${o.votes === maxVotes && maxVotes > 0 ? ".top" : ""}`,
+          h("i.poll-bar", { style: { width: `${pct}%` } }),
+          h("span.poll-text", mine ? icon("check", "sm") : null, o.text),
+          h("span.poll-pct", `${pct}%`));
+      }
+      const btn = h("button.poll-option", { type: "button" }, poll.multiple ? h("span.poll-box") : null, o.text);
+      btn.addEventListener("click", () => {
+        if (!poll.multiple) { vote([o.id]); return; }
+        if (picked.has(o.id)) picked.delete(o.id); else picked.add(o.id);
+        btn.classList.toggle("picked", picked.has(o.id));
+        send.disabled = !picked.size;
+      });
+      return btn;
+    }));
+    const send = poll.multiple && !showResults ? h("button.btn.primary.sm", { type: "button", disabled: true, onclick: () => vote([...picked]) }, "Голосовать") : null;
+    const foot = h("div.poll-foot",
+      h("span", `${poll.voters} ${plural(poll.voters, ["голос", "голоса", "голосов"])}`),
+      poll.closed ? h("span", "· голосование закончено") : poll.closes_at ? h("span", `· до ${fullDate(poll.closes_at)}`) : null,
+      h("div.spacer"),
+      send,
+      poll.voted.length && !poll.closed ? h("button.link-btn.poll-retract", { type: "button", onclick: () => vote([]) }, "Отменить голос") : null);
+    box.replaceChildren(head, list, foot);
+  }
+  paint();
+  return box;
 }
 
 function quoteCard(q) {

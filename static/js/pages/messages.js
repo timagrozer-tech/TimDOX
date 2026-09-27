@@ -346,11 +346,31 @@ export async function messagesPage({ params }) {
     function attachMenu(bubble, m) {
       const open = () => openMsgMenu(m, bubble);
       bubble.addEventListener("contextmenu", (e) => { if (e.target.closest("a, video, audio")) return; e.preventDefault(); open(); });
-      let timer = null, sx = 0, sy = 0;
+      let timer = null, sx = 0, sy = 0, swipe = 0, dragging = false;
       bubble.addEventListener("pointerdown", (e) => {
         if (e.pointerType !== "touch") return;
-        sx = e.clientX; sy = e.clientY;
+        sx = e.clientX; sy = e.clientY; swipe = 0; dragging = false;
         timer = setTimeout(() => { timer = null; navigator.vibrate?.(10); open(); }, 430);
+      });
+      // свайп влево — ответить (как в Telegram)
+      bubble.addEventListener("touchmove", (e) => {
+        if (!conv.can_write) return;
+        const t = e.touches[0];
+        const dx = t.clientX - sx, dy = t.clientY - sy;
+        if (!dragging && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.5 && dx < 0) dragging = true;
+        if (!dragging) return;
+        swipe = Math.max(-80, Math.min(0, dx));
+        bubble.style.transform = `translateX(${swipe}px)`;
+        bubble.classList.toggle("swipe-ready", swipe <= -56);
+      }, { passive: true });
+      bubble.addEventListener("touchend", () => {
+        if (!dragging) return;
+        if (swipe <= -56) { navigator.vibrate?.(8); startReply(m); }
+        bubble.style.transition = "transform .2s ease-out";
+        bubble.style.transform = "";
+        bubble.classList.remove("swipe-ready");
+        setTimeout(() => { bubble.style.transition = ""; }, 220);
+        dragging = false;
       });
       const cancel = (e) => { if (timer && (!e || e.type !== "pointermove" || Math.hypot(e.clientX - sx, e.clientY - sy) > 10)) { clearTimeout(timer); timer = null; } };
       bubble.addEventListener("pointerup", cancel); bubble.addEventListener("pointercancel", cancel); bubble.addEventListener("pointermove", cancel);

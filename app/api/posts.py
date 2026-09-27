@@ -3,7 +3,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from .. import collection, config, db, media, social
+from .. import collection, config, db, media, polls, social
 from ..security import censor, clean_text, extract_hashtags, extract_mentions
 from ..social import is_friend_sql, not_blocked_sql, visible_post_sql
 from ..web import ApiError, auth, body, int_param, limit, ok, path_int
@@ -68,6 +68,8 @@ def hydrate(rows: list[dict], v: int, depth: int = 0) -> list[dict]:
             f"""SELECT community_id FROM community_members WHERE user_id=? AND role IN ('admin','moderator')
                 AND status='member' AND community_id IN ({db.placeholders(comm_ids)})""", (v, *comm_ids))}
 
+    poll_by = polls.views(ids, v)
+
     quotes = {}
     if depth == 0:
         q_ids = [r["quote_of"] for r in rows if r["quote_of"]]
@@ -97,6 +99,7 @@ def hydrate(rows: list[dict], v: int, depth: int = 0) -> list[dict]:
             "as_community": bool(r.get("as_community")),
             "circle": circles.get(r.get("circle_id")) if r.get("circle_id") else None,
             "can_moderate": r.get("community_id") in can_mod,
+            "poll": poll_by.get(r["id"]),
         }
         if r["quote_of"] and depth == 0:
             item["quote"] = quotes.get(r["quote_of"]) or {"unavailable": True}
@@ -310,7 +313,10 @@ async def _create_post(request: Request, v: int, form):
     else:
         quote_of = None
 
-    if not text and not files and not quote_of:
+    poll = polls.parse(form.get("poll"))
+    if poll and not poll["question"]:
+        poll["question"] = text[:200]
+    if not text and not files and not quote_of and not poll:
         raise ApiError(400, "Напишите текст или добавьте фото")
 
     community_id = form.get("community_id")
@@ -360,12 +366,41 @@ async def _create_post(request: Request, v: int, form):
             alt = clean_text(alts[i] if i < len(alts) and isinstance(alts[i], str) else "", 300)
             c.execute("INSERT INTO post_media (post_id, path, thumb, width, height, alt, position) VALUES (?,?,?,?,?,?,?)",
                       (pid, s["path"], s["thumb"], s["width"], s["height"], alt, i))
+        if poll:
+            polls.create(c, pid, poll)
     _index_text(pid, v, text, visibility, notify_mentions=True)
     if quote_of:
         author = db.value("SELECT author_id FROM posts WHERE id=?", (quote_of,))
         social.notify(author, v, "quote", post_id=pid)
     row = db.one("SELECT * FROM posts WHERE id=?", (pid,))
     return JSONResponse(hydrate([row], v)[0], status_code=201)
+
+
+@auth()
+async def vote(request: Request):
+    """Голос в опросе. option_ids: [] — отозвать голос."""
+    limit(request, "write")
+    v = request.state.user["id"]
+    poll = db.one("SELECT * FROM polls WHERE id=?", (path_int(request),))
+    if not poll:
+        raise ApiError(404, "Опрос не найден")
+    get_visible_post(poll["post_id"], v)  # проверка доступа к записи
+    if poll["closes_at"] and poll["closes_at"] < db.now():
+        raise ApiError(400, "Голосование закончилось")
+    data = await body(request)
+    try:
+        chosen = [int(x) for x in (data.get("option_ids") or [])]
+    except (TypeError, ValueError):
+        raise ApiError(400, "Некорректный выбор")
+    valid = {r["id"] for r in db.all("SELECT id FROM poll_options WHERE poll_id=?", (poll["id"],))}
+    chosen = list(dict.fromkeys(x for x in chosen if x in valid))
+    if len(chosen) > 1 and not poll["multiple"]:
+        raise ApiError(400, "В этом опросе можно выбрать только один вариант")
+    with db.tx() as c:
+        c.execute("DELETE FROM poll_votes WHERE poll_id=? AND user_id=?", (poll["id"], v))
+        for oid in chosen:
+            c.execute("INSERT INTO poll_votes (poll_id, option_id, user_id) VALUES (?,?,?)", (poll["id"], oid, v))
+    return JSONResponse(polls.views([poll["post_id"]], v)[poll["post_id"]])
 
 
 @auth()
@@ -625,6 +660,7 @@ routes = [
     Route("/api/posts/{id:int}/repost", repost, methods=["POST"]),
     Route("/api/posts/{id:int}/repost", unrepost, methods=["DELETE"]),
     Route("/api/posts/{id:int}/bookmark", bookmark, methods=["POST", "DELETE"]),
+    Route("/api/polls/{id:int}/vote", vote, methods=["POST"]),
     Route("/api/posts/{id:int}/comments", comments, methods=["GET"]),
     Route("/api/posts/{id:int}/comments", add_comment, methods=["POST"]),
     Route("/api/comments/{id:int}", delete_comment, methods=["DELETE"]),

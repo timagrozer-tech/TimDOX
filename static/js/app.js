@@ -4,6 +4,39 @@ import { h, avatar } from "./dom.js";
 import { route, onRender, start, navigate } from "./router.js";
 import { restoreLook } from "./look.js";
 import { initPwa } from "./pwa.js";
+import { render as rerender } from "./router.js";
+
+/** «Потяните вниз, чтобы обновить» — на телефоне в ленте, уведомлениях, профиле и т. п. */
+function initPullToRefresh() {
+  if (!matchMedia("(pointer: coarse)").matches) return;
+  const ALLOW = /^\/($|explore|notifications|u\/|friends|communities|c\/|events|guests|bookmarks|tag\/)/;
+  const ind = h("div.ptr", h("span.ptr-spin"));
+  document.body.append(ind);
+  let y0 = null, dist = 0, busyNow = false;
+  addEventListener("touchstart", (e) => {
+    if (busyNow || window.scrollY > 0 || !ALLOW.test(location.pathname) || document.querySelector(".modal-backdrop")) { y0 = null; return; }
+    y0 = e.touches[0].clientY; dist = 0;
+  }, { passive: true });
+  addEventListener("touchmove", (e) => {
+    if (y0 == null) return;
+    dist = Math.max(0, e.touches[0].clientY - y0);
+    if (window.scrollY > 0) { y0 = null; dist = 0; }
+    const d = Math.min(90, dist * .5);
+    ind.style.transform = `translate(-50%, ${d - 50}px) rotate(${d * 4}deg)`;
+    ind.classList.toggle("ready", d >= 60);
+  }, { passive: true });
+  addEventListener("touchend", async () => {
+    if (y0 == null) return;
+    const go = Math.min(90, dist * .5) >= 60;
+    y0 = null;
+    if (!go) { ind.style.transform = ""; ind.classList.remove("ready"); return; }
+    busyNow = true;
+    ind.classList.add("loading");
+    navigator.vibrate?.(10);
+    try { await rerender(true); } catch { /* ошибка покажется на странице */ }
+    setTimeout(() => { ind.classList.remove("loading", "ready"); ind.style.transform = ""; busyNow = false; }, 300);
+  });
+}
 import { applyUserLook } from "./app-actions.js";
 import { toast, closeAllModals, closeMenu, setTitle, applyTheme } from "./ui.js";
 import { ensureShell, setActive, destroyShell } from "./components/layout.js";
@@ -129,6 +162,7 @@ on("logged-out", () => {
 restoreLook();
 initFx();
 initPwa();
+initPullToRefresh();
 
 (async function boot() {
   try {

@@ -64,12 +64,47 @@ export function composer({ placeholder = "Что у вас нового?", quote
   const canAsCommunity = community && ["admin", "moderator"].includes(community.role);
   const asCommunity = canAsCommunity ? h("input", { type: "checkbox", checked: true }) : null;
   const submit = h("button.btn.primary", { type: "submit" }, "Опубликовать");
+  // ---- опрос
+  let poll = null; // { options: [], multiple, days }
+  const pollBox = h("div.poll-editor", { hidden: true });
+  function paintPoll() {
+    pollBox.hidden = !poll;
+    if (!poll) { refresh(); return; }
+    const rows = poll.options.map((val, i) => {
+      const inp = h("input.input", { value: val, maxlength: 100, placeholder: `Вариант ${i + 1}`, "aria-label": `Вариант ${i + 1}` });
+      inp.addEventListener("input", () => { poll.options[i] = inp.value; refresh(); });
+      inp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); if (poll.options.length < 10) { poll.options.push(""); paintPoll(); pollBox.querySelectorAll("input.input")[i + 1]?.focus(); } }
+      });
+      return h("div.pe-row", inp, poll.options.length > 2 ? h("button.btn.ghost.icon-only.sm", { type: "button", "aria-label": "Убрать вариант",
+        onclick: () => { poll.options.splice(i, 1); paintPoll(); } }, icon("x", "sm")) : null);
+    });
+    const days = h("select.select.pe-days", { "aria-label": "Сколько длится голосование" },
+      [["", "Без срока"], ["1", "1 день"], ["3", "3 дня"], ["7", "Неделя"]].map(([v, t]) => h("option", { value: v, selected: String(poll.days || "") === v }, t)));
+    days.addEventListener("change", () => { poll.days = days.value ? Number(days.value) : null; });
+    const multi = h("input", { type: "checkbox", checked: poll.multiple });
+    multi.addEventListener("change", () => { poll.multiple = multi.checked; });
+    pollBox.replaceChildren(
+      h("div.pe-head", icon("poll", "sm"), h("b", "Опрос"), h("small.muted", "Вопрос — текст записи"), h("div.spacer"),
+        h("button.btn.ghost.icon-only.sm", { type: "button", "aria-label": "Убрать опрос", onclick: () => { poll = null; paintPoll(); } }, icon("trash", "sm"))),
+      ...rows,
+      poll.options.length < 10 ? h("button.btn.ghost.sm.pe-add", { type: "button", onclick: () => { poll.options.push(""); paintPoll(); pollBox.querySelectorAll("input.input")[poll.options.length - 1]?.focus(); } }, icon("plus", "sm"), "Добавить вариант") : null,
+      h("div.pe-opts", h("label.check", multi, "Несколько ответов"), days));
+    refresh();
+  }
+  const pollBtn = h("button.btn.ghost.icon-only", { type: "button", title: "Опрос", "aria-label": "Добавить опрос", onclick: () => {
+    if (poll) return;
+    poll = { options: ["", ""], multiple: false, days: null };
+    paintPoll();
+    pollBox.querySelector("input")?.focus();
+  } }, icon("poll"));
 
   function refresh() {
     const len = ta.value.length;
     counter.textContent = len > MAX_LEN - 300 ? `${len} / ${MAX_LEN}` : "";
     counter.classList.toggle("over", len > MAX_LEN);
-    submit.disabled = (!ta.value.trim() && !photos.length && !quote) || len > MAX_LEN;
+    const pollOk = !poll || poll.options.filter((o) => o.trim()).length >= 2;
+    submit.disabled = (!ta.value.trim() && !photos.length && !quote && !poll) || len > MAX_LEN || !pollOk;
     previews.replaceChildren(...photos.map((p, i) => h("div.preview",
       h("img", { src: p.url, alt: p.alt || `Фото ${i + 1}` }),
       h("button.remove", { type: "button", "aria-label": "Убрать фото", onclick: () => { URL.revokeObjectURL(p.url); photos.splice(i, 1); refresh(); } }, icon("x", "sm")),
@@ -118,12 +153,14 @@ export function composer({ placeholder = "Что у вас нового?", quote
         fd.append("circle_id", vis.value.slice(7));
       } else fd.append("visibility", vis.value);
       if (quote) fd.append("quote_of", quote.id);
+      if (poll) fd.append("poll", JSON.stringify({ options: poll.options.map((o) => o.trim()).filter(Boolean), multiple: poll.multiple, days: poll.days }));
       for (const p of photos) { fd.append("photos", p.file); fd.append("alts", p.alt || ""); }
       await busy(submit, async () => {
         try {
           const post = await api.form("/api/posts", fd);
           photos.forEach((p) => URL.revokeObjectURL(p.url));
           photos.length = 0;
+          poll = null; paintPoll();
           ta.value = "";
           fit();
           refresh();
@@ -138,9 +175,11 @@ export function composer({ placeholder = "Что у вас нового?", quote
   h("div.body",
     ta,
     previews,
+    quote ? null : pollBox,
     quote ? quote.node : null,
     h("div.tools",
       h("button.btn.ghost.icon-only", { type: "button", title: "Добавить фото", "aria-label": "Добавить фото", onclick: () => fileInput.click() }, icon("image")),
+      quote ? null : pollBtn,
       vis,
       canAsCommunity ? h("label.check", { style: { fontSize: "13px" } }, asCommunity, `От имени сообщества`) : null,
       h("div.spacer"),
