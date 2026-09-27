@@ -1,4 +1,7 @@
 """Истории на 24 часа: фото или текст на цветном фоне, просмотры, ответы в личные сообщения."""
+import json
+import re
+
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -8,7 +11,67 @@ from ..security import censor, clean_text
 from ..social import is_friend_sql, not_blocked_sql
 from ..web import ApiError, auth, body, limit, ok, path_int
 
-BACKGROUNDS = ("blue", "orange", "green", "purple", "pink", "dark")
+BACKGROUNDS = ("blue", "orange", "green", "purple", "pink", "dark", "sunset", "ocean", "mint", "candy", "night", "fire",
+               "aurora", "peach", "lime", "mono", "cream", "space")
+FONTS = ("sans", "display", "hand", "retro", "serif", "mono", "round")
+MODES = ("plain", "outline", "box", "glass", "neon", "shadow")
+ALIGNS = ("center", "left", "right")
+HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+MAX_STICKERS = 8
+
+
+def _num(v, lo: float, hi: float, default: float) -> float:
+    try:
+        return round(min(hi, max(lo, float(v))), 4)
+    except (TypeError, ValueError):
+        return default
+
+
+def clean_style(raw: str | None, has_photo: bool) -> dict:
+    """Проверяет оформление истории от клиента: всё неизвестное отбрасывается, числа — в допустимых пределах."""
+    try:
+        data = json.loads(raw) if raw else {}
+    except ValueError:
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    style = {
+        "font": data.get("font") if data.get("font") in FONTS else "sans",
+        "mode": data.get("mode") if data.get("mode") in MODES else "plain",
+        "color": data.get("color") if isinstance(data.get("color"), str) and HEX.match(data["color"]) else "#ffffff",
+        "align": data.get("align") if data.get("align") in ALIGNS else "center",
+        "size": _num(data.get("size"), 14, 72, 30),
+        "x": _num(data.get("x"), 0.05, 0.95, 0.5),
+        "y": _num(data.get("y"), 0.05, 0.95, 0.8 if has_photo else 0.45),
+        "stickers": [],
+    }
+    for st in (data.get("stickers") or [])[:MAX_STICKERS]:
+        if not isinstance(st, dict):
+            continue
+        pos = {"x": _num(st.get("x"), 0.05, 0.95, 0.5), "y": _num(st.get("y"), 0.05, 0.95, 0.5),
+               "v": int(_num(st.get("v"), 0, 3, 0))}
+        kind = st.get("type")
+        if kind == "link":
+            url = str(st.get("url") or "").strip()[:500]
+            if not re.match(r"^https?://[^\s/$.?#][^\s]*$", url, re.I):
+                continue
+            label = clean_text(str(st.get("label") or ""), 40) or re.sub(r"^https?://(www\.)?", "", url).split("/")[0]
+            style["stickers"].append({"type": "link", "url": url, "label": censor(label), **pos})
+        elif kind == "mention":
+            prof = db.one("SELECT username, name FROM profiles WHERE username=?", (str(st.get("username") or "")[:40],))
+            if prof:
+                style["stickers"].append({"type": "mention", "username": prof["username"], "name": prof["name"], **pos})
+        elif kind == "emoji":
+            e = str(st.get("e") or "")[:16]
+            if e.strip():
+                style["stickers"].append({"type": "emoji", "e": e, **pos})
+        elif kind in ("time", "date"):
+            style["stickers"].append({"type": kind, "text": clean_text(str(st.get("text") or ""), 20), **pos})
+        elif kind == "tag":
+            tag = re.sub(r"[^\w]", "", str(st.get("tag") or ""))[:40]
+            if tag:
+                style["stickers"].append({"type": "tag", "tag": tag, **pos})
+    return style
 STORY_HOURS = 24
 
 
@@ -21,7 +84,11 @@ def _visible_sql() -> str:
 
 
 def _story_view(s: dict, seen: set[int]) -> dict:
-    return {"id": s["id"], "media": s["media"], "text": s["text"], "background": s["background"],
+    try:
+        style = json.loads(s["style"]) if s.get("style") else None
+    except ValueError:
+        style = None
+    return {"id": s["id"], "media": s["media"], "text": s["text"], "background": s["background"], "style": style,
             "visibility": s["visibility"], "created_at": s["created_at"], "expires_at": s["expires_at"],
             "seen": s["id"] in seen}
 
@@ -68,7 +135,7 @@ async def stories_feed(request: Request):
 async def create_story(request: Request):
     limit(request, "write")
     v = request.state.user["id"]
-    form = await request.form(max_files=1, max_fields=10, max_part_size=16 * 1024)
+    form = await request.form(max_files=1, max_fields=12, max_part_size=16 * 1024)
     try:
         text = censor(clean_text(form.get("text"), 300))
         background = form.get("background") or "blue"
@@ -82,14 +149,15 @@ async def create_story(request: Request):
         if getattr(photo, "filename", None):
             limit(request, "upload")
             saved = await media.save_upload(photo, "story")
-        if not saved and not text:
-            raise ApiError(400, "Добавьте фото или текст")
+        style = clean_style(form.get("style"), bool(saved))
+        if not saved and not text and not style["stickers"]:
+            raise ApiError(400, "Добавьте фото, текст или стикер")
     finally:
         await form.close()
-    sid = db.run("""INSERT INTO stories (author_id, media, thumb, text, background, visibility, expires_at)
-                    VALUES (?,?,?,?,?,?,?)""",
+    sid = db.run("""INSERT INTO stories (author_id, media, thumb, text, background, style, visibility, expires_at)
+                    VALUES (?,?,?,?,?,?,?,?)""",
                  (v, saved["path"] if saved else None, saved["thumb"] if saved else None, text, background,
-                  visibility, db.future(hours=STORY_HOURS))).lastrowid
+                  json.dumps(style, ensure_ascii=False), visibility, db.future(hours=STORY_HOURS))).lastrowid
     return JSONResponse(_story_view(db.one("SELECT * FROM stories WHERE id=?", (sid,)), set()), status_code=201)
 
 

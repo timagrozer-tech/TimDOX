@@ -45,6 +45,11 @@ async function request(method, url, data, isForm = false) {
   } catch {
     throw new ApiError(0, { error: "Нет соединения с сервером. Проверьте интернет." });
   }
+  const ver = res.headers.get("x-app-version");
+  if (ver) {
+    if (!state.appVersion) state.appVersion = ver;
+    else if (ver !== state.appVersion) window.__krugUpdate = true;
+  }
   const ctype = res.headers.get("content-type") || "";
   const body = ctype.includes("application/json") ? await res.json() : null;
   if (!res.ok) {

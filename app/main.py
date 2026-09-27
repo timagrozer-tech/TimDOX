@@ -1,5 +1,7 @@
 """Точка входа приложения «Круг»."""
 import asyncio
+import os
+import time
 import logging
 import re
 from contextlib import asynccontextmanager
@@ -25,6 +27,10 @@ CSP = (f"default-src 'self'; img-src 'self' data: blob:{_CDN}; media-src 'self' 
        "script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'")
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+
+# Версия сборки: когда на сервере выходит обновление, открытые вкладки перезагружаются при следующем переходе
+APP_VERSION = (os.environ.get("RENDER_GIT_COMMIT") or str(int(time.time())))[:12].encode()
 
 
 class SecurityMiddleware:
@@ -56,12 +62,17 @@ class SecurityMiddleware:
                     (b"x-content-type-options", b"nosniff"),
                     (b"referrer-policy", b"strict-origin-when-cross-origin"),
                     (b"x-frame-options", b"DENY"),
-                    (b"permissions-policy", b"camera=(), microphone=(), geolocation=()"),
+                    (b"permissions-policy", b"camera=(self), microphone=(self), geolocation=()"),
                 ]
                 if not path.startswith("/api/"):
                     headers.append((b"content-security-policy", CSP.encode()))
                 if path.startswith("/api/"):
                     headers.append((b"cache-control", b"no-store"))
+                    headers.append((b"x-app-version", APP_VERSION))
+                elif path.startswith("/static/") and path.endswith((".js", ".css")):
+                    # модули подгружаются без ?v= — пусть браузер всегда сверяется с сервером (ETag), иначе после обновления
+                    # на телефоне может остаться старый интерфейс
+                    headers.append((b"cache-control", b"no-cache"))
             await send(message)
 
         await self.app(scope, receive, send_wrapper)

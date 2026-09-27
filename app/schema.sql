@@ -232,6 +232,7 @@ CREATE TABLE IF NOT EXISTS stories (
     thumb      TEXT,
     text       TEXT NOT NULL DEFAULT '',
     background TEXT NOT NULL DEFAULT 'blue',
+    style      TEXT,                              -- оформление: шрифт, стиль текста, стикеры (JSON)
     visibility TEXT NOT NULL DEFAULT 'friends' CHECK (visibility IN ('public','friends')),
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     expires_at TEXT NOT NULL

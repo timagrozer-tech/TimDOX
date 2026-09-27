@@ -24,6 +24,8 @@ export function match(path) {
 }
 
 export function navigate(url, { replace = false } = {}) {
+  // на сервере вышло обновление — открываем страницу заново, чтобы подтянулся новый интерфейс
+  if (window.__krugUpdate) { location[replace ? "replace" : "assign"](url); return; }
   if (url === location.pathname + location.search && !replace) { render(true); return; }
   history[replace ? "replaceState" : "pushState"]({}, "", url);
   render();

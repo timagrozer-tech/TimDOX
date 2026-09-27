@@ -161,7 +161,7 @@ export async function reelsPage({ params, query }) {
       h("div.rl-rail",
         likeBtn,
         h("button.rl-act", { type: "button", "aria-label": "Комментарии", onclick: () => openComments(r, commentCount) }, h("span.rl-ic", icon("comment")), commentCount),
-        h("button.rl-act", { type: "button", "aria-label": "Поделиться", onclick: () => share(r) }, h("span.rl-ic", icon("share")), h("span", "Поделиться")),
+        h("button.rl-act", { type: "button", "aria-label": "Поделиться", onclick: () => share(r) }, h("span.rl-ic", icon("share")), h("span", "Отправить")),
         h("button.rl-act.rl-sound", { type: "button", "aria-label": "Звук", onclick: toggleSound }, icon(soundOn ? "volume" : "mute")),
         more),
       h("div.rl-progress", progress));

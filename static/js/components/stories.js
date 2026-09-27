@@ -1,17 +1,11 @@
 // Истории на 24 часа: лента кружков, просмотр на весь экран, создание.
 import { api, state } from "../api.js";
 import { h, icon, avatar, timeAgo, pl } from "../dom.js";
-import { modal, toast, toastError, busy, confirmDialog } from "../ui.js";
+import { modal, toast, toastError, busy, confirmDialog, promptDialog } from "../ui.js";
 import { navigate } from "../router.js";
+import { BACKGROUNDS, FONTS, MODES, COLORS, loadStoryFonts, defaultStyle, applyTextStyle, textNode, stickerNode, place, renderStory } from "./storykit.js";
 
-export const BACKGROUNDS = {
-  blue: "linear-gradient(135deg, #1f3fae, #4f7bff)",
-  orange: "linear-gradient(135deg, #f5761a, #ffb347)",
-  green: "linear-gradient(135deg, #0f7a4a, #3ddc84)",
-  purple: "linear-gradient(135deg, #5b21b6, #c084fc)",
-  pink: "linear-gradient(135deg, #be185d, #fb7185)",
-  dark: "linear-gradient(135deg, #0b101b, #2a3550)",
-};
+export { BACKGROUNDS };
 const DURATION = 5000;
 
 /** Полоса историй над лентой */
@@ -65,8 +59,20 @@ export function openViewer(groups, gi, onChange) {
   const box = h("div.story-viewer", { role: "dialog", "aria-label": "Просмотр историй" },
     h("div.sv-frame", bars, head, stage, foot,
       h("button.sv-nav.prev", { type: "button", "aria-label": "Предыдущая", onclick: () => go(-1) }),
-      h("button.sv-nav.next", { type: "button", "aria-label": "Следующая", onclick: () => go(1) })),
-    h("button.lb-btn.lb-close", { type: "button", "aria-label": "Закрыть", onclick: close }, icon("x")));
+      h("button.sv-nav.next", { type: "button", "aria-label": "Следующая", onclick: () => go(1) })));
+
+  // касание истории: слева — назад, справа — вперёд; удержание — пауза
+  let downAt = 0;
+  stage.addEventListener("pointerdown", (e) => { if (e.button > 0) return; downAt = Date.now(); pause(); });
+  stage.addEventListener("pointerup", (e) => {
+    if (!downAt) return;
+    const held = Date.now() - downAt;
+    downAt = 0;
+    if (e.target.closest("a") || held > 300) return resume();
+    const r = stage.getBoundingClientRect();
+    go(e.clientX - r.left < r.width * .33 ? -1 : 1);
+  });
+  stage.addEventListener("pointercancel", () => { downAt = 0; resume(); });
 
   function current() { return groups[g].stories[s]; }
   function render() {
@@ -75,12 +81,9 @@ export function openViewer(groups, gi, onChange) {
     head.replaceChildren(
       h("a", { href: grp.is_me ? `/u/${state.me.username}` : `/u/${grp.user.username}`, onclick: close }, avatar(grp.user, "sm", { presence: false })),
       h("div.grow", h("b", grp.is_me ? "Вы" : grp.user.name), h("small", timeAgo(st.created_at))),
-      grp.is_me ? h("button.btn.ghost.icon-only.sm.sv-light", { type: "button", "aria-label": "Удалить историю", onclick: remove }, icon("trash", "sm")) : null);
-    const bg = BACKGROUNDS[st.background] || BACKGROUNDS.blue;
-    stage.style.background = st.media ? "#000" : bg;
-    stage.replaceChildren(
-      st.media ? h("img", { src: st.media, alt: st.text || "История" }) : null,
-      st.text ? h(`div.sv-text${st.media ? ".caption" : ""}`, st.text) : null);
+      grp.is_me ? h("button.sv-round", { type: "button", "aria-label": "Удалить историю", title: "Удалить историю", onclick: remove }, icon("trash", "sm")) : null,
+      h("button.sv-round", { type: "button", "aria-label": "Закрыть", title: "Закрыть", onclick: close }, icon("x", "sm")));
+    renderStory(stage, st, { onNavigate: close });
     if (grp.is_me) {
       const btn = h("button.btn.sm.sv-viewers", { type: "button" }, icon("eye", "sm"), "Просмотры");
       btn.addEventListener("click", () => showViewers(st));
@@ -161,17 +164,20 @@ export function openViewer(groups, gi, onChange) {
   }
   async function showViewers(st) {
     pause();
-    const body = h("div.mini-people", h("div.spinner"));
-    modal({ title: "Просмотры", body, narrow: true, onClose: resume });
+    const list = h("div.sv-panel-list", h("div.spinner"));
+    const panel = h("div.sv-panel", { role: "dialog", "aria-label": "Просмотры" },
+      h("div.sv-panel-head", h("b", "Просмотры"), h("button.sv-round", { type: "button", "aria-label": "Закрыть", onclick: () => { panel.remove(); resume(); } }, icon("x", "sm"))),
+      list);
+    box.querySelector(".sv-frame").append(panel);
     try {
       const { items, total } = await api.get(`/api/stories/${st.id}/viewers`);
-      body.replaceChildren(...(items.length ? [h("p.muted", pl(total, ["просмотр", "просмотра", "просмотров"])),
-        ...items.map((u) => h("a.mini-person", { href: `/u/${u.username}`, onclick: close }, avatar(u, "sm"),
-          h("div.who", h("span.name", u.name), h("span.sub", timeAgo(u.viewed_at)))))] : [h("p.muted", "Пока никто не посмотрел")]));
-    } catch (e) { body.replaceChildren(h("p.muted", e.message)); }
+      panel.querySelector(".sv-panel-head b").textContent = total ? `Просмотры · ${total}` : "Просмотры";
+      list.replaceChildren(...(items.length ? items.map((u) => h("a.mini-person", { href: `/u/${u.username}`, onclick: close }, avatar(u, "sm"),
+        h("div.who", h("span.name", u.name), h("span.sub", timeAgo(u.viewed_at))))) : [h("div.sv-empty", icon("eye"), h("p", "Пока никто не посмотрел"))]));
+    } catch (e) { list.replaceChildren(h("p.sv-empty", e.message)); }
   }
   const onKey = (e) => {
-    if (document.activeElement?.tagName === "INPUT") return;
+    if (document.activeElement?.tagName === "INPUT" || document.querySelector(".modal-backdrop")) return;
     if (e.key === "Escape") close();
     if (e.key === "ArrowRight") go(1);
     if (e.key === "ArrowLeft") go(-1);
@@ -185,63 +191,250 @@ export function openViewer(groups, gi, onChange) {
     onChange?.();
   }
   document.addEventListener("keydown", onKey);
+  loadStoryFonts();
   document.body.append(box);
   document.body.style.overflow = "hidden";
   render();
 }
 
-/** Создание истории: фото или текст на цветном фоне */
+const EMOJI = "😀 😂 😍 🥰 😎 🤩 🥳 😭 😡 🤯 👍 🙏 👏 🔥 ✨ 💯 ❤️ 💔 💫 🌈 ☀️ 🌙 ⭐ 🎉 🎂 🍕 ☕ 🍓 🌸 🐱 🐶 🦊 ⚽ 🎮 🎧 📸 ✈️ 🏖 🏔 🚀".split(" ");
+const clamp = (v) => Math.min(.94, Math.max(.06, v));
+const ALIGN = [["center", "По центру"], ["left", "Слева"], ["right", "Справа"]];
+
+/** Редактор истории: фон или фото, текст с оформлением, стикеры. Текст и стикеры двигаются пальцем,
+ *  а чтобы убрать — перетащите их в корзину сверху. */
 export function createStory(onDone) {
-  let file = null, bg = "blue", url = null;
-  const preview = h("div.story-preview");
-  const ta = h("textarea.story-text-input", { placeholder: "Напишите что-нибудь…", maxlength: 300, rows: 3, "aria-label": "Текст истории" });
+  loadStoryFonts();
+  const style = defaultStyle(false);
+  let text = "", bg = "blue", file = null, url = null, tab = "text", visibility = "friends";
+
+  const stage = h("div.se-stage");
+  const trash = h("div.se-trash", { "aria-hidden": "true" }, icon("trash"));
+  const panelBody = h("div.se-panel-body");
+  const tabs = h("div.se-tabs", { role: "tablist" });
   const fileInput = h("input", { type: "file", accept: "image/jpeg,image/png,image/webp,image/gif", hidden: true });
-  const swatches = h("div.swatches", { role: "radiogroup", "aria-label": "Фон" });
-  const vis = h("select.select", { "aria-label": "Кто видит историю" },
-    h("option", { value: "friends" }, "Друзья"), h("option", { value: "public" }, "Все"));
-  const paint = () => {
-    preview.style.background = file ? "#000" : BACKGROUNDS[bg];
-    preview.replaceChildren(file ? h("img", { src: url, alt: "" }) : null, ta);
-    ta.classList.toggle("caption", !!file);
-    swatches.replaceChildren(...Object.entries(BACKGROUNDS).map(([k, v]) => h("button.swatch", {
-      type: "button", role: "radio", "aria-checked": String(k === bg && !file), "aria-label": `Фон ${k}`,
-      style: { background: v }, onclick: () => { bg = k; if (file) { URL.revokeObjectURL(url); file = null; } paint(); },
-    })));
-  };
+  const visBtn = h("button.se-pill", { type: "button", onclick: () => { visibility = visibility === "friends" ? "public" : "friends"; paintVis(); } });
+  const paintVis = () => visBtn.replaceChildren(icon(visibility === "friends" ? "users" : "globe", "sm"), visibility === "friends" ? "Друзья" : "Все");
+  paintVis();
+  const publish = h("button.se-publish", { type: "button" }, "Поделиться", icon("send", "sm"));
+  const frame = h("div.se-frame",
+    h("div.se-top",
+      h("button.sv-round", { type: "button", "aria-label": "Закрыть", onclick: () => tryClose() }, icon("x", "sm")),
+      h("div.spacer"), visBtn),
+    h("div.se-stage-wrap", stage, trash),
+    h("div.se-panel", tabs, panelBody),
+    h("div.se-bottom", h("span.se-note", "Исчезнет через 24 часа"), publish),
+    fileInput);
+  const box = h("div.story-editor", { role: "dialog", "aria-label": "Новая история" }, frame);
+
+  // ---------------------------------------------------------------- перетаскивание
+  function draggable(el, obj, { onTap, onDelete }) {
+    el.addEventListener("pointerdown", (e) => {
+      if (e.button > 0) return;
+      e.preventDefault();
+      const r = stage.getBoundingClientRect();
+      const sx = e.clientX, sy = e.clientY, ox = obj.x ?? .5, oy = obj.y ?? .5;
+      let moved = false;
+      el.setPointerCapture?.(e.pointerId);
+      const move = (ev) => {
+        const dx = ev.clientX - sx, dy = ev.clientY - sy;
+        if (!moved && Math.hypot(dx, dy) < 6) return;
+        moved = true;
+        frame.classList.add("dragging");
+        obj.x = clamp(ox + dx / r.width); obj.y = clamp(oy + dy / r.height);
+        place(el, obj);
+        const tr = trash.getBoundingClientRect();
+        const over = ev.clientY < tr.bottom + 24 && Math.abs(ev.clientX - (tr.left + tr.width / 2)) < 70;
+        trash.classList.toggle("over", over); el.classList.toggle("to-trash", over);
+      };
+      const up = () => {
+        el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up);
+        frame.classList.remove("dragging");
+        if (!moved) return onTap?.();
+        if (trash.classList.contains("over")) { trash.classList.remove("over"); navigator.vibrate?.(15); onDelete?.(); }
+      };
+      el.addEventListener("pointermove", move); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+    });
+  }
+
+  // ---------------------------------------------------------------- холст
+  function paintStage() {
+    stage.style.background = file ? "#000" : BACKGROUNDS[bg];
+    const nodes = [];
+    if (file) nodes.push(h("img.st-photo", { src: url, alt: "" }));
+    const t = text ? textNode(text, style) : h("div.st-text.st-placeholder", "Нажмите, чтобы написать");
+    if (!text) { applyTextStyle(t, { ...style, mode: "plain" }); place(t, style); }
+    draggable(t, style, { onTap: editText, onDelete: () => { text = ""; paintStage(); } });
+    nodes.push(t);
+    style.stickers.forEach((s, i) => {
+      const el = stickerNode(s, { interactive: false });
+      draggable(el, s, {
+        onTap: () => { s.v = ((s.v || 0) + 1) % 3; paintStage(); }, // нажатие меняет вид стикера
+        onDelete: () => { style.stickers.splice(i, 1); paintStage(); },
+      });
+      nodes.push(el);
+    });
+    const editing = stage.querySelector(".se-editing");
+    stage.replaceChildren(...nodes, ...(editing ? [editing] : []));
+  }
+
+  // ---------------------------------------------------------------- ввод текста поверх холста
+  function editText() {
+    const ta = h("textarea.st-text.se-input", { maxlength: 300, rows: 1, placeholder: "Текст истории", "aria-label": "Текст истории" });
+    ta.value = text;
+    applyTextStyle(ta, style);
+    const grow = () => { ta.style.height = "auto"; ta.style.height = `${ta.scrollHeight}px`; };
+    const layer = h("div.se-editing", ta,
+      h("button.se-done", { type: "button", onclick: () => finish() }, "Готово"));
+    const finish = () => { text = ta.value.trim(); layer.remove(); stage.classList.remove("is-editing"); paintStage(); };
+    layer.addEventListener("pointerdown", (e) => { if (e.target === layer) finish(); });
+    ta.addEventListener("input", grow);
+    stage.append(layer);
+    stage.classList.add("is-editing");
+    requestAnimationFrame(() => { grow(); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); });
+    layer._restyle = () => { applyTextStyle(ta, style); grow(); };
+  }
+  const restyle = () => { stage.querySelector(".se-editing")?._restyle(); paintStage(); };
+
+  // ---------------------------------------------------------------- панели
+  const chip = (label, on, onclick, extra = {}) => h(`button.se-chip${on ? ".on" : ""}`, { type: "button", onclick, ...extra }, label);
+  const row = (title, ...items) => h("div.se-row", h("span.se-row-title", title), h("div.se-row-items", ...items));
+
+  function textPanel() {
+    return [
+      row("Шрифт", ...Object.entries(FONTS).map(([k, f]) => chip(f.label, style.font === k, () => { style.font = k; restyle(); drawPanel(); },
+        { style: { fontFamily: f.css, fontWeight: String(f.weight) } }))),
+      row("Стиль", ...Object.entries(MODES).map(([k, label]) => {
+        const sample = h(`span.se-mode-sample.st-mode-${k}`, "Aa");
+        sample.style.setProperty("--st-c", style.color); sample.style.setProperty("--st-k", style.color === "#ffffff" ? "#111111" : "#ffffff");
+        return h(`button.se-chip.se-mode${style.mode === k ? ".on" : ""}`, { type: "button", onclick: () => { style.mode = k; restyle(); drawPanel(); } }, sample, label);
+      })),
+      row("Цвет", ...COLORS.map((c) => h(`button.se-color${style.color === c ? ".on" : ""}`, { type: "button", "aria-label": `Цвет ${c}`,
+        style: { background: c }, onclick: () => { style.color = c; restyle(); drawPanel(); } }))),
+      h("div.se-row.se-row-inline",
+        h("button.se-chip", { type: "button", onclick: () => {
+          const i = ALIGN.findIndex(([a]) => a === style.align);
+          style.align = ALIGN[(i + 1) % ALIGN.length][0]; restyle(); drawPanel();
+        } }, `Выравнивание: ${ALIGN.find(([a]) => a === style.align)[1].toLowerCase()}`),
+        h("label.se-size", "Размер", h("input", { type: "range", min: 16, max: 64, value: style.size, oninput: (e) => { style.size = +e.target.value; restyle(); } }))),
+      h("button.se-chip.se-wide", { type: "button", onclick: editText }, icon("edit", "sm"), text ? "Изменить текст" : "Написать текст"),
+    ];
+  }
+
+  function bgPanel() {
+    return [
+      h("div.se-row.se-row-inline",
+        h("button.se-chip.on", { type: "button", onclick: () => fileInput.click() }, icon("image", "sm"), file ? "Другое фото" : "Фото из галереи"),
+        file ? h("button.se-chip", { type: "button", onclick: () => { URL.revokeObjectURL(url); file = null; url = null; paintStage(); drawPanel(); } }, icon("x", "sm"), "Убрать фото") : null),
+      h("div.se-bg-grid", Object.entries(BACKGROUNDS).map(([k, v]) => h(`button.se-bg${!file && bg === k ? ".on" : ""}`, { type: "button", "aria-label": `Фон ${k}`,
+        style: { background: v }, onclick: () => { bg = k; if (file) { URL.revokeObjectURL(url); file = null; url = null; } paintStage(); drawPanel(); } }))),
+    ];
+  }
+
+  function addSticker(s) {
+    if (style.stickers.length >= 8) return toast("Не больше 8 стикеров", { error: true });
+    const spots = [[.5, .2], [.5, .72], [.28, .32], [.72, .6], [.7, .25], [.3, .82], [.5, .9], [.5, .1]];
+    const [x, y] = spots[style.stickers.length % spots.length];
+    style.stickers.push({ x, y, v: 0, ...s });
+    paintStage();
+    navigator.vibrate?.(8);
+  }
+  async function addLink() {
+    const raw = await promptDialog({ title: "Ссылка", label: "Адрес страницы", placeholder: "https://…", confirm: "Дальше" });
+    if (!raw) return;
+    const link = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    try { new URL(link); } catch { return toast("Это не похоже на ссылку", { error: true }); }
+    const label = await promptDialog({ title: "Подпись к ссылке", label: "Необязательно — например, «Мой канал»", confirm: "Добавить" });
+    if (label === null) return;
+    addSticker({ type: "link", url: link, label: label || new URL(link).hostname.replace(/^www\./, "") });
+  }
+  async function addMention() {
+    let friends = [];
+    try { friends = (await api.get(`/api/users/${state.me.username}/friends`)).items; } catch (e) { return toastError(e); }
+    const q = h("input.input", { type: "search", placeholder: "Поиск по имени", "aria-label": "Поиск по имени" });
+    const list = h("div.pick-list");
+    const m = modal({ title: "Отметить человека", narrow: true, body: h("div.stack", q, list) });
+    const draw = () => {
+      const s = q.value.trim().toLowerCase();
+      const items = friends.filter((f) => !s || f.name.toLowerCase().includes(s) || f.username.includes(s));
+      list.replaceChildren(...(items.length ? items.map((f) => h("button.mini-person", { type: "button", onclick: () => { m.close(); addSticker({ type: "mention", username: f.username, name: f.name }); } },
+        avatar(f, "sm", { presence: false }), h("div.who", h("span.name", f.name), h("span.sub", `@${f.username}`)))) : [h("p.muted", "Никого не нашли")]));
+    };
+    q.addEventListener("input", draw);
+    draw();
+  }
+  async function addTag() {
+    const t = await promptDialog({ title: "Хэштег", placeholder: "лето", confirm: "Добавить" });
+    const tag = (t || "").replace(/^#/, "").replace(/[^\p{L}\p{N}_]/gu, "").slice(0, 40);
+    if (tag) addSticker({ type: "tag", tag });
+  }
+  function stickersPanel() {
+    const now = new Date();
+    return [
+      h("div.se-sticker-btns",
+        h("button.se-chip.on", { type: "button", onclick: addLink }, icon("link", "sm"), "Ссылка"),
+        h("button.se-chip", { type: "button", onclick: addMention }, icon("at", "sm"), "Упоминание"),
+        h("button.se-chip", { type: "button", onclick: addTag }, icon("hash", "sm"), "Хэштег"),
+        h("button.se-chip", { type: "button", onclick: () => addSticker({ type: "time", text: now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }) }) }, "🕒 Время"),
+        h("button.se-chip", { type: "button", onclick: () => addSticker({ type: "date", text: now.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) }) }, "📅 Дата")),
+      h("div.se-emoji-grid", EMOJI.map((e) => h("button", { type: "button", onclick: () => addSticker({ type: "emoji", e }) }, e))),
+      h("p.se-hint", "Стикеры можно двигать пальцем. Нажмите на стикер — поменяется его вид, перетащите в корзину — удалится."),
+    ];
+  }
+
+  const TABS = [["text", "Текст", "edit"], ["bg", "Фон", "image"], ["stickers", "Стикеры", "sticker"]];
+  function drawPanel() {
+    tabs.replaceChildren(...TABS.map(([id, label, ic]) => h("button", { type: "button", role: "tab", "aria-selected": String(tab === id),
+      onclick: () => { tab = id; drawPanel(); } }, icon(ic, "sm"), label)));
+    panelBody.replaceChildren(...(tab === "text" ? textPanel() : tab === "bg" ? bgPanel() : stickersPanel()));
+  }
+
   fileInput.addEventListener("change", () => {
     const f = fileInput.files[0];
+    fileInput.value = "";
     if (!f) return;
     if (f.size > 10 * 1024 * 1024) return toast("Файл больше 10 МБ", { error: true });
     if (url) URL.revokeObjectURL(url);
     file = f; url = URL.createObjectURL(f);
-    paint();
+    if (!text) style.y = .8;
+    paintStage(); drawPanel();
   });
-  const publish = h("button.btn.accent", { type: "button" }, "Опубликовать историю");
-  const m = modal({
-    title: "Новая история",
-    body: h("div.stack", preview,
-      h("div.row", { style: { flexWrap: "wrap" } },
-        h("button.btn.soft.sm", { type: "button", onclick: () => fileInput.click() }, icon("image", "sm"), "Фото"),
-        swatches, h("div.spacer"), vis),
-      h("p.muted", { style: { fontSize: "13px" } }, "История исчезнет через 24 часа."), fileInput),
-    footer: [h("button.btn.ghost", { type: "button", onclick: () => m.close() }, "Отмена"), publish],
-    onClose: () => { if (url) URL.revokeObjectURL(url); },
-  });
+
+  const onKey = (e) => { if (e.key === "Escape" && !document.querySelector(".modal-backdrop")) tryClose(); };
+  function close() {
+    box.remove();
+    document.removeEventListener("keydown", onKey);
+    document.body.style.overflow = "";
+    if (url) URL.revokeObjectURL(url);
+  }
+  async function tryClose() {
+    if ((text || file || style.stickers.length) && !await confirmDialog({ title: "Выйти без публикации?", text: "История не сохранится.", confirm: "Выйти", danger: true })) return;
+    close();
+  }
+
   publish.addEventListener("click", () => busy(publish, async () => {
-    if (!file && !ta.value.trim()) return toast("Добавьте фото или текст", { error: true });
+    stage.querySelector(".se-editing .se-done")?.click();
+    if (!file && !text && !style.stickers.length) return toast("Добавьте текст, фото или стикер", { error: true });
     const fd = new FormData();
     if (file) fd.append("photo", file);
-    fd.append("text", ta.value);
+    fd.append("text", text);
     fd.append("background", bg);
-    fd.append("visibility", vis.value);
+    fd.append("visibility", visibility);
+    fd.append("style", JSON.stringify(style));
     try {
       await api.form("/api/stories", fd);
-      m.close();
+      close();
       toast("История опубликована на 24 часа", { icon: "check" });
       onDone?.();
     } catch (e) { toastError(e); }
   }));
-  paint();
+
+  document.addEventListener("keydown", onKey);
+  document.body.append(box);
+  document.body.style.overflow = "hidden";
+  paintStage();
+  drawPanel();
 }
+
 
 export { navigate };

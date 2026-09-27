@@ -1,7 +1,7 @@
 // Настройки: профиль, приватность, оформление, безопасность, данные.
 import { api, state } from "../api.js";
 import { h, icon, avatar } from "../dom.js";
-import { setTitle, toast, toastError, busy, confirmDialog, modal, promptDialog } from "../ui.js";
+import { setTitle, toast, toastError, busy, confirmDialog, modal, promptDialog, showMenu } from "../ui.js";
 import { pickFriends } from "../components/people.js";
 import { loadCircles } from "../components/composer.js";
 import { appearanceSection } from "../components/appearance.js";
@@ -54,30 +54,38 @@ function settingRow(title, hint, control) {
   return h("div.setting-row", h("div.label-block", h("b", title), hint ? h("small", hint) : null), control);
 }
 
-export async function settingsPage() {
+export async function settingsPage({ query = {} } = {}) {
   setTitle("Настройки");
   const s = await api.get("/api/me/settings");
 
   // ---------------------------------------------------------------- Профиль
-  const avatarBox = h("div");
-  const coverBox = h("div.cover-preview");
+  // обложка и фото — одной компактной «шапкой», как на странице профиля
+  const avatarBox = h("div.set-avatar");
+  const coverBox = h("div.set-cover");
   const paintImages = () => {
-    avatarBox.replaceChildren(avatar({ ...state.me, avatar: s.avatar }, "xl", { presence: false }));
-    coverBox.replaceChildren(s.cover ? h("img", { src: s.cover, alt: "Обложка" }) : "");
+    avatarBox.replaceChildren(avatar({ ...state.me, avatar: s.avatar }, "xl", { presence: false, frame: false }));
+    coverBox.replaceChildren(s.cover ? h("img", { src: s.cover, alt: "" }) : "");
   };
   paintImages();
-  const imgButtons = (kind) => h("div.row", { style: { flexWrap: "wrap" } },
-    h("button.btn.soft.sm", { type: "button", onclick: () => uploadProfileImage(kind, (url) => { s[kind] = url; paintImages(); }) }, icon("camera", "sm"), "Загрузить"),
-    h("button.btn.ghost.sm", {
-      type: "button", onclick: async () => {
-        try { await api.del(`/api/me/${kind}`); s[kind] = null; if (kind === "avatar") { state.me.avatar = null; refreshSidebarUser(); } paintImages(); } catch (e) { toastError(e); }
-      },
-    }, "Удалить"));
+  const imageMenu = (kind) => (e) => {
+    const upload = () => uploadProfileImage(kind, (url) => { s[kind] = url; paintImages(); });
+    if (!s[kind]) return upload();
+    showMenu(e.currentTarget, [
+      { label: kind === "avatar" ? "Загрузить новое фото" : "Загрузить новую обложку", icon: "camera", onClick: upload },
+      { label: "Удалить", icon: "trash", danger: true, onClick: async () => {
+        try { await api.del(`/api/me/${kind}`); s[kind] = null; if (kind === "avatar") { state.me.avatar = null; refreshSidebarUser(); } paintImages(); } catch (err) { toastError(err); }
+      } },
+    ]);
+  };
+  const mediaHead = h("div.set-media",
+    coverBox,
+    h("button.set-cover-btn", { type: "button", onclick: imageMenu("cover") }, icon("camera", "sm"), "Обложка"),
+    h("div.set-av-wrap", avatarBox,
+      h("button.set-av-btn", { type: "button", "aria-label": "Изменить фото профиля", title: "Изменить фото профиля", onclick: imageMenu("avatar") }, icon("camera", "sm"))));
 
   const relOptions = ["", "Не женат / не замужем", "Встречаюсь", "Помолвлен(а)", "Женат / замужем", "В гражданском браке", "Всё сложно", "В активном поиске"];
   const profileForm = h("form.stack",
-    h("div.avatar-edit-row", avatarBox, h("div.stack", { style: { gap: "6px" } }, h("b", "Фото профиля"), h("small.muted", "Квадратное, от 400×400 px"), imgButtons("avatar"))),
-    h("div.stack", { style: { gap: "8px" } }, h("b", "Обложка"), coverBox, imgButtons("cover")),
+    mediaHead,
     h("div.grid-2",
       input("Имя и фамилия", "name", s.name, { maxlength: 60 }),
       input("Логин", "username", s.username, { maxlength: 30, prefix: "@" })),
@@ -86,6 +94,9 @@ export async function settingsPage() {
       input("Город", "city", s.city, { maxlength: 80, placeholder: "Например, Казань" }),
       h("div.field", h("label", { for: "s-birth" }, "Дата рождения"), h("input.input", { id: "s-birth", name: "birth_date", type: "date", value: s.birth_date || "", max: new Date().toISOString().slice(0, 10) }),
         h("label.check", h("input", { type: "checkbox", name: "show_birth_date", checked: s.show_birth_date }), "Показывать в профиле"))),
+    h("details.set-more", (s.school || s.university || s.work || s.relationship) ? { open: true } : {},
+      h("summary", icon("book", "sm"), "Учёба, работа, семейное положение", icon("down", "sm")),
+      h("div.stack",
     h("div.grid-2",
       input("Школа", "school", s.school, { maxlength: 120, placeholder: "Например, «Лицей № 2»" }),
       input("Год окончания школы", "school_year", s.school_year ?? "", { type: "number", placeholder: "2012" })),
@@ -95,8 +106,8 @@ export async function settingsPage() {
     h("p.field-hint", { style: { marginTop: "-6px" } }, "По школе и году выпуска вас смогут найти одноклассники."),
     input("Работа", "work", s.work, { maxlength: 200, placeholder: "Компания и должность" }),
     h("div.field", h("label", { for: "s-rel" }, "Семейное положение"),
-      h("select.select", { id: "s-rel", name: "relationship" }, relOptions.map((o) => h("option", { value: o, selected: o === s.relationship }, o || "Не указано")))),
-    h("div.row", h("div.spacer"), h("button.btn.primary", { type: "submit" }, "Сохранить профиль")));
+      h("select.select", { id: "s-rel", name: "relationship" }, relOptions.map((o) => h("option", { value: o, selected: o === s.relationship }, o || "Не указано")))))),
+    h("div.set-save", h("button.btn.primary", { type: "submit" }, icon("check", "sm"), "Сохранить")));
   profileForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const f = (n) => profileForm.querySelector(`[name="${n}"]`);
@@ -189,14 +200,11 @@ export async function settingsPage() {
   // ---------------------------------------------------------------- Почта
   const emailBox = h("div.email-box");
   function paintEmail() {
-    const status = s.email_verified
-      ? h("span.status-pill.online", "✓ Подтверждена")
-      : h("span.status-pill.warn", "Не подтверждена");
     const rows = [
-      h("div.setting-row",
-        h("div.label-block", h("b", "Почта"), h("small", s.email)),
-        h("div.row", { style: { gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" } }, status,
-          h("button.btn.soft.sm", { type: "button", onclick: changeEmail }, icon("edit", "sm"), "Изменить"))),
+      h("div.setting-row.email-row",
+        h("div.label-block", h("b.email-addr", s.email),
+          h(`small.email-state${s.email_verified ? ".ok" : ".warn"}`, s.email_verified ? "✓ Подтверждена" : "Не подтверждена")),
+        h("button.btn.soft.sm", { type: "button", onclick: changeEmail }, icon("edit", "sm"), "Изменить")),
     ];
     if (!s.email_verified) {
       rows.push(h("div.code-block", s.mail_enabled
@@ -277,23 +285,48 @@ export async function settingsPage() {
     }));
   });
 
-  return h("div.stack",
+  // ---------------------------------------------------------------- Разделы вкладками — без длинной прокрутки
+  const TABS = [
+    ["profile", "Профиль", "user", () => [section("Профиль", null, profileForm)]],
+    ["look", "Вид", "sun", () => [appearanceSection(s)]],
+    ["privacy", "Доступ", "lock", () => [
+      section("Приватность", null,
+        settingRow("Кто видит профиль и записи", "Закрытый профиль видят только друзья", privacy.profile_visibility),
+        settingRow("Кто может писать", null, privacy.message_privacy),
+        settingRow("Кто видит друзей", null, privacy.friends_visibility),
+        settingRow("Новые записи по умолчанию", "Можно изменить при публикации", privacy.default_visibility),
+        settingRow("Режим невидимки", "Не показываться в «Гостях»", invisible)),
+      section("Круги", "Списки друзей, для которых можно публиковать отдельно — например, только для близких.", circlesBox)]],
+    ["security", "Защита", "shield", () => [
+      section("Почта для входа", null, emailBox),
+      section("Пароль", null, h("details.set-more", h("summary", icon("lock", "sm"), "Сменить пароль", icon("down", "sm")), pwForm))]],
+    ["more", "Ещё", "more", () => [
+      section("Мои данные", "Копия всех ваших данных или полное удаление аккаунта.",
+        h("div.row", { style: { flexWrap: "wrap" } },
+          h("a.btn.outline", { href: "/api/me/export", download: "krug-export.json" }, icon("download", "sm"), "Скачать мои данные"),
+          h("div.spacer"), deleteBtn)),
+      h("div.row", { style: { justifyContent: "center", paddingTop: "4px" } }, installButton("btn.soft")),
+      h("div.row", { style: { justifyContent: "center", padding: "4px 0 12px" } },
+        h("button.btn.ghost", { type: "button", onclick: logout }, icon("logout", "sm"), "Выйти из аккаунта"))]],
+  ];
+  let current = TABS.some(([id]) => id === query.tab) ? query.tab : "profile";
+  const pane = h("div.stack.set-pane");
+  const built = {};
+  const tabBar = h("div.set-tabs", { role: "tablist", "aria-label": "Разделы настроек" });
+  const draw = () => {
+    const t = TABS.find(([id]) => id === current);
+    built[current] ||= t[3]();
+    pane.replaceChildren(...built[current]);
+    tabBar.querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === current)));
+    history.replaceState(history.state, "", current === "profile" ? "/settings" : `/settings?tab=${current}`);
+  };
+  tabBar.append(...TABS.map(([id, label, ic]) => h("button", { type: "button", role: "tab", dataset: { tab: id },
+    onclick: (e) => { current = id; draw(); e.currentTarget.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" }); } },
+    icon(ic, "sm"), label)));
+  draw();
+
+  return h("div.stack.settings-page",
     h("div.page-head", h("h1", "Настройки")),
-    section("Профиль", "Эта информация видна на вашей странице.", profileForm),
-    section("Приватность", "Вы сами решаете, кто и что видит.",
-      settingRow("Кто видит мой профиль и записи", "Закрытый профиль видят только друзья", privacy.profile_visibility),
-      settingRow("Кто может писать мне сообщения", null, privacy.message_privacy),
-      settingRow("Кто видит список моих друзей", null, privacy.friends_visibility),
-      settingRow("Видимость новых записей по умолчанию", "Можно изменить при публикации", privacy.default_visibility),
-      settingRow("Режим невидимки", "Не показываться в «Гостях» у других", invisible)),
-    section("Круги", "Списки друзей, для которых можно публиковать отдельно — например, только для близких.", circlesBox),
-    appearanceSection(s),
-    section("Безопасность", null, emailBox, h("hr.divider"), h("b", "Смена пароля"), pwForm),
-    section("Мои данные", "По закону о персональных данных вы можете получить копию своих данных или удалить их.",
-      h("div.row", { style: { flexWrap: "wrap" } },
-        h("a.btn.outline", { href: "/api/me/export", download: "krug-export.json" }, icon("download", "sm"), "Скачать мои данные"),
-        h("div.spacer"), deleteBtn)),
-    h("div.row", { style: { justifyContent: "center", paddingTop: "4px" } }, installButton("btn.soft")),
-    h("div.row", { style: { justifyContent: "center", padding: "8px 0 16px" } },
-      h("button.btn.ghost", { type: "button", onclick: logout }, icon("logout", "sm"), "Выйти из аккаунта")));
+    tabBar,
+    pane);
 }
