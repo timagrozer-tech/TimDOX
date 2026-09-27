@@ -37,7 +37,8 @@ export async function profilePage({ params, query }) {
       ? { label: "Снять галочку", icon: "x", danger: true, onClick: revokeVerify }
       : { label: "Выдать галочку", icon: "check", onClick: grantVerify }] : [];
     if (isMe) {
-      actions.append(h("a.btn.outline", { href: "/settings" }, icon("edit", "sm"), "Редактировать профиль"));
+      actions.append(h("a.btn.outline", { href: "/settings", title: "Редактировать профиль" }, icon("edit", "sm"), h("span.pa-full", "Редактировать профиль"), h("span.pa-short", "Изменить")));
+      actions.append(h("a.btn.soft.stats-btn", { href: "/stats", title: "Личная статистика" }, icon("chart", "sm"), h("span", "Статистика")));
       if (data.can_verify) {
         const more = h("button.btn.ghost.icon-only", { type: "button", "aria-label": "Ещё", "aria-haspopup": "menu" }, icon("more"));
         more.addEventListener("click", () => showMenu(more, adminItems.slice(1)));

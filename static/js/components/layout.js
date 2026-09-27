@@ -21,6 +21,7 @@ const NAV = [
   { href: "/communities", icon: "community", label: "Сообщества", match: (p) => p.startsWith("/communities") || p.startsWith("/c/") },
   { href: "/events", icon: "calendar", label: "Мероприятия", badge: "events", match: (p) => p.startsWith("/events") },
   { href: "/guests", icon: "eye", label: "Гости", badge: "guests", match: (p) => p === "/guests" },
+  { href: "/stats", icon: "chart", label: "Статистика", match: (p) => p === "/stats" },
   { href: "/collection", icon: "gift", label: "Коллекция", match: (p) => p === "/collection" },
   { href: "/stickers", icon: "sticker", label: "Стикеры", match: (p) => p.startsWith("/stickers") },
   { href: "/bookmarks", icon: "bookmark", label: "Закладки", match: (p) => p === "/bookmarks" },

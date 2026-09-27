@@ -10,7 +10,7 @@ import { render as rerender } from "./router.js";
 /** «Потяните вниз, чтобы обновить» — на телефоне в ленте, уведомлениях, профиле и т. п. */
 function initPullToRefresh() {
   if (!matchMedia("(pointer: coarse)").matches) return;
-  const ALLOW = /^\/($|explore|notifications|u\/|friends|communities|c\/|events|guests|bookmarks|tag\/)/;
+  const ALLOW = /^\/($|explore|notifications|u\/|friends|communities|c\/|events|guests|stats|bookmarks|tag\/)/;
   const ind = h("div.ptr", h("span.ptr-spin"));
   document.body.append(ind);
   let y0 = null, dist = 0, busyNow = false;
@@ -64,6 +64,7 @@ import { eventsPage, eventPage } from "./pages/events.js";
 import { guestsPage } from "./pages/guests.js";
 import { adminPage } from "./pages/admin.js";
 import { worldPage } from "./pages/world.js";
+import { statsPage } from "./pages/stats.js";
 
 // public: доступна без входа; guestOnly: только для гостей
 route("/login", authPages.loginPage, { public: true, guestOnly: true });
@@ -90,6 +91,7 @@ route("/c/:slug", communityPage);
 route("/events", eventsPage);
 route("/events/:id", eventPage);
 route("/guests", guestsPage);
+route("/stats", statsPage);
 route("/admin", adminPage);
 route("/world", worldPage);
 route("/collection", collectionPage);
