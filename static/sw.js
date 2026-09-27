@@ -1,6 +1,6 @@
 // Сервис-воркер «Круга»: приложение открывается мгновенно и работает без сети (показывает сохранённое).
-const VERSION = "krug-v11";
-const SHELL = ["/", "/static/css/app.css?v=7", "/static/css/orbit.css?v=10", "/static/js/app.js?v=9", "/static/js/theme-init.js",
+const VERSION = "krug-v12";
+const SHELL = ["/", "/static/css/app.css?v=7", "/static/css/orbit.css?v=11", "/static/js/app.js?v=10", "/static/js/theme-init.js",
   "/static/img/icon-192.png", "/static/manifest.webmanifest"];
 
 self.addEventListener("install", (e) => {

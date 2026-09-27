@@ -70,6 +70,7 @@ async def profile(request: Request):
             p["message_privacy"] == "all" or rel["status"] == "friends"),
         "friends_visible": _can_see_friends(v, p),
         "equipped": collection.parse_equipped(p.get("equipped")),
+        "can_verify": bool(request.state.user["is_admin"]),
     }
     if full:
         from .collection_routes import showcase
@@ -261,7 +262,55 @@ async def suggestions(request: Request):
     items = _people(rows, v)
     for item, r in zip(items, rows):
         item["mutual"] = r["mutual"]
-    return JSONResponse({"items": items})
+    return JSONResponse({"items": items, "featured": featured_accounts(v)})
+
+
+def featured_accounts(v: int, limit_n: int = 6) -> list[dict]:
+    """«Рекомендуем»: официальные аккаунты, на которые человек ещё не подписан. Создатель — первым."""
+    vmap = social.verified_map()
+    ids = [i for i in vmap if i != v]
+    if not ids:
+        return []
+    marks = ",".join("?" * len(ids))
+    followed = {r["followee_id"] for r in db.all(
+        f"SELECT followee_id FROM follows WHERE follower_id=? AND followee_id IN ({marks})", (v, *ids))}
+    friends = set(social.friend_ids(v))
+    ids = [i for i in ids if i not in followed and i not in friends and not social.blocked_between(v, i)]
+    if not ids:
+        return []
+    marks = ",".join("?" * len(ids))
+    rows = db.all(f"""SELECT p.user_id AS id, p.username, p.name, p.avatar, p.city, p.equipped,
+                             (SELECT count(*) FROM follows f WHERE f.followee_id=p.user_id) AS followers
+                      FROM profiles p WHERE p.user_id IN ({marks})""", tuple(ids))
+    rows.sort(key=lambda r: (not (vmap.get(r["id"]) or "").lower().startswith("создатель"), -r["followers"]))
+    out = _people(rows[:limit_n], v)
+    for item, r in zip(out, rows):
+        item["followers"] = r["followers"]
+    return out
+
+
+@auth()
+async def featured(request: Request):
+    return JSONResponse({"items": featured_accounts(request.state.user["id"], 12)})
+
+
+@auth()
+async def admin_verify(request: Request):
+    """Выдать или снять галочку «Официальный аккаунт». Только для администратора (создателя сети)."""
+    if not request.state.user["is_admin"]:
+        raise ApiError(403, "Выдавать галочки может только создатель сети")
+    uid = path_int(request)
+    if not db.value("SELECT 1 FROM users WHERE id=?", (uid,)):
+        raise ApiError(404, "Пользователь не найден")
+    if request.method == "DELETE":
+        db.run("UPDATE profiles SET verified=0, badge=NULL WHERE user_id=?", (uid,))
+    else:
+        data = await body(request)
+        badge = clean_text(str(data.get("badge") or ""), 40).strip() or None
+        db.run("UPDATE profiles SET verified=1, badge=? WHERE user_id=?", (badge, uid))
+    social.reset_verified_cache()
+    card = social.user_card(db.one("SELECT user_id, username, name, avatar, equipped, status_emoji, status_text, status_until FROM profiles WHERE user_id=?", (uid,)))
+    return JSONResponse({"user": card})
 
 
 @auth()
@@ -606,6 +655,8 @@ routes = [
     Route("/api/friends/requests", requests_list, methods=["GET"]),
     Route("/api/friends/suggestions", suggestions, methods=["GET"]),
     Route("/api/friends/online", online_friends, methods=["GET"]),
+    Route("/api/featured", featured, methods=["GET"]),
+    Route("/api/admin/users/{id:int}/verify", admin_verify, methods=["POST", "DELETE"]),
     Route("/api/me/settings", settings_get, methods=["GET"]),
     Route("/api/me/settings", settings_update, methods=["PATCH"]),
     Route("/api/me/status", set_status, methods=["PATCH", "DELETE"]),

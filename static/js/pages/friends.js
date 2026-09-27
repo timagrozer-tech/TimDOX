@@ -2,7 +2,7 @@
 import { api, state, setCounters } from "../api.js";
 import { h, icon, pl } from "../dom.js";
 import { setTitle, toast, toastError } from "../ui.js";
-import { personRow, defaultPersonActions, friendButton, openChat } from "../components/people.js";
+import { personRow, defaultPersonActions, friendButton, openChat, featuredStrip } from "../components/people.js";
 
 export async function friendsPage({ query }) {
   setTitle("Друзья");
@@ -79,10 +79,10 @@ export async function friendsPage({ query }) {
         content.replaceChildren(card(form, results));
         if (school.value || uni.value) run();
       } else if (current === "suggestions") {
-        const { items } = await api.get("/api/friends/suggestions");
-        content.replaceChildren(card(h("div.card-pad", { style: { paddingBottom: 0 } }, h("div.card-title", "Возможно, вы знакомы"),
+        const { items, featured } = await api.get("/api/friends/suggestions");
+        content.replaceChildren(h("div.stack", featuredStrip({ items: featured || [] }), card(h("div.card-pad", { style: { paddingBottom: 0 } }, h("div.card-title", "Возможно, вы знакомы"),
           h("p.muted", { style: { fontSize: "14px", marginTop: "-6px" } }, "Друзья ваших друзей и люди из вашего города. Ищете кого-то конкретного? ", h("a", { href: "/search" }, "Воспользуйтесь поиском"), ".")),
-          items.length ? h("div.people", items.map((p) => personRow(p, defaultPersonActions))) : empty("users", "Пока некого предложить", "Приглашайте друзей в Круг!")));
+          items.length ? h("div.people", items.map((p) => personRow(p, defaultPersonActions))) : empty("users", "Пока некого предложить", "Приглашайте друзей в Круг!"))));
       } else {
         const { blocked } = await api.get("/api/friends/requests");
         content.replaceChildren(card(

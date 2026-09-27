@@ -150,6 +150,13 @@ export function logo(withText = true) {
 const PALETTE = ["#1f3fae", "#b4235f", "#1a8a4a", "#7c3aed", "#be185d", "#0e7490", "#a16207", "#4338ca"];
 export function thumb(url) { return url ? url.replace(/\.webp$/, "_t.webp") : url; }
 
+/** Синяя галочка «Официальный аккаунт» рядом с именем */
+export function vmark(u) {
+  if (!u?.verified) return null;
+  const t = u.badge ? `Официальный аккаунт · ${u.badge}` : "Официальный аккаунт";
+  return h("span.vbadge", { title: t, role: "img", "aria-label": t });
+}
+
 export function avatar(user, size = "", opts = {}) {
   const el = h(`span.avatar${size ? "." + size : ""}`, { dataset: { userId: user?.id ?? "" } });
   if (user?.online && opts.presence !== false) el.dataset.online = "true";

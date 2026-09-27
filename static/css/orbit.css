@@ -324,11 +324,8 @@ a:hover > .avatar, button:hover > .avatar { transform: scale(1.06); }
 .cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, color-mix(in srgb, var(--bg) 50%, transparent)); pointer-events: none; }
 .cover .cover-btn { z-index: 2; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 .profile-card { overflow: hidden; }
-.profile-top .avatar { border-color: transparent; box-shadow: 0 0 0 4px var(--bg), 0 0 0 6px transparent, 0 20px 40px -12px rgba(0, 0, 0, .5);
-  background-clip: padding-box; }
+.profile-top .avatar { border: 4px solid var(--surface); box-shadow: 0 18px 36px -14px rgba(0, 0, 0, .45); background-clip: padding-box; }
 .profile-top > div:first-child { transform-style: preserve-3d; }
-.profile-top .avatar::before { content: ""; position: absolute; inset: -7px; border-radius: 50%; background: var(--ring-grad); z-index: -1; animation: ring-spin 8s linear infinite; }
-.profile-top .avatar.comm-avatar::before { border-radius: 30px; }
 .profile-name h1 { font-size: 28px; }
 .event-hero { height: 240px; }
 .status-pill.online { background: rgba(34, 197, 94, .16); }
@@ -732,13 +729,27 @@ a:hover > .avatar, button:hover > .avatar { transform: scale(1.06); }
 .avatar[data-frame]::before { content: ""; position: absolute; inset: -4px; border-radius: 50%; z-index: -1; }
 .avatar.xs[data-frame]::before { inset: -2px; }
 .avatar.lg[data-frame]::before { inset: -5px; }
-.avatar.xl[data-frame]::before, .profile-top .avatar[data-frame]::before { inset: -9px; animation: none; }
-.avatar[data-frame="frame_bronze"]::before { background: conic-gradient(#b87333, #f0b27a, #8c4a1c, #e59866, #b87333); }
-.avatar[data-frame="frame_silver"]::before { background: conic-gradient(#e5e7eb, #9ca3af, #f9fafb, #6b7280, #e5e7eb); animation: frame-spin 6s linear infinite; }
-.avatar[data-frame="frame_flora"]::before { background: repeating-conic-gradient(#f9a8d4 0 12deg, #fde68a 12deg 18deg, #86efac 18deg 30deg); }
-.avatar[data-frame="frame_neon"]::before { background: #22d3ee; box-shadow: 0 0 10px #22d3ee, 0 0 22px #a855f7; animation: neon 2.4s ease-in-out infinite; }
-.avatar[data-frame="frame_gold"]::before { background: conic-gradient(#b8860b, #ffe08a, #d4a017, #fff3c4, #b8860b); box-shadow: 0 0 16px rgba(255, 200, 60, .45); animation: frame-spin 5s linear infinite; }
-.avatar[data-frame="frame_rainbow"]::before { background: conic-gradient(#f43f5e, #f59e0b, #facc15, #22c55e, #06b6d4, #6366f1, #d946ef, #f43f5e); box-shadow: 0 0 20px rgba(217, 70, 239, .45); animation: frame-spin 3s linear infinite; }
+/* большой аватар: рамка — аккуратное кольцо с прозрачным зазором, без «плашки» под фото */
+.avatar.xl[data-frame]::before, .profile-top .avatar[data-frame]::before { inset: -11px;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px)); }
+.avatar[data-frame="frame_bronze"]::before, .frame-dot[data-frame="frame_bronze"] { background: conic-gradient(from 30deg, #8c4a1c, #e8a36b, #fbd3a8, #b87333, #8c4a1c); }
+.avatar[data-frame="frame_silver"]::before, .frame-dot[data-frame="frame_silver"] { background: conic-gradient(from 30deg, #6b7280, #e5e7eb, #ffffff, #9ca3af, #6b7280); }
+.avatar[data-frame="frame_flora"]::before, .frame-dot[data-frame="frame_flora"] { background: conic-gradient(#f9a8d4, #fde68a, #86efac, #93c5fd, #f9a8d4); }
+.avatar[data-frame="frame_neon"]::before, .frame-dot[data-frame="frame_neon"] { background: conic-gradient(#22d3ee, #a855f7, #22d3ee); }
+.avatar[data-frame="frame_gold"]::before, .frame-dot[data-frame="frame_gold"] { background: conic-gradient(from 30deg, #a0700a, #ffe08a, #fff6d5, #d4a017, #a0700a); }
+.avatar[data-frame="frame_rainbow"]::before, .frame-dot[data-frame="frame_rainbow"] { background: conic-gradient(#f43f5e, #f59e0b, #facc15, #22c55e, #06b6d4, #6366f1, #d946ef, #f43f5e); }
+/* свечение и вращение — у редких рамок, только на большом аватаре */
+.avatar.xl[data-frame="frame_silver"]::before { animation: frame-spin 8s linear infinite; }
+.avatar.xl[data-frame="frame_gold"]::before { animation: frame-spin 6s linear infinite; }
+.avatar.xl[data-frame="frame_rainbow"]::before { animation: frame-spin 4s linear infinite; }
+.avatar.xl[data-frame="frame_neon"]::before { animation: frame-spin 3s linear infinite; }
+.avatar.xl[data-frame="frame_neon"] { box-shadow: 0 0 26px -2px rgba(34, 211, 238, .55), 0 18px 36px -14px rgba(0, 0, 0, .45); }
+.avatar.xl[data-frame="frame_gold"] { box-shadow: 0 0 26px -4px rgba(255, 200, 60, .55), 0 18px 36px -14px rgba(0, 0, 0, .45); }
+.avatar.xl[data-frame="frame_rainbow"] { box-shadow: 0 0 28px -4px rgba(217, 70, 239, .5), 0 18px 36px -14px rgba(0, 0, 0, .45); }
+.frame-dot { width: 18px; height: 18px; border-radius: 50%; display: block;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3.5px)); }
 @keyframes frame-spin { to { transform: rotate(360deg); } }
 @keyframes neon { 50% { box-shadow: 0 0 4px #22d3ee, 0 0 10px #a855f7; opacity: .8; } }
 
@@ -746,8 +757,12 @@ a:hover > .avatar, button:hover > .avatar { transform: scale(1.06); }
 .cos-wrap { position: relative; display: inline-grid; place-items: center; border-radius: 50%; }
 .cos-wrap > .avatar { z-index: 1; }
 .cos-wrap .halo, .cos-wrap .sat { position: absolute; pointer-events: none; }
-.cos-wrap[data-anim="anim_pulse"] .halo { inset: -6px; border-radius: 50%; border: 2px solid var(--primary); animation: halo-pulse 2.2s ease-out infinite; }
-@keyframes halo-pulse { from { transform: scale(1); opacity: .8; } to { transform: scale(1.35); opacity: 0; } }
+/* «Пульс»: мягкая цветная волна от края аватара, без жёсткого контура */
+.cos-wrap[data-anim="anim_pulse"] .halo { inset: 0; border-radius: 50%; animation: halo-pulse 2.6s cubic-bezier(.2, .6, .3, 1) infinite; }
+@keyframes halo-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 55%, transparent); }
+  100% { box-shadow: 0 0 0 22px color-mix(in srgb, var(--primary) 0%, transparent); } }
+.cos-wrap:has(> .avatar.xl[data-frame])[data-anim="anim_pulse"] .halo { inset: -11px; }
 .cos-wrap[data-anim="anim_glow"] > .avatar { animation: av-glow 3s ease-in-out infinite; border-radius: 50%; }
 @keyframes av-glow { 50% { box-shadow: 0 0 34px 6px color-mix(in srgb, var(--primary) 65%, transparent); } }
 .cos-wrap[data-anim="anim_float"] > .avatar { animation: av-float 4s ease-in-out infinite; }
@@ -1418,7 +1433,10 @@ button.profile-status:hover { border-color: var(--primary); }
    ========================================================================== */
 @media (max-width: 719px) {
   .menu { left: 8px !important; right: 8px !important; top: auto !important; bottom: calc(8px + env(safe-area-inset-bottom)) !important; min-width: 0; max-height: 70vh; overflow-y: auto;
-    border-radius: 22px; padding: 8px; box-shadow: 0 -10px 40px rgba(0, 0, 0, .25), 0 0 0 100vmax rgba(0, 0, 0, .35); animation: sheet-up .25s cubic-bezier(.2, .9, .3, 1); }
+    border-radius: 22px; padding: 8px; box-shadow: 0 -10px 40px rgba(0, 0, 0, .25); animation: sheet-up .25s cubic-bezier(.2, .9, .3, 1);
+    overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .menu-backdrop { position: fixed; inset: 0; z-index: 399; background: rgba(0, 0, 0, .4); animation: fade-in .2s ease-out; touch-action: none; }
+  html.menu-lock, html.menu-lock body { overflow: hidden; overscroll-behavior: none; }
   .menu button { padding: 13px 14px; font-size: 15px; }
   @keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } }
 
@@ -1448,3 +1466,25 @@ button.profile-status:hover { border-color: var(--primary); }
   .profile-card + .card .tabs .icon { display: none; }
 }
 @media (max-width: 719px) { .stat span { font-size: 10.5px; font-weight: 600; letter-spacing: -.01em; } .profile-counts { gap: 4px; } }
+
+/* ==========================================================================
+   Официальные аккаунты: синяя галочка и подпись
+   ========================================================================== */
+.vbadge { display: inline-block; width: 1.05em; height: 1.05em; min-width: 14px; min-height: 14px; margin-left: .28em; vertical-align: -.16em; flex: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpolygon points='12.00,1.00 14.41,3.02 17.50,2.47 18.58,5.42 21.53,6.50 20.98,9.59 23.00,12.00 20.98,14.41 21.53,17.50 18.58,18.58 17.50,21.53 14.41,20.98 12.00,23.00 9.59,20.98 6.50,21.53 5.42,18.58 2.47,17.50 3.02,14.41 1.00,12.00 3.02,9.59 2.47,6.50 5.42,5.42 6.50,2.47 9.59,3.02' fill='%231d9bf0' stroke='%231d9bf0' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M7.4 12.3l3.1 3.1 6.2-6.6' fill='none' stroke='%23fff' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat; }
+h1 > .vbadge { width: .8em; height: .8em; vertical-align: -.06em; margin-left: .22em; }
+.official-chip { display: inline-flex; align-items: center; gap: 5px; margin-left: 8px; padding: 3px 10px 3px 6px; border-radius: 999px; vertical-align: 1px;
+  font-size: 12.5px; font-weight: 800; letter-spacing: .01em; color: #1d9bf0; background: rgba(29, 155, 240, .12); border: 1px solid rgba(29, 155, 240, .28); }
+.official-chip .vbadge { margin: 0; width: 15px; height: 15px; }
+.mini-person .name .vbadge, .person .name .vbadge { width: 14px; height: 14px; }
+.featured-row { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: none; scroll-snap-type: x mandatory; }
+.featured-row::-webkit-scrollbar { display: none; }
+.featured-card { flex: 0 0 150px; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
+  padding: 14px 10px 12px; border-radius: 18px; background: var(--surface-2, var(--surface)); border: 1px solid var(--border); }
+.featured-card .name { font-weight: 800; font-size: 14px; color: var(--text); text-decoration: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.featured-card .sub { font-size: 12px; color: var(--text-3); min-height: 16px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.featured-card .badge-line { font-size: 11.5px; font-weight: 800; color: #1d9bf0; }
+.featured-card .btn { width: 100%; justify-content: center; }
+.featured-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.featured-head h2 { margin: 0; font-size: 16px; }
+.featured-head .spacer { flex: 1; }

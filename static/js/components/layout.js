@@ -1,6 +1,6 @@
 // Каркас приложения: боковое меню, правая колонка, мобильные панели.
 import { api, state, on } from "../api.js";
-import { h, icon, avatar, logo, pl } from "../dom.js";
+import { h, icon, avatar, vmark, logo, pl } from "../dom.js";
 import { navigate } from "../router.js";
 import { showMenu, toastError } from "../ui.js";
 import { openComposerModal } from "./composer.js";
@@ -142,7 +142,7 @@ async function fillAside(aside) {
         try { await api.post(`/api/people/${p.id}/friend`); add.replaceChildren(icon("check", "sm")); add.disabled = true; } catch (e) { toastError(e); }
       });
       return h("div.mini-person", h("a", { href: `/u/${p.username}` }, avatar(p, "sm")),
-        h("a.who", { href: `/u/${p.username}`, style: { color: "inherit", textDecoration: "none" } }, h("span.name", p.name),
+        h("a.who", { href: `/u/${p.username}`, style: { color: "inherit", textDecoration: "none" } }, h("span.name", p.name, vmark(p)),
           h("span.sub", p.mutual ? pl(p.mutual, ["общий друг", "общих друга", "общих друзей"]) : (p.city || `@${p.username}`))), add);
     }) : [h("p.muted", { style: { fontSize: "14px" } }, "Пока некого предложить")]));
   }).catch(() => sugg.replaceChildren());

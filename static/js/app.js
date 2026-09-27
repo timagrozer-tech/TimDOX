@@ -14,7 +14,7 @@ function initPullToRefresh() {
   document.body.append(ind);
   let y0 = null, dist = 0, busyNow = false;
   addEventListener("touchstart", (e) => {
-    if (busyNow || window.scrollY > 0 || !ALLOW.test(location.pathname) || document.querySelector(".modal-backdrop")) { y0 = null; return; }
+    if (busyNow || window.scrollY > 0 || !ALLOW.test(location.pathname) || document.querySelector(".modal-backdrop, .menu")) { y0 = null; return; }
     y0 = e.touches[0].clientY; dist = 0;
   }, { passive: true });
   addEventListener("touchmove", (e) => {

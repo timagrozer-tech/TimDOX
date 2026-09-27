@@ -103,8 +103,24 @@ export function showMenu(anchor, items) {
   let top = r.bottom + 6;
   if (top + mh > window.innerHeight - 8) top = Math.max(8, r.top - mh - 6);
   Object.assign(menu.style, { left: `${left}px`, top: `${top}px` });
-  menu.querySelector("button")?.focus();
-  const onDoc = (e) => { if (!menu.contains(e.target) && e.target !== anchor) closeMenu(); };
+  // На телефоне меню — лист снизу: своё затемнение (закрывает касанием), страница под ним не прокручивается,
+  // а прокрутка самого листа или случайный сдвиг страницы меню не закрывают.
+  const sheet = matchMedia("(max-width: 719px)").matches;
+  let backdrop = null;
+  if (sheet) {
+    backdrop = h("div.menu-backdrop", { "aria-hidden": "true" });
+    backdrop.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); closeMenu(); });
+    backdrop.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
+    menu.before(backdrop);
+    document.documentElement.classList.add("menu-lock");
+  } else {
+    menu.querySelector("button")?.focus();
+  }
+  const opened = performance.now();
+  const onDoc = (e) => {
+    if (sheet || performance.now() - opened < 300) return;
+    if (!menu.contains(e.target) && !anchor.contains(e.target)) closeMenu();
+  };
   const onKey = (e) => {
     if (e.key === "Escape") { closeMenu(); anchor.focus(); }
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -117,10 +133,12 @@ export function showMenu(anchor, items) {
   setTimeout(() => document.addEventListener("mousedown", onDoc));
   document.addEventListener("keydown", onKey);
   const y0 = window.scrollY;
-  const onScroll = () => { if (Math.abs(window.scrollY - y0) > 40) closeMenu(); };
+  const onScroll = () => { if (!sheet && Math.abs(window.scrollY - y0) > 40) closeMenu(); };
   window.addEventListener("scroll", onScroll, { passive: true });
   openMenu = () => {
     menu.remove();
+    backdrop?.remove();
+    document.documentElement.classList.remove("menu-lock");
     document.removeEventListener("mousedown", onDoc);
     document.removeEventListener("keydown", onKey);
     window.removeEventListener("scroll", onScroll);

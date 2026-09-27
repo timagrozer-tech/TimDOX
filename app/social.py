@@ -55,15 +55,42 @@ def blocked_between(a: int, b: int) -> bool:
         (a, b, b, a)))
 
 
+# Официальные (подтверждённые) аккаунты: их немного, держим в памяти, обновляем раз в минуту и при изменении.
+_verified: dict[int, str] = {}
+_verified_at = 0.0
+
+
+def verified_map() -> dict[int, str]:
+    """{user_id: подпись} — подпись может быть пустой (просто «официальный аккаунт»)."""
+    global _verified, _verified_at
+    import time
+    if time.monotonic() - _verified_at > 60:
+        try:
+            _verified = {r["user_id"]: r["badge"] or "" for r in db.all("SELECT user_id, badge FROM profiles WHERE verified=1")}
+        except Exception:  # колонок ещё нет (миграция не применена) — просто без галочек
+            _verified = {}
+        _verified_at = time.monotonic()
+    return _verified
+
+
+def reset_verified_cache() -> None:
+    global _verified_at
+    _verified_at = 0.0
+
+
 def user_card(row: dict) -> dict:
+    uid = row["id"] if "id" in row else row["user_id"]
+    vmap = verified_map()
     return {
-        "id": row["id"] if "id" in row else row["user_id"],
+        "id": uid,
         "username": row["username"],
         "name": row["name"],
         "avatar": row.get("avatar"),
-        "online": hub.is_online(row["id"] if "id" in row else row["user_id"]),
+        "online": hub.is_online(uid),
         "frame": _frame_of(row.get("equipped")),
         "status": status_of(row),
+        "verified": uid in vmap,
+        "badge": vmap.get(uid) or None,
     }
 
 

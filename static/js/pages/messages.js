@@ -1,6 +1,6 @@
 // Личные сообщения в реальном времени: список диалогов и окно переписки.
 import { api, state, on, setCounters } from "../api.js";
-import { h, icon, avatar, shortTime, hm, dayLabel, richText, autosize, timeAgo } from "../dom.js";
+import { h, icon, avatar, vmark, shortTime, hm, dayLabel, richText, autosize, timeAgo } from "../dom.js";
 import { setTitle, toast, toastError, showMenu, modal, promptDialog, confirmDialog, lightbox } from "../ui.js";
 import { openPanel } from "../components/stickerpanel.js";
 import { audioPlayer, videoPlayer, voicePlayer, videoMeta, audioMeta, parseTrackName, downsampleLevels, fmtDur } from "../components/mediakit.js";
@@ -203,7 +203,7 @@ export async function messagesPage({ params }) {
         h("a.btn.ghost.icon-only.back", { href: "/messages", "aria-label": "К списку диалогов" }, icon("back")),
         isGroup ? convAvatar(conv) : conv.user.username ? h("a", { href: `/u/${conv.user.username}`, "aria-label": conv.user.name }, avatar(conv.user)) : avatar(conv.user),
         h("div.who", isGroup ? h("button.name.link-btn", { type: "button", onclick: showMembers }, conv.title)
-          : conv.user.username ? h("a.name", { href: `/u/${conv.user.username}` }, conv.user.name) : h("span.name", conv.user.name), sub),
+          : conv.user.username ? h("a.name", { href: `/u/${conv.user.username}` }, conv.user.name, vmark(conv.user)) : h("span.name", conv.user.name), sub),
         groupMenu),
       body, form);
 

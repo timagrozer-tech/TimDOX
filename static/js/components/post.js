@@ -1,6 +1,6 @@
 // Карточка записи: текст, фото, цитата, реакции, комментарии, репост, закладки.
 import { api, state } from "../api.js";
-import { h, icon, avatar, richText, timeAgo, fullDate, pl, plural, autosize } from "../dom.js";
+import { h, icon, avatar, vmark, richText, timeAgo, fullDate, pl, plural, autosize } from "../dom.js";
 import { toast, toastError, showMenu, modal, confirmDialog, promptDialog, lightbox } from "../ui.js";
 import { navigate } from "../router.js";
 import { VISIBILITY, visibilitySelect, openComposerModal } from "./composer.js";
@@ -47,7 +47,7 @@ function head(post, menuBtn) {
       : h("a", { href: `/u/${post.author.username}`, "aria-label": post.author.name }, avatar(post.author)),
     h("div.who",
       asComm ? h("a.name", { href: `/c/${c.slug}` }, c.name)
-        : h("div", h("a.name", { href: `/u/${post.author.username}` }, post.author.name),
+        : h("div", h("a.name", { href: `/u/${post.author.username}` }, post.author.name, vmark(post.author)),
           c ? h("span.muted", { style: { fontSize: "14px" } }, " в ", h("a", { href: `/c/${c.slug}` }, c.name)) : null),
       h("div.meta",
         h("a", { href: `/post/${post.id}`, title: fullDate(post.created_at) }, h("time", { datetime: post.created_at }, timeAgo(post.created_at))),
@@ -360,7 +360,7 @@ function commentsSection(post, onCount) {
     const el = h("div.comment", { dataset: { commentId: c.id } },
       h("a", { href: `/u/${c.author.username}`, "aria-label": c.author.name }, avatar(c.author, isReply ? "xs" : "sm")),
       h("div.grow",
-        h("div.bubble", h("a.name", { href: `/u/${c.author.username}` }, c.author.name), richText(c.text)),
+        h("div.bubble", h("a.name", { href: `/u/${c.author.username}` }, c.author.name, vmark(c.author)), richText(c.text)),
         h("div.c-meta",
           h("span", { title: fullDate(c.created_at) }, timeAgo(c.created_at)),
           h("button", { type: "button", onclick: () => setReply(isReply ? { ...c, id: c.parent_id } : c) }, "Ответить"),

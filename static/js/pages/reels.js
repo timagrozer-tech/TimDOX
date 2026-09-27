@@ -1,6 +1,6 @@
 // Клипы — короткие вертикальные видео (как Reels): листаются по одному, играют сами, лайк двойным нажатием.
 import { api, state } from "../api.js";
-import { h, icon, avatar, pl, richText, timeAgo } from "../dom.js";
+import { h, icon, avatar, vmark, pl, richText, timeAgo } from "../dom.js";
 import { setTitle, toast, toastError, modal, showMenu, confirmDialog, busy } from "../ui.js";
 import { setCleanup, navigate } from "../router.js";
 import { videoMeta, fmtDur } from "../components/mediakit.js";
@@ -151,7 +151,7 @@ export async function reelsPage({ params, query }) {
       h("div.rl-info",
         h("div.rl-author",
           h("a", { href: `/u/${r.author.username}`, "aria-label": r.author.name }, avatar(r.author, "sm", { presence: false })),
-          h("a.rl-name", { href: `/u/${r.author.username}` }, r.author.name),
+          h("a.rl-name", { href: `/u/${r.author.username}` }, r.author.name, vmark(r.author)),
           !r.mine && !r.following ? h("button.rl-follow", { type: "button", onclick: async (e) => {
             const b = e.currentTarget;
             try { await api.post(`/api/people/${r.author.id}/follow`); b.replaceWith(h("span.rl-followed", "Вы подписаны")); } catch (err) { toastError(err); }

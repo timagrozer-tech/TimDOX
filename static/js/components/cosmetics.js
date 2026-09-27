@@ -4,7 +4,8 @@ import { motionEnabled } from "../fx.js";
 
 export const RARITY_LABEL = { common: "Обычный", rare: "Редкий", epic: "Эпический", legendary: "Легендарный" };
 export const SLOT_LABEL = { frame: "Рамки", animation: "Анимации", effect: "Эффекты", pet: "Питомцы" };
-export const SLOT_ICON = { frame: "◎", animation: "✦", effect: "❄", pet: "🐾" };
+export const SLOT_ICON = { frame: "⭕", animation: "💫", effect: "✨", pet: "🐾" };
+export const ANIM_ICON = { anim_pulse: "💓", anim_glow: "🌟", anim_orbit: "🪐", anim_float: "🎈", anim_aurora: "🌌", anim_vortex: "🌀" };
 
 export const PETS = {
   pet_cat: { emoji: "🐱", name: "Мурзик", say: ["Мур-мур!", "Погладь ещё 😸", "Где мой корм?", "Мяу!"] },
@@ -166,6 +167,15 @@ function star(ctx, x, y, R, r) {
     ctx.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad);
   }
   ctx.closePath(); ctx.fill();
+}
+
+/** Маленький значок предмета для витрины: рамка — мини-кольцо её цветов, остальное — эмодзи. */
+export function itemBadge(it) {
+  if (it.slot === "frame") return h("i.frame-dot", { dataset: { frame: it.id } });
+  if (it.slot === "animation") return ANIM_ICON[it.id] || SLOT_ICON.animation;
+  if (it.slot === "effect") return EFFECT_ICON[it.id] || SLOT_ICON.effect;
+  if (it.slot === "pet") return PETS[it.id]?.emoji || SLOT_ICON.pet;
+  return "🎁";
 }
 
 /** Мини-превью предмета для карточки коллекции */

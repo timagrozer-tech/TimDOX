@@ -1,8 +1,8 @@
 // Страница пользователя: обложка, аватар, информация, записи, фото, друзья.
 import { api, state, on } from "../api.js";
-import { h, icon, avatar, pl, birthDate, joinedDate, timeAgo } from "../dom.js";
-import { decorate, pet, mountEffect, PETS, EFFECT_ICON } from "../components/cosmetics.js";
-import { infiniteList, setTitle, toast, toastError, showMenu, confirmDialog, lightbox, modal } from "../ui.js";
+import { h, icon, avatar, vmark, pl, birthDate, joinedDate, timeAgo } from "../dom.js";
+import { decorate, pet, mountEffect, itemBadge } from "../components/cosmetics.js";
+import { infiniteList, setTitle, toast, toastError, showMenu, confirmDialog, promptDialog, lightbox, modal } from "../ui.js";
 import { setCleanup, navigate } from "../router.js";
 import { composer } from "../components/composer.js";
 import { postCard, report } from "../components/post.js";
@@ -32,10 +32,22 @@ export async function profilePage({ params, query }) {
       isMe ? h("button.btn.sm.cover-btn", { type: "button", onclick: () => uploadProfileImage("cover", (url) => { data.cover = url; renderHeader(); }) }, icon("camera", "sm"), h("span.cover-btn-text", data.cover ? "Изменить обложку" : "Добавить обложку")) : null);
 
     const actions = h("div.profile-actions");
+    const adminItems = data.can_verify ? ["-", u.verified
+      ? { label: "Изменить подпись у галочки", icon: "edit", onClick: grantVerify }
+      : { label: "Выдать галочку «Официальный аккаунт»", icon: "check", onClick: grantVerify },
+      u.verified ? { label: "Снять галочку", icon: "x", danger: true, onClick: revokeVerify } : null] : [];
     if (isMe) {
       actions.append(h("a.btn.outline", { href: "/settings" }, icon("edit", "sm"), "Редактировать профиль"));
+      if (data.can_verify) {
+        const more = h("button.btn.ghost.icon-only", { type: "button", "aria-label": "Ещё", "aria-haspopup": "menu" }, icon("more"));
+        more.addEventListener("click", () => showMenu(more, adminItems.slice(1)));
+        actions.append(more);
+      }
     } else {
       if (!rel.blocked_by_me) {
+        if (u.verified && !rel.following && rel.status !== "friends") {
+          actions.append(h("button.btn.primary.follow-official", { type: "button", onclick: () => follow(true) }, icon("bell", "sm"), "Подписаться"));
+        }
         actions.append(friendButton(u, rel, (r) => { data.relation = r; renderHeader(); }));
         if (data.can_message) actions.append(h("button.btn.soft", { type: "button", onclick: () => openChat(u.id) }, icon("message", "sm"), "Написать"));
       } else {
@@ -51,6 +63,7 @@ export async function profilePage({ params, query }) {
         rel.blocked_by_me ? { label: "Разблокировать", icon: "block", onClick: () => toggleBlock(false) }
           : { label: "Заблокировать", icon: "block", danger: true, onClick: () => toggleBlock(true) },
         { label: "Пожаловаться", icon: "flag", danger: true, onClick: () => report("user", u.id) },
+        ...adminItems,
       ]));
       actions.append(more);
     }
@@ -80,9 +93,9 @@ export async function profilePage({ params, query }) {
       h("div.profile-main",
         h("div.profile-top", avatarWrap, actions),
         h("div.profile-name",
-          h("h1", u.name, statusText ? h("span.status-pill.online", statusText) : null,
+          h("h1", u.name, vmark(u), statusText ? h("span.status-pill.online", statusText) : null,
             !isMe && rel.follows_you && rel.status !== "friends" ? h("span.status-pill", "подписан(а) на вас") : null),
-          h("div.handle", `@${u.username}`),
+          h("div.handle", `@${u.username}`, u.badge ? h("span.official-chip", h("span.vbadge"), u.badge) : u.verified ? h("span.official-chip", h("span.vbadge"), "Официальный аккаунт") : null),
           statusChip()),
         data.bio && !data.hidden ? h("p.profile-bio", data.bio) : null,
         h("div.profile-info", info),
@@ -148,13 +161,34 @@ export async function profilePage({ params, query }) {
   function showcaseRow() {
     const owned = data.showcase?.owned || [];
     if (!owned.length) return isMe ? h("a.showcase.empty", { href: "/collection" }, "🎁 Коллекция пуста — зарабатывайте редкие предметы активностью") : null;
-    const ICON = { frame: "◎", animation: "✦", effect: "✨", pet: "🐾" };
     return h(isMe ? "a.showcase" : "div.showcase", isMe ? { href: "/collection" } : {},
       h("span.showcase-label", "Коллекция"),
       ...owned.slice(0, 10).map((it) => h(`span.showcase-item.${it.rarity}`, { title: `${it.name} · ${it.rarity_label}` },
-        it.slot === "pet" ? PETS[it.id]?.emoji : it.slot === "effect" ? EFFECT_ICON[it.id] : ICON[it.slot])),
+        itemBadge(it))),
       owned.length > 10 ? h("span.showcase-more", `+${owned.length - 10}`) : null,
       h("span.showcase-count", `${owned.length}/${data.showcase.total}`));
+  }
+
+  async function grantVerify() {
+    const badge = await promptDialog({ title: `Галочка для ${u.name}`, label: "Подпись рядом с галочкой (необязательно), например «Создатель KRUG» или «Музыкант»",
+      value: u.badge || "", confirm: u.verified ? "Сохранить" : "Выдать галочку", allowEmpty: true });
+    if (badge === null || badge === undefined) return;
+    try {
+      const res = await api.post(`/api/admin/users/${u.id}/verify`, { badge });
+      Object.assign(data.user, res.user);
+      toast(`${u.name} теперь официальный аккаунт`, { icon: "check" });
+      renderHeader();
+    } catch (e) { toastError(e); }
+  }
+
+  async function revokeVerify() {
+    if (!await confirmDialog({ title: `Снять галочку у ${u.name}?`, confirm: "Снять", danger: true })) return;
+    try {
+      const res = await api.del(`/api/admin/users/${u.id}/verify`);
+      Object.assign(data.user, res.user);
+      toast("Галочка снята");
+      renderHeader();
+    } catch (e) { toastError(e); }
   }
 
   async function follow(onoff) {

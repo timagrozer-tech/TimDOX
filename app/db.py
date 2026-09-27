@@ -75,6 +75,8 @@ MIGRATIONS = [
     ("profiles", "status_emoji", "TEXT"),
     ("profiles", "status_text", "TEXT"),
     ("profiles", "status_until", "TEXT"),
+    ("profiles", "verified", "INTEGER NOT NULL DEFAULT 0"),
+    ("profiles", "badge", "TEXT"),
 ]
 POST_MIGRATION_SQL = """
 CREATE INDEX IF NOT EXISTS idx_posts_community ON posts(community_id, id DESC);

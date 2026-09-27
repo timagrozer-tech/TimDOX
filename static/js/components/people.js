@@ -1,6 +1,6 @@
 // Кнопки дружбы/подписки и строки со списками людей.
 import { api, state } from "../api.js";
-import { h, icon, avatar, pl } from "../dom.js";
+import { h, icon, avatar, vmark, pl } from "../dom.js";
 import { toastError, toast, showMenu, confirmDialog, modal } from "../ui.js";
 import { navigate } from "../router.js";
 
@@ -50,7 +50,7 @@ export function personRow(p, actions) {
   const sub = [p.city, p.mutual ? pl(p.mutual, ["общий друг", "общих друга", "общих друзей"]) : null].filter(Boolean).join(" · ") || `@${p.username}`;
   const row = h("div.person",
     h("a", { href: `/u/${p.username}`, "aria-label": p.name }, avatar(p, "lg")),
-    h("div.who", h("a.name", { href: `/u/${p.username}` }, p.name), h("div.sub", sub)),
+    h("div.who", h("a.name", { href: `/u/${p.username}` }, p.name, vmark(p)), h("div.sub", sub)),
     h("div.acts"));
   const fill = () => row.querySelector(".acts").replaceChildren(...[actions ? actions(p, row, fill) : null].flat().filter(Boolean));
   fill();
@@ -105,4 +105,46 @@ export async function pickFriends({ title = "Выберите друзей", con
       onClose: () => finish(null) });
     draw(); sync();
   });
+}
+
+/** Карточка «Рекомендуем»: официальный аккаунт с кнопкой «Подписаться» */
+export function featuredCard(p) {
+  const btn = h("button.btn.primary.sm", { type: "button" }, icon("bell", "sm"), "Подписаться");
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    try {
+      await api.post(`/api/people/${p.id}/follow`);
+      btn.className = "btn soft sm"; btn.replaceChildren(icon("check", "sm"), "Вы подписаны");
+      toast(`Вы подписались на ${p.name}`, { icon: "check" });
+    } catch (e) { btn.disabled = false; toastError(e); }
+  });
+  return h("div.featured-card",
+    h("a", { href: `/u/${p.username}`, "aria-label": p.name }, avatar(p, "lg", { presence: false })),
+    h("a.name", { href: `/u/${p.username}` }, p.name, vmark(p)),
+    h("span.badge-line", p.badge || "Официальный аккаунт"),
+    h("span.sub", p.followers ? pl(p.followers, ["подписчик", "подписчика", "подписчиков"]) : `@${p.username}`),
+    btn);
+}
+
+/** Блок «Рекомендуем» для ленты и рекомендаций. Пустой, если все официальные аккаунты уже в подписках. */
+export function featuredStrip({ items = null, closable = false } = {}) {
+  const KEY = "krug-featured-hidden";
+  let hiddenUntil = 0;
+  try { hiddenUntil = Number(localStorage.getItem(KEY)) || 0; } catch { /* нет хранилища — не страшно */ }
+  const box = h("section.card.card-pad.featured", { hidden: true });
+  if (closable && hiddenUntil > Date.now()) return box;
+  const fill = (list) => {
+    if (!list.length) return;
+    box.replaceChildren(
+      h("div.featured-head", h("span.vbadge"), h("h2", "Рекомендуем подписаться"), h("div.spacer"),
+        closable ? h("button.btn.ghost.icon-only.sm", { type: "button", "aria-label": "Скрыть", title: "Скрыть на неделю", onclick: () => {
+          box.remove();
+          try { localStorage.setItem(KEY, String(Date.now() + 7 * 864e5)); } catch { /* ничего */ }
+        } }, icon("x", "sm")) : null),
+      h("div.featured-row", list.map(featuredCard)));
+    box.hidden = false;
+  };
+  if (items) fill(items);
+  else api.get("/api/featured").then(({ items: list }) => fill(list)).catch(() => {});
+  return box;
 }
