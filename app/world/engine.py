@@ -97,6 +97,11 @@ def calendar() -> None:
 
 
 def tick() -> None:
+    try:
+        from . import tts
+        tts.process()
+    except Exception:
+        log.exception("Озвучка")
     publish_due()
     plan()
     social_tick()
