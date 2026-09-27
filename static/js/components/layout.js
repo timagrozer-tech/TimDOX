@@ -25,7 +25,9 @@ const NAV = [
   { href: "/bookmarks", icon: "bookmark", label: "Закладки", match: (p) => p === "/bookmarks" },
   { href: "/search", icon: "search", label: "Поиск", cls: "nav-search", match: (p) => p.startsWith("/search") || p.startsWith("/tag/") },
   { href: "/settings", icon: "settings", label: "Настройки", match: (p) => p.startsWith("/settings") },
+  { href: "/admin", icon: "shield", label: "Модерация", badge: "reports", admin: true, match: (p) => p.startsWith("/admin") },
 ];
+const navItems = () => NAV.filter((n) => !n.admin || state.me?.is_admin);
 
 const hrefOf = (item) => (typeof item.href === "function" ? item.href() : item.href);
 
@@ -36,7 +38,7 @@ function badge(key) {
 
 function sidebar() {
   const nav = h("nav.nav", { "aria-label": "Основное меню" },
-    NAV.map((item) => h(`a${item.cls ? "." + item.cls : ""}`, { href: hrefOf(item), dataset: { nav: item.label }, title: item.label },
+    navItems().map((item) => h(`a${item.cls ? "." + item.cls : ""}`, { href: hrefOf(item), dataset: { nav: item.label }, title: item.label },
       icon(item.icon), h("span", item.label), item.badge ? badge(item.badge) : null)));
   return h("aside.sidebar", { "aria-label": "Навигация" },
     logo(),
@@ -47,7 +49,7 @@ function sidebar() {
 
 function mobileMenu(btn) {
   showMenu(btn, [
-    ...NAV.filter((n) => !["Лента", "Моя страница", "Сообщения", "Клипы"].includes(n.label)).map((n) => ({
+    ...navItems().filter((n) => !["Лента", "Моя страница", "Сообщения", "Клипы"].includes(n.label)).map((n) => ({
       label: n.badge && state.counters[n.badge] ? `${n.label} (${state.counters[n.badge]})` : n.label,
       icon: n.icon, onClick: () => navigate(hrefOf(n)),
     })),

@@ -3,6 +3,8 @@ import { api, state, on, setCounters } from "../api.js";
 import { h, icon, avatar, vmark, shortTime, hm, dayLabel, richText, autosize, timeAgo } from "../dom.js";
 import { setTitle, toast, toastError, showMenu, modal, promptDialog, confirmDialog, lightbox } from "../ui.js";
 import { openPanel } from "../components/stickerpanel.js";
+import { report } from "../components/post.js";
+import { attachMentions } from "../components/mentions.js";
 import { audioPlayer, videoPlayer, voicePlayer, videoMeta, audioMeta, parseTrackName, downsampleLevels, fmtDur } from "../components/mediakit.js";
 import { showPackPreview } from "./stickers.js";
 import { setCleanup, navigate } from "../router.js";
@@ -138,7 +140,7 @@ export async function messagesPage({ params }) {
       : conv.user.last_seen_at ? `был(а) ${timeAgo(conv.user.last_seen_at)}` : "не в сети");
     const body = h("div.chat-body", { role: "log", "aria-live": "polite", "aria-label": `Переписка: ${conv.title}` });
     const sub = h("div.sub", statusText());
-    const ta = h("textarea", { rows: 1, placeholder: conv.can_write ? "Напишите сообщение…" : "Вы не можете написать этому пользователю", maxlength: 4000, disabled: !conv.can_write, "aria-label": "Текст сообщения" });
+    const ta = attachMentions(h("textarea", { rows: 1, placeholder: conv.can_write ? "Напишите сообщение…" : "Вы не можете написать этому пользователю", maxlength: 4000, disabled: !conv.can_write, "aria-label": "Текст сообщения" }));
     const fit = autosize(ta);
     const send = h("button.btn.primary.icon-only", { type: "submit", "aria-label": "Отправить", disabled: !conv.can_write }, icon("send"));
     const emojiBtn = h("button.btn.ghost.icon-only.emoji-btn.sp-toggle", { type: "button", "aria-label": "Смайлики и стикеры", title: "Смайлики и стикеры", disabled: !conv.can_write }, icon("smile"));
@@ -391,6 +393,7 @@ export async function messagesPage({ params }) {
           m.media?.url && m.kind !== "sticker" ? { label: "Открыть файл", icon: "download", onClick: () => window.open(m.media.url, "_blank", "noopener") } : null,
           canEdit ? { label: "Изменить", icon: "edit", onClick: () => startEdit(m) } : null,
           mine ? { label: "Удалить у всех", icon: "trash", danger: true, onClick: () => removeMsg(m) } : null,
+          !mine && m.kind !== "deleted" && m.kind !== "system" ? { label: "Пожаловаться", icon: "flag", danger: true, onClick: () => report("message", m.id) } : null,
         ],
       });
     }

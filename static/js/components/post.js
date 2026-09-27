@@ -1,9 +1,10 @@
 // Карточка записи: текст, фото, цитата, реакции, комментарии, репост, закладки.
 import { api, state } from "../api.js";
 import { h, icon, avatar, vmark, richText, timeAgo, fullDate, pl, plural, autosize } from "../dom.js";
-import { toast, toastError, showMenu, modal, confirmDialog, promptDialog, lightbox } from "../ui.js";
+import { toast, toastError, showMenu, modal, confirmDialog, promptDialog, lightbox, busy } from "../ui.js";
 import { navigate } from "../router.js";
 import { VISIBILITY, visibilitySelect, openComposerModal } from "./composer.js";
+import { attachMentions } from "./mentions.js";
 import { burst } from "../fx.js";
 
 export const REACTIONS = [
@@ -318,7 +319,7 @@ function commentsSection(post, onCount) {
   const list = h("div.stack", { style: { gap: "12px" } }, h("div.spinner.sm", { style: { margin: "8px auto" } }));
   let replyTo = null;
   let total = 0;
-  const ta = h("textarea", { rows: 1, placeholder: "Написать комментарий…", maxlength: 2000, "aria-label": "Текст комментария" });
+  const ta = attachMentions(h("textarea", { rows: 1, placeholder: "Написать комментарий…", maxlength: 2000, "aria-label": "Текст комментария" }));
   autosize(ta);
   const replyLabel = h("div.reply-to.hidden");
   const send = h("button.btn.primary.icon-only.sm", { type: "submit", "aria-label": "Отправить комментарий" }, icon("send", "sm"));
@@ -418,14 +419,39 @@ function copyLink(p) {
   navigator.clipboard?.writeText(url).then(() => toast("Ссылка скопирована", { icon: "link" }), () => toast(url));
 }
 
-export async function report(type, id) {
-  const reason = await promptDialog({
-    title: "Пожаловаться", label: "Комментарий (необязательно)", confirm: "Отправить жалобу",
-    options: ["Спам", "Оскорбления", "Недостоверная информация", "Насилие или опасные действия", "Другое"],
+const REPORT_REASONS = [
+  ["Спам или реклама", "Навязчивая реклама, мошенничество, накрутки"],
+  ["Оскорбления и травля", "Унижения, угрозы, преследование"],
+  ["Недостоверная информация", "Обман, фейки, выдача себя за другого"],
+  ["Насилие или опасные действия", "Призывы к насилию, опасные челленджи"],
+  ["Неприемлемые материалы", "Откровенный или шокирующий контент"],
+  ["Другое", "Опишите, что не так"],
+];
+const REPORT_WHAT = { post: "запись", comment: "комментарий", user: "страницу", reel: "клип", reel_comment: "комментарий", message: "сообщение", story: "историю", community: "сообщество" };
+
+/** Жалоба: сначала причина, затем необязательный комментарий */
+export function report(type, id) {
+  let reason = null;
+  const note = h("textarea.textarea", { rows: 3, maxlength: 400, placeholder: "Подробности (необязательно)", "aria-label": "Подробности" });
+  const send = h("button.btn.primary", { type: "button", disabled: true }, icon("flag", "sm"), "Отправить жалобу");
+  const list = h("div.report-reasons", { role: "radiogroup" }, REPORT_REASONS.map(([t, hint]) => h("button.report-reason", {
+    type: "button", role: "radio", "aria-checked": "false",
+    onclick: (e) => {
+      reason = t;
+      list.querySelectorAll("button").forEach((b) => b.setAttribute("aria-checked", String(b === e.currentTarget)));
+      send.disabled = false;
+      if (t === "Другое") note.focus();
+    } }, h("b", t), h("small", hint))));
+  const m = modal({
+    title: `Пожаловаться на ${REPORT_WHAT[type] || "содержимое"}`, narrow: true,
+    body: h("div.stack", list, note, h("p.muted.small-note", "Жалобу увидит только администрация. Автор не узнает, кто пожаловался.")),
+    footer: [h("button.btn.ghost", { type: "button", onclick: () => m.close() }, "Отмена"), send],
   });
-  if (reason == null) return;
-  try {
-    await api.post("/api/reports", { target_type: type, target_id: id, reason });
-    toast("Жалоба отправлена модераторам. Спасибо!", { icon: "flag" });
-  } catch (e) { toastError(e); }
+  send.addEventListener("click", () => busy(send, async () => {
+    try {
+      await api.post("/api/reports", { target_type: type, target_id: id, reason: note.value.trim() ? `${reason}: ${note.value.trim()}` : reason });
+      m.close();
+      toast("Жалоба отправлена. Спасибо, что помогаете сделать Круг лучше!", { icon: "flag" });
+    } catch (e) { toastError(e); }
+  }));
 }

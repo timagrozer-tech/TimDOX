@@ -259,7 +259,10 @@ def unnotify(user_id: int, actor_id: int, type_: str, post_id: int | None = None
 
 
 def counters(uid: int) -> dict:
-    return {
+    extra = {}
+    if db.value("SELECT is_admin FROM users WHERE id=?", (uid,)):
+        extra["reports"] = db.value("SELECT count(DISTINCT target_type || ':' || target_id) FROM reports WHERE status='open'")
+    return extra | {
         "notifications": db.value("SELECT count(*) FROM notifications WHERE user_id=? AND read_at IS NULL", (uid,)),
         "messages": db.value(
             """SELECT count(DISTINCT m.conversation_id) FROM conversation_members cm

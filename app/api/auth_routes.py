@@ -224,7 +224,47 @@ async def change_password(request: Request):
     return ok()
 
 
+
+def _device(ua: str) -> str:
+    """Понятное название устройства по строке браузера."""
+    ua = ua or ""
+    os_ = next((n for k, n in (("iPhone", "iPhone"), ("iPad", "iPad"), ("Android", "Android"), ("Windows", "Windows"),
+                                 ("Mac OS", "Mac"), ("Linux", "Linux")) if k in ua), "Устройство")
+    br = next((n for k, n in (("YaBrowser", "Яндекс Браузер"), ("Edg/", "Edge"), ("OPR/", "Opera"), ("Firefox", "Firefox"),
+                                ("Chrome", "Chrome"), ("Safari", "Safari")) if k in ua), "браузер")
+    return f"{br}, {os_}"
+
+
+@auth()
+async def sessions_list(request: Request):
+    u = request.state.user
+    current = request.state.session["id"]
+    rows = db.all("SELECT id, user_agent, created_at FROM sessions WHERE user_id=? AND expires_at>? ORDER BY created_at DESC",
+                  (u["id"], db.now()))
+    return JSONResponse({"items": [{"id": r["id"][:16], "device": _device(r["user_agent"]), "created_at": r["created_at"],
+                                    "current": r["id"] == current} for r in rows]})
+
+
+@auth()
+async def sessions_end(request: Request):
+    """Завершить один сеанс (id) или все, кроме текущего."""
+    u = request.state.user
+    current = request.state.session["id"]
+    sid = request.path_params.get("sid")
+    if sid:
+        rows = [r["id"] for r in db.all("SELECT id FROM sessions WHERE user_id=?", (u["id"],)) if r["id"].startswith(sid) and r["id"] != current]
+        for full in rows:
+            db.run("DELETE FROM sessions WHERE id=?", (full,))
+        if not rows:
+            raise ApiError(404, "Сеанс не найден")
+    else:
+        db.run("DELETE FROM sessions WHERE user_id=? AND id<>?", (u["id"], current))
+    return ok()
+
 routes = [
+    Route("/api/me/sessions", sessions_list, methods=["GET"]),
+    Route("/api/me/sessions", sessions_end, methods=["DELETE"]),
+    Route("/api/me/sessions/{sid}", sessions_end, methods=["DELETE"]),
     Route("/api/auth/register", register, methods=["POST"]),
     Route("/api/auth/login", login, methods=["POST"]),
     Route("/api/auth/logout", logout, methods=["POST"]),

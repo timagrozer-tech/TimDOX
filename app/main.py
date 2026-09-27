@@ -14,7 +14,7 @@ from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from . import collection, config, db, media
-from .api import auth_routes, collection_routes, reels, stickers, communities, events, messages, misc, people_extra, posts, stories, users
+from .api import admin, auth_routes, collection_routes, reels, stickers, communities, events, messages, misc, people_extra, posts, stories, users
 from .security import load_extra_banned
 from .web import ApiError, load_session
 
@@ -227,7 +227,7 @@ routes = [
     Route("/api/health", health),
     Route("/sw.js", service_worker),
     Route("/manifest.webmanifest", manifest),
-    *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
+    *admin.routes, *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
     *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *collection_routes.routes, *reels.routes, *stickers.routes,
     Mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static"),
     Route("/uploads/{path:path}", uploads, methods=["GET", "HEAD"]),

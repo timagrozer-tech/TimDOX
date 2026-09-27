@@ -241,7 +241,7 @@ CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, id DESC);
 CREATE TABLE IF NOT EXISTS reports (
     id          BIGSERIAL PRIMARY KEY,
     reporter_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    target_type TEXT NOT NULL CHECK (target_type IN ('post','comment','user')),
+    target_type TEXT NOT NULL CHECK (target_type IN ('post','comment','user','reel','reel_comment','message','story','community')),
     target_id   BIGINT NOT NULL,
     reason      TEXT NOT NULL,
     status      TEXT NOT NULL DEFAULT 'open',
@@ -448,3 +448,7 @@ CREATE INDEX IF NOT EXISTS idx_reel_likes_user ON reel_likes(user_id);
 CREATE INDEX IF NOT EXISTS idx_story_views_viewer ON story_views(viewer_id);
 CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at);
 CREATE INDEX IF NOT EXISTS idx_posts_circle ON posts(circle_id);
+-- жалобы на всё: клипы, сообщения, истории, сообщества
+ALTER TABLE reports DROP CONSTRAINT IF EXISTS reports_target_type_check;
+ALTER TABLE reports ADD CONSTRAINT reports_target_type_check CHECK (target_type IN ('post','comment','user','reel','reel_comment','message','story','community'));
+CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(status, target_type, target_id);

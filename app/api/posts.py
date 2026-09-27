@@ -630,15 +630,22 @@ async def report(request: Request):
     limit(request, "write")
     data = await body(request)
     ttype = data.get("target_type")
-    if ttype not in ("post", "comment", "user"):
+    from .admin import TARGETS
+    if ttype not in TARGETS:
         raise ApiError(400, "Неизвестный тип жалобы")
     try:
         tid = int(data.get("target_id"))
     except (TypeError, ValueError):
         raise ApiError(400, "Не указан объект жалобы")
-    reason = clean_text(data.get("reason"), 500) or "Без причины"
-    db.run("INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES (?,?,?,?)",
-           (request.state.user["id"], ttype, tid, reason))
+    reason = clean_text(data.get("reason"), 500)
+    if not reason:
+        raise ApiError(400, "Выберите причину жалобы")
+    v = request.state.user["id"]
+    # одна открытая жалоба от человека на одно и то же
+    if not db.value("SELECT 1 FROM reports WHERE reporter_id=? AND target_type=? AND target_id=? AND status='open'", (v, ttype, tid)):
+        db.run("INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES (?,?,?,?)", (v, ttype, tid, reason))
+        for aid in [r["id"] for r in db.all("SELECT id FROM users WHERE is_admin=1")]:
+            social.push_counters(aid)
     return ok()
 
 

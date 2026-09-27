@@ -95,10 +95,26 @@ CREATE INDEX IF NOT EXISTS idx_reel_likes_user ON reel_likes(user_id);
 CREATE INDEX IF NOT EXISTS idx_story_views_viewer ON story_views(viewer_id);
 CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at);
 CREATE INDEX IF NOT EXISTS idx_posts_circle ON posts(circle_id);
+CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(status, target_type, target_id);
 """
 
 
 def _migrate_sqlite(c: sqlite3.Connection) -> None:
+    # жалобы на новые виды содержимого: в SQLite ограничение CHECK меняется только пересозданием таблицы
+    sql = (c.execute("SELECT sql FROM sqlite_master WHERE name='reports'").fetchone() or {}).get("sql") or ""
+    if sql and "'reel'" not in sql:
+        c.executescript("""
+            ALTER TABLE reports RENAME TO reports_old;
+            CREATE TABLE reports (
+                id          INTEGER PRIMARY KEY,
+                reporter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                target_type TEXT NOT NULL CHECK (target_type IN ('post','comment','user','reel','reel_comment','message','story','community')),
+                target_id   INTEGER NOT NULL,
+                reason      TEXT NOT NULL,
+                status      TEXT NOT NULL DEFAULT 'open',
+                created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
+            INSERT INTO reports SELECT * FROM reports_old;
+            DROP TABLE reports_old;""")
     for table, column, ddl in MIGRATIONS:
         cols = {r["name"] for r in c.execute(f"PRAGMA table_info({table})").fetchall()}
         if column not in cols:

@@ -50,6 +50,30 @@ function select(name, value, options, label) {
   return h("select.select", { name, "aria-label": label }, options.map(([v, t]) => h("option", { value: v, selected: v === value }, t)));
 }
 
+/** Активные сеансы: где выполнен вход, завершить чужие */
+function sessionsBox() {
+  const box = h("div.stack.sessions", h("div.spinner"));
+  const load = async () => {
+    try {
+      const { items } = await api.get("/api/me/sessions");
+      const others = items.filter((s) => !s.current);
+      box.replaceChildren(
+        ...items.map((s) => h("div.setting-row.session-row",
+          h("span.session-ic", icon(/iPhone|Android|iPad/.test(s.device) ? "smartphone" : "monitor")),
+          h("div.label-block", h("b", s.device), h("small", s.current ? "Это устройство" : `Вход ${new Date(s.created_at).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}`)),
+          s.current ? h("span.status-pill.online", "сейчас") : h("button.btn.ghost.sm", { type: "button", onclick: async () => {
+            try { await api.del(`/api/me/sessions/${s.id}`); toast("Сеанс завершён", { icon: "check" }); load(); } catch (e) { toastError(e); }
+          } }, "Завершить"))),
+        others.length > 1 ? h("button.btn.outline", { type: "button", onclick: async () => {
+          if (!await confirmDialog({ title: "Выйти на всех других устройствах?", text: "Останется только этот вход.", confirm: "Выйти везде" })) return;
+          try { await api.del("/api/me/sessions"); toast("Готово — вход остался только здесь", { icon: "check" }); load(); } catch (e) { toastError(e); }
+        } }, icon("logout", "sm"), "Выйти на всех других устройствах") : null);
+    } catch (e) { box.replaceChildren(h("p.muted", e.message)); }
+  };
+  load();
+  return box;
+}
+
 function settingRow(title, hint, control) {
   return h("div.setting-row", h("div.label-block", h("b", title), hint ? h("small", hint) : null), control);
 }
@@ -299,7 +323,8 @@ export async function settingsPage({ query = {} } = {}) {
       section("Круги", "Списки друзей, для которых можно публиковать отдельно — например, только для близких.", circlesBox)]],
     ["security", "Защита", "shield", () => [
       section("Почта для входа", null, emailBox),
-      section("Пароль", null, h("details.set-more", h("summary", icon("lock", "sm"), "Сменить пароль", icon("down", "sm")), pwForm))]],
+      section("Пароль", null, h("details.set-more", h("summary", icon("lock", "sm"), "Сменить пароль", icon("down", "sm")), pwForm)),
+      section("Где выполнен вход", "Если видите незнакомое устройство — завершите сеанс и смените пароль.", sessionsBox())]],
     ["more", "Ещё", "more", () => [
       section("Мои данные", "Копия всех ваших данных или полное удаление аккаунта.",
         h("div.row", { style: { flexWrap: "wrap" } },

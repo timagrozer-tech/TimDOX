@@ -71,6 +71,41 @@ class Stage7Test(unittest.TestCase):
         items = self.b.get("/api/conversations").json()["items"]
         self.assertTrue(any(i["id"] == conv["id"] for i in items), "переписка собеседника пропала после удаления аккаунта")
 
+    def test_reports_and_moderation(self):
+        admin = Client().register("boss7", "Админ Семь")
+        db.run("UPDATE users SET is_admin=1 WHERE id=?", (admin.refresh()["user"]["id"],))
+        bad = Client().register("spam7", "Спамер Семь")
+        post = bad.post("/api/posts", data={"text": "Купи-купи", "visibility": "public"}).json()
+        self.assertEqual(self.a.post("/api/reports", {"target_type": "post", "target_id": post["id"]}).status_code, 400)  # без причины
+        for who in (self.a, self.b, self.a):  # повтор от того же человека не считается
+            self.assertEqual(who.post("/api/reports", {"target_type": "post", "target_id": post["id"], "reason": "Спам"}).status_code, 200)
+        self.assertEqual(self.a.post("/api/reports", {"target_type": "reel", "target_id": 1, "reason": "Спам"}).status_code, 200)
+        self.assertEqual(self.a.get("/api/admin/reports").status_code, 403)
+        items = admin.get("/api/admin/reports").json()["items"]
+        it = next(i for i in items if i["target_type"] == "post" and i["target_id"] == post["id"])
+        self.assertEqual(it["count"], 2)
+        self.assertEqual(it["author"]["username"], "spam7")
+        self.assertGreaterEqual(admin.get("/api/counters").json().get("reports", 0), 1)
+        r = admin.post("/api/admin/reports/resolve", {"target_type": "post", "target_id": post["id"], "action": "delete_ban"})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(self.a.get(f"/api/posts/{post['id']}").status_code, 404)
+        self.assertEqual(bad.get("/api/auth/me").json().get("user"), None)  # заблокирован и выкинут со всех устройств
+        stats = admin.get("/api/admin/stats").json()
+        self.assertGreaterEqual(stats["banned"], 1)
+        users = admin.get("/api/admin/users", params={"q": "spam7"}).json()["items"]
+        self.assertTrue(users[0]["banned"])
+        self.assertEqual(admin.delete(f"/api/admin/users/{users[0]['id']}/ban").status_code, 200)
+
+    def test_sessions(self):
+        other = Client()
+        other.post("/api/auth/login", {"email": "gleb7", "password": "secret123"})
+        items = self.b.get("/api/me/sessions").json()["items"]
+        self.assertGreaterEqual(len(items), 2)
+        self.assertEqual(sum(1 for i in items if i["current"]), 1)
+        self.assertEqual(self.b.delete("/api/me/sessions").status_code, 200)
+        self.assertEqual(other.get("/api/auth/me").json().get("user"), None)
+        self.assertIsNotNone(self.b.get("/api/auth/me").json().get("user"))
+
     def test_bad_numbers_give_400_not_500(self):
         r = self.a.get("/api/feed", params={"cursor": "abc"})
         self.assertLess(r.status_code, 500)

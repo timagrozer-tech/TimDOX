@@ -5,6 +5,7 @@ import { setTitle, toast, toastError, modal, showMenu, confirmDialog, busy } fro
 import { setCleanup, navigate } from "../router.js";
 import { videoMeta, fmtDur } from "../components/mediakit.js";
 import { burst } from "../fx.js";
+import { report } from "../components/post.js";
 
 const MAX_SECONDS = 90;
 const MAX_MB = 30;
@@ -135,6 +136,7 @@ export async function reelsPage({ params, query }) {
     const more = h("button.rl-act", { type: "button", "aria-label": "Ещё" }, h("span.rl-ic", icon("more")));
     more.addEventListener("click", () => showMenu(more, [
       { label: "Скопировать ссылку", icon: "link", onClick: () => share(r, true) },
+      !r.mine ? { label: "Пожаловаться", icon: "flag", danger: true, onClick: () => report("reel", r.id) } : null,
       r.mine ? { label: "Удалить клип", icon: "trash", danger: true, onClick: async () => {
         if (!await confirmDialog({ title: "Удалить клип?", text: "Видео, лайки и комментарии будут удалены.", confirm: "Удалить", danger: true })) return;
         try { await api.del(`/api/reels/${r.id}`); node.remove(); toast("Клип удалён"); } catch (e) { toastError(e); }
@@ -224,9 +226,20 @@ async function openComments(r, counter) {
   const send = h("button.btn.primary.icon-only", { type: "submit", "aria-label": "Отправить" }, icon("send"));
   const form = h("form.rl-comment-form", input, send);
   modal({ title: "Комментарии", body: h("div.stack", list), footer: [form] });
-  const row = (c) => h("div.rl-comment", avatar(c.author, "sm", { presence: false }),
-    h("div.grow", h("div", h("a", { href: `/u/${c.author.username}` }, h("b", c.author.name)), h("small.muted", ` · ${timeAgo(c.created_at)}`)),
-      h("div.rl-comment-text", ...richText(c.text).childNodes)));
+  const row = (c) => {
+    const el = h("div.rl-comment", avatar(c.author, "sm", { presence: false }),
+      h("div.grow", h("div", h("a", { href: `/u/${c.author.username}` }, h("b", c.author.name)), h("small.muted", ` · ${timeAgo(c.created_at)}`)),
+        h("div.rl-comment-text", ...richText(c.text).childNodes)));
+    const menuBtn = h("button.btn.ghost.icon-only.sm", { type: "button", "aria-label": "Действия с комментарием" }, icon("more", "sm"));
+    menuBtn.addEventListener("click", () => showMenu(menuBtn, [
+      c.mine || r.mine ? { label: "Удалить", icon: "trash", danger: true, onClick: async () => {
+        try { await api.del(`/api/reel-comments/${c.id}`); el.remove(); counter.textContent = String(Math.max(0, (+counter.textContent || 1) - 1)); } catch (e) { toastError(e); }
+      } } : null,
+      !c.mine ? { label: "Пожаловаться", icon: "flag", danger: true, onClick: () => report("reel_comment", c.id) } : null,
+    ]));
+    el.append(menuBtn);
+    return el;
+  };
   const load = async () => {
     const { items } = await api.get(`/api/reels/${r.id}/comments`);
     list.replaceChildren(...(items.length ? items.map(row) : [h("p.muted", { style: { textAlign: "center", padding: "20px 0" } }, "Будьте первым, кто оставит комментарий 💬")]));

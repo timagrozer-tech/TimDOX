@@ -2,6 +2,7 @@
 import { api, state, emit } from "../api.js";
 import { h, icon, avatar, autosize } from "../dom.js";
 import { toast, toastError, busy, modal, promptDialog, showMenu } from "../ui.js";
+import { attachMentions } from "./mentions.js";
 
 const MAX_LEN = 5000;
 const MAX_PHOTOS = 10;
@@ -55,7 +56,7 @@ export function audienceSelect(value, { withCircles = true } = {}) {
 
 export function composer({ placeholder = "Что у вас нового?", quote = null, compact = false, onPosted, community = null } = {}) {
   const photos = []; // {file, url, alt}
-  const ta = h("textarea", { placeholder, maxlength: MAX_LEN + 100, rows: 2, "aria-label": "Текст записи" });
+  const ta = attachMentions(h("textarea", { placeholder, maxlength: MAX_LEN + 100, rows: 2, "aria-label": "Текст записи" }));
   const fit = autosize(ta);
   const counter = h("span.counter");
   const previews = h("div.previews");

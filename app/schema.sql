@@ -199,7 +199,7 @@ CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, id DESC);
 CREATE TABLE IF NOT EXISTS reports (
     id          INTEGER PRIMARY KEY,
     reporter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    target_type TEXT NOT NULL CHECK (target_type IN ('post','comment','user')),
+    target_type TEXT NOT NULL CHECK (target_type IN ('post','comment','user','reel','reel_comment','message','story','community')),
     target_id   INTEGER NOT NULL,
     reason      TEXT NOT NULL,
     status      TEXT NOT NULL DEFAULT 'open',

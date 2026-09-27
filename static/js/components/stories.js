@@ -3,6 +3,7 @@ import { api, state } from "../api.js";
 import { h, icon, avatar, timeAgo, pl } from "../dom.js";
 import { modal, toast, toastError, busy, confirmDialog, promptDialog, trackOverlay } from "../ui.js";
 import { navigate } from "../router.js";
+import { report } from "./post.js";
 import { BACKGROUNDS, FONTS, MODES, COLORS, loadStoryFonts, defaultStyle, applyTextStyle, textNode, stickerNode, place, renderStory } from "./storykit.js";
 
 export { BACKGROUNDS };
@@ -81,7 +82,8 @@ export function openViewer(groups, gi, onChange) {
     head.replaceChildren(
       h("a", { href: grp.is_me ? `/u/${state.me.username}` : `/u/${grp.user.username}`, onclick: close }, avatar(grp.user, "sm", { presence: false })),
       h("div.grow", h("b", grp.is_me ? "Вы" : grp.user.name), h("small", timeAgo(st.created_at))),
-      grp.is_me ? h("button.sv-round", { type: "button", "aria-label": "Удалить историю", title: "Удалить историю", onclick: remove }, icon("trash", "sm")) : null,
+      grp.is_me ? h("button.sv-round", { type: "button", "aria-label": "Удалить историю", title: "Удалить историю", onclick: remove }, icon("trash", "sm"))
+        : h("button.sv-round", { type: "button", "aria-label": "Пожаловаться на историю", title: "Пожаловаться", onclick: () => { pause(); report("story", st.id); } }, icon("flag", "sm")),
       h("button.sv-round", { type: "button", "aria-label": "Закрыть", title: "Закрыть", onclick: close }, icon("x", "sm")));
     renderStory(stage, st, { onNavigate: close });
     const photo = stage.querySelector(".st-photo");
