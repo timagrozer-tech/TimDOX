@@ -23,7 +23,7 @@ def providers() -> list[dict]:
                     "model": os.environ.get("OLLAMA_MODEL", "qwen2.5:7b"), "json": True})
     if os.environ.get("GROQ_API_KEY"):
         out.append({"name": "groq", "url": "https://api.groq.com/openai/v1/chat/completions", "key": os.environ["GROQ_API_KEY"],
-                    "model": os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b"), "json": True})
+                    "model": os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"), "json": True})
     if os.environ.get("OPENROUTER_API_KEY"):
         out.append({"name": "openrouter", "url": "https://openrouter.ai/api/v1/chat/completions", "key": os.environ["OPENROUTER_API_KEY"],
                     "model": os.environ.get("OPENROUTER_MODEL", "openrouter/free"), "json": False})
