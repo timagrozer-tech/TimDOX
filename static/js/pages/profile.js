@@ -95,7 +95,7 @@ export async function profilePage({ params, query }) {
         h("div.profile-name",
           h("h1", u.name, vmark(u), statusText ? h("span.status-pill.online", statusText) : null,
             !isMe && rel.follows_you && rel.status !== "friends" ? h("span.status-pill", "подписан(а) на вас") : null),
-          h("div.handle", `@${u.username}`, u.badge ? h("span.official-chip", h("span.vbadge"), u.badge) : u.verified ? h("span.official-chip", h("span.vbadge"), "Официальный аккаунт") : null),
+          h("div.handle", `@${u.username}`, u.badge ? h("span.official-chip", u.badge) : u.verified ? h("span.official-chip", "Официальный аккаунт") : null),
           statusChip()),
         data.bio && !data.hidden ? h("p.profile-bio", data.bio) : null,
         h("div.profile-info", info),
