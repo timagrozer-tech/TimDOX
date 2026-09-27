@@ -2,8 +2,18 @@
 import { h, icon } from "../dom.js";
 import { REACTION } from "./post.js";
 
-export function notifText(n) {
+export function notifText(n, many = false) {
   const r = n.extra?.reaction ? REACTION[n.extra.reaction] : null;
+  if (many) {
+    switch (n.type) {
+      case "reaction": return "отреагировали на вашу запись";
+      case "reel_like": return "оценили ваш клип ❤️";
+      case "follow": return "подписались на ваши обновления";
+      case "event_going": return `пойдут на ваше мероприятие «${n.extra?.title || ""}»`;
+      default: break;
+    }
+  }
+  if (n.type === "item" && n.count > 1) return `Новые предметы в коллекции: «${n.extra?.name || ""}» и ещё ${n.count - 1} ✨`;
   switch (n.type) {
     case "reaction": return `отреагировал(а) ${r ? r.emoji : ""} на вашу запись`;
     case "comment": return "прокомментировал(а) вашу запись";

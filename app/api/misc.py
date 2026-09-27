@@ -13,10 +13,10 @@ from .posts import hydrate
 async def notifications(request: Request):
     v = request.state.user["id"]
     cursor = int_param(request, "cursor", 2**62)
-    rows = db.all("SELECT * FROM notifications WHERE user_id=? AND id<? ORDER BY id DESC LIMIT 31", (v, cursor))
-    actors = social.cards_by_ids(r["actor_id"] for r in rows)
-    items = [social.notification_view(r, actors) for r in rows[:30]]
-    return JSONResponse({"items": items, "next_cursor": rows[29]["id"] if len(rows) > 30 else None})
+    rows = db.all("SELECT * FROM notifications WHERE user_id=? AND id<? ORDER BY id DESC LIMIT 41", (v, cursor))
+    page = rows[:40]
+    items = social.notification_views(page, v)
+    return JSONResponse({"items": social.group_notifications(items), "next_cursor": page[-1]["id"] if len(rows) > 40 else None})
 
 
 @auth()

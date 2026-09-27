@@ -201,7 +201,9 @@ export async function reelsPage({ params, query }) {
       feed.append(reelNode(first));
     } catch (e) { toastError(e); }
   }
+  const here = location.pathname;
   await loadMore();
+  if (location.pathname !== here) return root; // пока грузилось, человек ушёл на другую страницу
   document.body.classList.add("reels-mode");
   setCleanup(() => document.body.classList.remove("reels-mode"));
   return root;

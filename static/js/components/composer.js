@@ -129,12 +129,24 @@ export function composer({ placeholder = "Что у вас нового?", quote
   ta.addEventListener("input", refresh);
   ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) form.requestSubmit(); });
 
+  // черновик: текст не пропадает, если окно закрыли или страница перезагрузилась
+  const draftKey = quote ? null : `krug-draft:${community ? `c${community.id}` : "me"}`;
+  const readDraft = () => { try { return draftKey ? localStorage.getItem(draftKey) || "" : ""; } catch { return ""; } };
+  const writeDraft = (v) => { try { if (!draftKey) return; if (v.trim()) localStorage.setItem(draftKey, v); else localStorage.removeItem(draftKey); } catch { /* приватный режим */ } };
+  let draftTimer = null;
+  ta.addEventListener("input", () => { clearTimeout(draftTimer); draftTimer = setTimeout(() => writeDraft(ta.value), 400); });
+  const saved = readDraft();
+  if (saved) { ta.value = saved; setTimeout(fit); }
+
   // вставка картинок из буфера обмена
   ta.addEventListener("paste", (e) => {
     const files = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith("image/"));
     if (files.length) {
       e.preventDefault();
-      for (const f of files.slice(0, MAX_PHOTOS - photos.length)) photos.push({ file: f, url: URL.createObjectURL(f), alt: "" });
+      for (const f of files.slice(0, MAX_PHOTOS - photos.length)) {
+        if (f.size > 10 * 1024 * 1024) { toast("Картинка больше 10 МБ", { error: true }); continue; }
+        photos.push({ file: f, url: URL.createObjectURL(f), alt: "" });
+      }
       refresh();
     }
   });
@@ -162,6 +174,7 @@ export function composer({ placeholder = "Что у вас нового?", quote
           photos.length = 0;
           poll = null; paintPoll();
           ta.value = "";
+          clearTimeout(draftTimer); writeDraft("");
           fit();
           refresh();
           toast(quote ? "Цитата опубликована" : "Запись опубликована", { icon: "check" });
@@ -187,13 +200,14 @@ export function composer({ placeholder = "Что у вас нового?", quote
       submit),
     fileInput));
   refresh();
-  form.focusInput = () => ta.focus();
+  form.focusInput = () => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); };
+  form.dispose = () => { writeDraft(ta.value); photos.forEach((p) => URL.revokeObjectURL(p.url)); };
   return form;
 }
 
 export function openComposerModal(opts = {}) {
   let m;
   const c = composer({ ...opts, onPosted: (p) => { m.close(); opts.onPosted?.(p); } });
-  m = modal({ title: opts.quote ? "Цитировать запись" : "Новая запись", body: c });
+  m = modal({ title: opts.quote ? "Цитировать запись" : "Новая запись", body: c, onClose: () => c.dispose() });
   setTimeout(() => c.focusInput(), 50);
 }

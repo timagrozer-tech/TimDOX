@@ -1,7 +1,7 @@
 // Истории на 24 часа: лента кружков, просмотр на весь экран, создание.
 import { api, state } from "../api.js";
 import { h, icon, avatar, timeAgo, pl } from "../dom.js";
-import { modal, toast, toastError, busy, confirmDialog, promptDialog } from "../ui.js";
+import { modal, toast, toastError, busy, confirmDialog, promptDialog, trackOverlay } from "../ui.js";
 import { navigate } from "../router.js";
 import { BACKGROUNDS, FONTS, MODES, COLORS, loadStoryFonts, defaultStyle, applyTextStyle, textNode, stickerNode, place, renderStory } from "./storykit.js";
 
@@ -48,7 +48,7 @@ export function storiesBar() {
 
 /** Просмотр историй: прогресс-бары, автоматическое листание, ответ в личку */
 export function openViewer(groups, gi, onChange) {
-  let g = gi, s = 0, timer = null, started = 0, elapsed = 0, paused = false;
+  let g = gi, s = 0, timer = null, started = 0, elapsed = 0, paused = false, waiting = false;
   const first = groups[g].stories.findIndex((x) => !x.seen);
   if (first > 0 && !groups[g].is_me) s = first;
 
@@ -84,6 +84,14 @@ export function openViewer(groups, gi, onChange) {
       grp.is_me ? h("button.sv-round", { type: "button", "aria-label": "Удалить историю", title: "Удалить историю", onclick: remove }, icon("trash", "sm")) : null,
       h("button.sv-round", { type: "button", "aria-label": "Закрыть", title: "Закрыть", onclick: close }, icon("x", "sm")));
     renderStory(stage, st, { onNavigate: close });
+    const photo = stage.querySelector(".st-photo");
+    waiting = !!(photo && !photo.complete);
+    if (waiting) {
+      clearTimeout(timer);
+      const go0 = () => { if (waiting && current() === st) { waiting = false; start(); } };
+      photo.addEventListener("load", go0, { once: true });
+      photo.addEventListener("error", go0, { once: true });
+    }
     if (grp.is_me) {
       const btn = h("button.btn.sm.sv-viewers", { type: "button" }, icon("eye", "sm"), "Просмотры");
       btn.addEventListener("click", () => showViewers(st));
@@ -111,7 +119,7 @@ export function openViewer(groups, gi, onChange) {
         api.post(`/api/stories/${st.id}/view`).catch(() => {});
       }
     }
-    start();
+    if (!waiting) start();
   }
   function start() {
     clearTimeout(timer);
@@ -183,14 +191,21 @@ export function openViewer(groups, gi, onChange) {
     if (e.key === "ArrowLeft") go(-1);
     if (e.key === " ") { e.preventDefault(); paused ? resume() : pause(); }
   };
+  let done = null;
   function close() {
+    if (!box.isConnected) return;
     clearTimeout(timer);
     box.remove();
+    done?.();
     document.removeEventListener("keydown", onKey);
+    document.removeEventListener("visibilitychange", onHidden);
     document.body.style.overflow = "";
     onChange?.();
   }
+  const onHidden = () => { if (document.hidden) pause(); else if (!box.querySelector(".sv-panel")) resume(); };
+  document.addEventListener("visibilitychange", onHidden);
   document.addEventListener("keydown", onKey);
+  done = trackOverlay(close);
   loadStoryFonts();
   document.body.append(box);
   document.body.style.overflow = "hidden";
@@ -401,14 +416,21 @@ export function createStory(onDone) {
   });
 
   const onKey = (e) => { if (e.key === "Escape" && !document.querySelector(".modal-backdrop")) tryClose(); };
+  let done = null;
   function close() {
+    if (!box.isConnected) return;
     box.remove();
+    done?.();
     document.removeEventListener("keydown", onKey);
     document.body.style.overflow = "";
     if (url) URL.revokeObjectURL(url);
   }
-  async function tryClose() {
-    if ((text || file || style.stickers.length) && !await confirmDialog({ title: "Выйти без публикации?", text: "История не сохранится.", confirm: "Выйти", danger: true })) return;
+  const dirty = () => !!(text || file || style.stickers.length);
+  async function tryClose(fromBack = false) {
+    if (dirty() && !await confirmDialog({ title: "Выйти без публикации?", text: "История не сохранится.", confirm: "Выйти", danger: true })) {
+      if (fromBack) done = trackOverlay(() => tryClose(true)); // «Назад» уже сработал — снова ставим окно в историю
+      return;
+    }
     close();
   }
 
@@ -432,6 +454,7 @@ export function createStory(onDone) {
   document.addEventListener("keydown", onKey);
   document.body.append(box);
   document.body.style.overflow = "hidden";
+  done = trackOverlay(() => tryClose(true));
   paintStage();
   drawPanel();
 }

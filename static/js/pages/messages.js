@@ -457,6 +457,7 @@ export async function messagesPage({ params }) {
       }, 100);
       rec.start(250);
       let finished = false;
+      cleanups.push(() => finish(false)); // ушли со страницы — запись отменяется, микрофон выключается
       function finish(sendIt) {
         if (finished) return;
         finished = true;
@@ -640,6 +641,20 @@ export async function messagesPage({ params }) {
   cleanups.push(on("presence", ({ user_id, online }) => {
     convs.forEach((c) => { if (c.user?.id === user_id) c.user.online = online; });
     if (chat && chat.conv.user?.id === user_id) chat.setOnline(online);
+  }));
+  // связь восстановилась — догружаем то, что пришло, пока её не было
+  let streamOpens = 0;
+  cleanups.push(on("stream-open", async () => {
+    if (streamOpens++ === 0) return;
+    loadList();
+    if (!chat) return;
+    try {
+      const res = await api.get(`/api/conversations/${chat.id}/messages`);
+      const known = new Set(chat.messages.map((x) => x.id));
+      Object.assign(chat.senders, res.senders || {});
+      res.items.filter((x) => !known.has(x.id)).forEach((x) => chat.append(x));
+      chat.markRead();
+    } catch { /* попробуем при следующем подключении */ }
   }));
   const onVisible = () => { if (document.visibilityState === "visible" && chat) chat.markRead(); };
   document.addEventListener("visibilitychange", onVisible);

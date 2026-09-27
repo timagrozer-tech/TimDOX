@@ -10,6 +10,7 @@ import { friendButton, openChat, personRow, defaultPersonActions } from "../comp
 import { uploadProfileImage } from "./settings.js";
 
 export async function profilePage({ params, query }) {
+  let offPosted = null;
   const data = await api.get(`/api/users/${encodeURIComponent(params.username)}`);
   const u = data.user;
   const isMe = u.id === state.me.id;
@@ -252,7 +253,7 @@ export async function profilePage({ params, query }) {
       });
       wrap.append(list.el);
       content.replaceChildren(wrap);
-      if (isMe) setCleanup(on("post-created", (p) => list.prepend(postCard(p))));
+      if (isMe) { offPosted?.(); offPosted = on("post-created", (p) => { list.prepend(postCard(p)); data.counts.posts = (data.counts.posts || 0) + 1; }); }
     } else if (id === "photos") {
       const grid = h("div.photo-grid");
       const all = [];
@@ -303,9 +304,10 @@ export async function profilePage({ params, query }) {
   selectTab(TABS.some((t) => t.id === query.tab) ? query.tab : "posts");
 
   // статус «в сети» обновляется в реальном времени
-  setCleanup(on("presence", ({ user_id, online }) => {
-    if (user_id === u.id) { data.user.online = online; renderHeader(); }
-  }));
+  const offPresence = on("presence", ({ user_id, online }) => {
+    if (user_id === u.id && root.isConnected) { data.user.online = online; renderHeader(); }
+  });
+  setCleanup(() => { offPresence(); offPosted?.(); });
   return root;
 }
 

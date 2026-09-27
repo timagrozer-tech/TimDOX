@@ -63,6 +63,13 @@ export function parseTrackName(filename) {
 // ---------------------------------------------------------------- Плеер музыки
 let playing = null; // одновременно играет только один трек
 
+/** Остановить музыку, голосовые и видео — при уходе со страницы */
+export function stopAllMedia() {
+  try { playing?.pause(); } catch { /* ничего */ }
+  playing = null;
+  document.querySelectorAll("video").forEach((v) => { if (!v.closest(".reels")) v.pause(); });
+}
+
 export function audioPlayer(m) {
   const audio = new Audio();
   audio.preload = "none";

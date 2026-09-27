@@ -185,11 +185,14 @@ export function ensureShell(root) {
     document.title = document.title.replace(/^\(\d+\) /, "");
     if (total) document.title = `(${total}) ${document.title}`;
   });
+  let onlineTimer = null;
   on("presence", ({ user_id, online }) => {
     document.querySelectorAll(`.avatar[data-user-id="${user_id}"]`).forEach((a) => {
       if (online) a.dataset.online = "true"; else delete a.dataset.online;
     });
-    shell?.aside?._reloadOnline?.();
+    // список «Друзья онлайн» обновляем не чаще раза в 5 секунд
+    clearTimeout(onlineTimer);
+    onlineTimer = setTimeout(() => shell?.aside?._reloadOnline?.(), 5000);
   });
   return shell;
 }

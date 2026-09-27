@@ -182,6 +182,62 @@ def notification_view(row: dict, actors: dict[int, dict] | None = None) -> dict:
     }
 
 
+def notification_views(rows: list[dict], v: int) -> list[dict]:
+    """Уведомления страницей: цитаты записей, комментарии и авторы — несколькими запросами на всех."""
+    if not rows:
+        return []
+    actors = cards_by_ids(r["actor_id"] for r in rows)
+    pids = list({r["post_id"] for r in rows if r.get("post_id")})
+    cids = list({r["comment_id"] for r in rows if r.get("comment_id")})
+    posts = {p["id"]: (p["text"] or "")[:80] for p in db.all(
+        f"SELECT id, text FROM posts WHERE id IN ({db.placeholders(pids)})", tuple(pids))} if pids else {}
+    comments = {c["id"]: c["text"][:80] for c in db.all(
+        f"SELECT id, text FROM comments WHERE id IN ({db.placeholders(cids)})", tuple(cids))} if cids else {}
+    req_actors = [r["actor_id"] for r in rows if r["type"] == "friend_request"]
+    pending = {r["requester_id"] for r in db.all(
+        f"""SELECT requester_id FROM friendships WHERE status='pending' AND addressee_id=?
+            AND requester_id IN ({db.placeholders(req_actors)})""", (v, *req_actors))} if req_actors else set()
+    out = []
+    for r in rows:
+        snippet = comments.get(r.get("comment_id")) or posts.get(r.get("post_id"))
+        view = {
+            "id": r["id"], "type": r["type"],
+            "actor": actors.get(r["actor_id"]) or {"id": r["actor_id"], "name": "Удалённый пользователь", "username": "", "avatar": None},
+            "post_id": r.get("post_id"), "comment_id": r.get("comment_id"),
+            "extra": json.loads(r["extra"]) if r.get("extra") else None,
+            "snippet": snippet, "created_at": r["created_at"], "read": bool(r["read_at"]),
+        }
+        if r["type"] == "friend_request":
+            view["pending"] = r["actor_id"] in pending
+        out.append(view)
+    return out
+
+
+GROUPABLE = {"reaction": "post_id", "reel_like": "reel_id", "follow": None, "event_going": "event_id", "item": None}
+
+
+def group_notifications(items: list[dict]) -> list[dict]:
+    """«Анна и ещё 4 оценили вашу запись»: однотипные уведомления об одном и том же собираются в одно."""
+    out, index = [], {}
+    for n in items:
+        field = GROUPABLE.get(n["type"], "-")
+        if field == "-":
+            out.append(n)
+            continue
+        target = n.get(field) if field == "post_id" else (n.get("extra") or {}).get(field) if field else "all"
+        key = (n["type"], target, n["created_at"][:10])
+        if key in index:
+            g = index[key]
+            g["count"] = g.get("count", 1) + 1
+            if n["actor"]["id"] not in {a["id"] for a in [g["actor"], *g.get("others", [])]}:
+                g.setdefault("others", []).append(n["actor"])
+            g["read"] = g["read"] and n["read"]
+            continue
+        index[key] = n
+        out.append(n)
+    return out
+
+
 def notify(user_id: int, actor_id: int, type_: str, post_id: int | None = None,
            comment_id: int | None = None, extra: dict | None = None) -> None:
     if user_id == actor_id or blocked_between(user_id, actor_id):

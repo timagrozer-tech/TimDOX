@@ -1,7 +1,8 @@
 // Точка входа клиентского приложения.
 import { state, loadMe, connectStream, on } from "./api.js";
 import { h, avatar } from "./dom.js";
-import { route, onRender, start, navigate } from "./router.js";
+import { route, onRender, onLeave, start, navigate } from "./router.js";
+import { stopAllMedia } from "./components/mediakit.js";
 import { restoreLook } from "./look.js";
 import { initPwa } from "./pwa.js";
 import { render as rerender } from "./router.js";
@@ -95,9 +96,22 @@ route("/stickers/:slug", stickersPage);
 
 const root = document.getElementById("app");
 
-onRender(async (m, query) => {
+// Страницы для мгновенного «Назад»: лента, профили, сообщества и т.п. сохраняются вместе с прокруткой
+const pageCache = new Map();
+const CACHEABLE = /^\/($|explore$|u\/[^/]+$|tag\/[^/]+$|c\/[^/]+$|bookmarks$|search$|communities$|events$|friends$|notifications$|guests$)/;
+let shown = null;
+onLeave((key) => {
+  if (!key || !shown?.node?.isConnected || !CACHEABLE.test(shown.path)) return;
+  pageCache.set(key, { url: shown.url, node: shown.node, scroll: window.scrollY, title: document.title });
+  while (pageCache.size > 8) pageCache.delete(pageCache.keys().next().value);
+});
+
+let renderGen = 0;
+onRender(async (m, query, sameUrl, backKey) => {
+  const myGen = ++renderGen;
   closeAllModals();
   closeMenu();
+  stopAllMedia();
   const path = location.pathname;
   if (!m) {
     if (!state.me) return navigate("/login", { replace: true });
@@ -123,18 +137,30 @@ onRender(async (m, query) => {
     document.body.classList.remove("wide");
     container = root;
   }
+  const cached = backKey && useShell ? pageCache.get(backKey) : null;
+  if (cached && cached.url === location.pathname + location.search) {
+    pageCache.delete(backKey);
+    container.replaceChildren(cached.node);
+    document.title = cached.title;
+    shown = { url: cached.url, path, node: cached.node };
+    requestAnimationFrame(() => window.scrollTo(0, cached.scroll));
+    return;
+  }
   container.replaceChildren(h("div.spinner", { role: "status", "aria-label": "Загрузка" }));
+  let node = null;
   try {
-    const node = await m.handler({ params: m.params, query, path });
-    if (location.pathname !== path) return; // пользователь уже ушёл на другую страницу
+    node = await m.handler({ params: m.params, query, path });
+    if (myGen !== renderGen) return; // пользователь уже ушёл на другую страницу (или сменил вкладку в адресе)
     node.classList?.add("page-enter");
     container.replaceChildren(node);
   } catch (e) {
+    if (myGen !== renderGen) return;
     console.error(e);
     container.replaceChildren(h("div.card.empty", h("h3", e.status === 404 ? "Не найдено" : "Не удалось загрузить страницу"), h("p", e.message),
       h("a.btn.primary", { href: "/" }, "На главную")));
   }
-  if (!history.state?.keepScroll) window.scrollTo(0, 0);
+  shown = { url: location.pathname + location.search, path, node };
+  window.scrollTo(0, 0);
   if (useShell && document.activeElement === document.body) container.focus({ preventScroll: true });
 });
 

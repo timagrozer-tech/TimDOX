@@ -108,12 +108,12 @@ export function stickerNode(s, { interactive = true, onNavigate } = {}) {
   } else if (s.type === "mention") {
     const inner = [h("b", "@"), h("span", s.name || s.username)];
     el = interactive
-      ? h(`a.st-sticker.st-chip.v-${v}`, { href: `/u/${s.username}`, onclick: (e) => { e.stopPropagation(); onNavigate?.(); } }, ...inner)
+      ? h(`a.st-sticker.st-chip.v-${v}`, { href: `/u/${s.username}`, onclick: () => onNavigate?.() }, ...inner)
       : h(`div.st-sticker.st-chip.v-${v}`, ...inner);
   } else if (s.type === "tag") {
     const inner = [h("b", "#"), h("span", s.tag)];
     el = interactive
-      ? h(`a.st-sticker.st-chip.v-${v}`, { href: `/tag/${encodeURIComponent(s.tag)}`, onclick: (e) => { e.stopPropagation(); onNavigate?.(); } }, ...inner)
+      ? h(`a.st-sticker.st-chip.v-${v}`, { href: `/tag/${encodeURIComponent(s.tag)}`, onclick: () => onNavigate?.() }, ...inner)
       : h(`div.st-sticker.st-chip.v-${v}`, ...inner);
   } else if (s.type === "time" || s.type === "date") {
     el = h(`div.st-sticker.st-clock.v-${v}`, s.text);

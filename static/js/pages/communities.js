@@ -84,6 +84,7 @@ function createCommunity() {
 
 // ---------------------------------------------------------------- Страница сообщества
 export async function communityPage({ params, query }) {
+  let offPosted = null, cleanupSet = false;
   const slug = params.slug;
   let c = await api.get(`/api/communities/${encodeURIComponent(slug)}`);
   setTitle(c.name);
@@ -196,7 +197,9 @@ export async function communityPage({ params, query }) {
       });
       wrap.append(list.el);
       content.replaceChildren(wrap);
-      setCleanup(on("post-created", (p) => { if (p.community?.id === c.id) list.prepend(postCard(p)); }));
+      offPosted?.();
+      offPosted = on("post-created", (p) => { if (p.community?.id === c.id) list.prepend(postCard(p)); });
+      if (!cleanupSet) { cleanupSet = true; setCleanup(() => offPosted?.()); }
     } else {
       const box = h("div.stack", h("div.card", h("div.spinner")));
       content.replaceChildren(box);
