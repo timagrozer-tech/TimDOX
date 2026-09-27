@@ -2056,3 +2056,32 @@ h1 > .ai-chip { font-size: .42em; height: 1.6em; vertical-align: .45em; }
 .wb-text b { font-size: 15px; }
 .wb-text small { font-size: 12.5px; opacity: .85; }
 .wb-x { border: 0; background: rgba(255, 255, 255, .14); color: #fff; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; }
+
+/* ==========================================================================
+   Правки по скриншотам: комментарии, вкладки, клипы, обложка, чат, вход
+   ========================================================================== */
+/* поле комментария: круглая кнопка внутри «таблетки» */
+.comment-form .input-wrap { border-radius: 999px; padding: 4px 4px 4px 16px; align-items: center; min-height: 46px; }
+.comment-form .input-wrap .btn.icon-only, .comment-form > .btn.icon-only { width: 38px; height: 38px; min-width: 38px; padding: 0; border-radius: 50%; flex: none; align-self: flex-end; }
+.comment-form .input-wrap textarea { padding: 9px 0; }
+.comment-form > .avatar { align-self: center; }
+/* вкладки: короткая капсула под активной, а не длинная полоса до края */
+.tabs [aria-selected="true"]::after { left: 50%; right: auto; width: 26px; margin-left: -13px; height: 3px; border-radius: 3px; bottom: 2px; box-shadow: none; }
+.profile-info .icon { width: 15px; height: 15px; stroke-width: 1.9; }
+/* клипы: кнопка «+ Клип» без огромного отступа; комментарии на плотном фоне, аватары не обрезаются */
+.btn.reel-upload { display: inline-flex; gap: 6px; }
+body.reels-mode .modal { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.rl-comments { padding-top: 8px; }
+.rl-comment .avatar { flex: none; }
+/* обложка: аккуратная стеклянная кнопка камеры */
+@media (max-width: 719px) {
+  .cover .cover-btn { width: 36px; height: 36px; padding: 0; border-radius: 50%; justify-content: center; background: rgba(0, 0, 0, .35); }
+  .cover .cover-btn .cover-btn-text { display: none; }
+  /* полноэкранный чат закреплён за экраном — без пустоты снизу и «уехавшей» шапки */
+  body.in-chat { overflow: hidden; }
+  body.in-chat .chat-layout { position: fixed; inset: 0; height: auto; z-index: 30; }
+  /* вход и регистрация: заголовок помещается в строку */
+  .auth-form h1 { font-size: 24px; line-height: 1.2; }
+}
+.rl-comment-form .btn.icon-only { width: 44px; height: 44px; min-width: 44px; border-radius: 50%; padding: 0; }
+.rl-comment-form .input { border-radius: 999px; }
