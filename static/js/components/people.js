@@ -24,7 +24,7 @@ export function friendButton(user, relation, onChange, { small = false } = {}) {
   const id = user.id;
   switch (relation.status) {
     case "friends": {
-      const b = h(`button.btn.outline${sz}`, { type: "button", "aria-haspopup": "menu" }, icon("userCheck", "sm"), "У вас в друзьях");
+      const b = h(`button.btn.outline${sz}`, { type: "button", "aria-haspopup": "menu" }, icon("userCheck", "sm"), "В друзьях");
       b.addEventListener("click", () => showMenu(b, [
         { label: "Удалить из друзей", icon: "userX", danger: true, onClick: async () => {
           if (await confirmDialog({ title: "Удалить из друзей?", text: `${user.name} больше не будет видеть записи «только для друзей».`, confirm: "Удалить", danger: true })) {

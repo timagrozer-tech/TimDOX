@@ -68,11 +68,27 @@ function topbar() {
     menuBtn);
 }
 
+/** «+» внизу: что создать — запись, историю или клип */
+function createMenu(btn) {
+  btn.classList.add("open");
+  showMenu(btn, [
+    { label: "Запись", hint: "Текст, фото, видео или опрос", icon: "edit", onClick: () => openComposerModal() },
+    { label: "История", hint: "Фото или текст на 24 часа", icon: "story", onClick: async () => {
+      const { createStory } = await import("./stories.js");
+      createStory(() => document.querySelector(".stories-card")?._reload?.());
+    } },
+    { label: "Клип", hint: "Короткое вертикальное видео", icon: "film", onClick: async () => {
+      const { openUpload } = await import("../pages/reels.js");
+      openUpload(() => navigate("/reels"));
+    } },
+  ], { onClose: () => btn.classList.remove("open"), title: "Создать" });
+}
+
 function tabbar() {
   return h("nav.tabbar", { "aria-label": "Меню" },
     h("a", { href: "/", dataset: { nav: "Лента" } }, icon("home"), "Лента"),
     h("a", { href: "/reels", dataset: { nav: "Клипы" } }, icon("film"), "Клипы"),
-    h("a", { href: "#", "aria-label": "Создать запись", onclick: (e) => { e.preventDefault(); openComposerModal(); } }, h("span.create", icon("plus"))),
+    h("a.tab-create", { href: "#", "aria-label": "Создать", "aria-haspopup": "menu", onclick: (e) => { e.preventDefault(); createMenu(e.currentTarget); } }, h("span.create", icon("plus"))),
     h("a", { href: "/messages", dataset: { nav: "Сообщения" } }, icon("message"), "Чаты", badge("messages")),
     h("a", { href: `/u/${state.me.username}`, dataset: { nav: "Моя страница" } }, icon("user"), "Профиль"));
 }

@@ -84,7 +84,7 @@ export async function messagesPage({ params }) {
   filterInput.addEventListener("input", () => drawList());
   const listPane = h("div.chat-list", h("div.chat-list-head.row",
     h("h1", { style: { fontSize: "20px" } }, "Сообщения"), h("div.spacer"),
-    h("button.btn.soft.sm.icon-only", { type: "button", onclick: createGroup, title: "Создать беседу", "aria-label": "Создать беседу" }, icon("plus", "sm"))),
+    h("button.btn.soft.sm.icon-only", { type: "button", onclick: createGroup, title: "Создать беседу", "aria-label": "Создать беседу" }, icon("edit", "sm"))),
     h("label.chat-filter", icon("search", "sm"), filterInput), listEl);
   const chatPane = h("section.chat", { "aria-label": "Переписка" });
   layout.append(listPane, chatPane);

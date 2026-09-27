@@ -18,8 +18,8 @@ export async function guestsPage() {
     ? h("div.people", data.items.map((g) => h(`div.person${g.is_new ? ".is-new" : ""}`,
       h("a", { href: `/u/${g.username}`, "aria-label": g.name }, avatar(g, "lg")),
       h("div.who", h("a.name", { href: `/u/${g.username}` }, g.name),
-        h("div.sub", [g.city, g.is_friend ? "друг" : null].filter(Boolean).join(" · ") || `@${g.username}`)),
-      h("div.acts", g.is_new ? h("span.status-pill.online", "новый") : null, h("span.muted", { style: { fontSize: "13px" } }, timeAgo(g.visited_at))))))
+        h("div.sub", [timeAgo(g.visited_at), g.is_friend ? "друг" : g.city].filter(Boolean).join(" · "))),
+      h("div.acts", g.is_new ? h("span.new-dot", { title: "Новый гость" }, "новый") : null))))
     : h("div.empty", icon("eye"), h("h3", "Гостей пока не было"), h("p", "Здесь появятся люди, которые заходили на вашу страницу за последние 30 дней."));
   return h("div.stack",
     h("div.page-head", h("h1", "Гости")),

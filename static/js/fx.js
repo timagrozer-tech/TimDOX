@@ -170,7 +170,7 @@ function spotMove(e) {
 }
 
 // ---------------------------------------------------------------- Магнитные кнопки
-const MAGNET = ".btn.primary, .btn.accent, .tabbar .create, .create-btn";
+const MAGNET = ".btn.primary, .btn.accent, .create-btn";
 let magnetEl = null;
 function magnetMove(e) {
   const el = e.target.closest?.(MAGNET);

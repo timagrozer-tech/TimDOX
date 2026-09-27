@@ -86,9 +86,9 @@ export function promptDialog({ title, label, placeholder = "", confirm = "Отп
 
 // ---------------------------------------------------------------- Выпадающее меню
 let openMenu = null;
-export function showMenu(anchor, items) {
+export function showMenu(anchor, items, { onClose = null, title = null } = {}) {
   closeMenu();
-  const menu = h("div.menu", { role: "menu" },
+  const menu = h("div.menu", { role: "menu" }, title ? h("div.menu-title", title) : null,
     items.filter(Boolean).map((it) => it === "-" ? h("hr") :
       h(`button${it.danger ? ".danger" : ""}${it.checked ? ".checked" : ""}`, { type: "button", role: it.checked != null ? "menuitemradio" : "menuitem", "aria-checked": it.checked != null ? String(!!it.checked) : null, onclick: () => { closeMenu(); it.onClick(); } },
         it.icon ? icon(it.icon) : null,
@@ -138,6 +138,7 @@ export function showMenu(anchor, items) {
   openMenu = () => {
     menu.remove();
     backdrop?.remove();
+    onClose?.();
     document.documentElement.classList.remove("menu-lock");
     document.removeEventListener("mousedown", onDoc);
     document.removeEventListener("keydown", onKey);

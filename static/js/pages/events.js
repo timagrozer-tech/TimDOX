@@ -60,7 +60,7 @@ export async function eventsPage({ query }) {
       badge && state.counters[badge] ? h("span.badge", { dataset: { badge, count: String(state.counters[badge]) } }, String(state.counters[badge])) : null)));
   draw();
   return h("div.stack",
-    h("div.page-head", h("h1", "Мероприятия"), h("div.spacer"), h("button.btn.accent.sm", { type: "button", onclick: () => createEvent() }, icon("plus", "sm"), "Создать")),
+    h("div.page-head", h("h1", "Мероприятия"), h("div.spacer"), h("button.btn.primary.sm", { type: "button", onclick: () => createEvent() }, icon("plus", "sm"), "Создать")),
     h("div.card", tabBar), list);
 }
 

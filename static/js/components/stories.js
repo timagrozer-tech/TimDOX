@@ -18,6 +18,7 @@ const DURATION = 5000;
 export function storiesBar() {
   const strip = h("div.stories-strip", { role: "list", "aria-label": "Истории" });
   const card = h("section.card.stories-card", strip);
+  card._reload = () => load();
   let groups = [];
 
   async function load() {

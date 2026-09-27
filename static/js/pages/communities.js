@@ -39,7 +39,7 @@ export async function communitiesPage({ query }) {
     h("button", { type: "button", role: "tab", dataset: { tab: id }, onclick: () => { tab = id; search.value = ""; draw(); } }, label)));
   draw();
   return h("div.stack",
-    h("div.page-head", h("h1", "Сообщества"), h("div.spacer"), h("button.btn.accent.sm", { type: "button", onclick: createCommunity }, icon("plus", "sm"), "Создать")),
+    h("div.page-head", h("h1", "Сообщества"), h("div.spacer"), h("button.btn.primary.sm", { type: "button", onclick: createCommunity }, icon("plus", "sm"), "Создать")),
     h("div.search-box", icon("search"), search),
     h("div.card", tabBar), list);
 }
