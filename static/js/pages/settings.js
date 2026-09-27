@@ -5,7 +5,7 @@ import { setTitle, toast, toastError, busy, confirmDialog, modal, promptDialog }
 import { pickFriends } from "../components/people.js";
 import { loadCircles } from "../components/composer.js";
 import { appearanceSection } from "../components/appearance.js";
-import { codeForm } from "./feed.js";
+import { codeForm, verifyFlow } from "./feed.js";
 import { installButton } from "../pwa.js";
 import { refreshSidebarUser } from "../components/layout.js";
 import { logout } from "../app-actions.js";
@@ -198,13 +198,10 @@ export async function settingsPage() {
         h("div.row", { style: { gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" } }, status,
           h("button.btn.soft.sm", { type: "button", onclick: changeEmail }, icon("edit", "sm"), "Изменить"))),
     ];
-    if (!s.email_verified && s.mail_enabled) {
-      rows.push(h("div.code-block", h("small.muted", "Введите 6-значный код из письма:"),
-        codeForm({
-          submit: (code) => api.post("/api/auth/verify-code", { code }),
-          resend: () => api.post("/api/auth/resend"),
-          onDone: () => { s.email_verified = true; state.me.email_verified = true; toast("Почта подтверждена 🎉", { icon: "check" }); paintEmail(); },
-        })));
+    if (!s.email_verified) {
+      rows.push(h("div.code-block", s.mail_enabled
+        ? verifyFlow({ onDone: () => { s.email_verified = true; paintEmail(); } })
+        : h("small.muted", "Отправка писем пока не настроена на сервере — подтвердить почту можно будет позже.")));
     }
     if (s.pending_email) {
       rows.push(h("div.code-block",

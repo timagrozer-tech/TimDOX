@@ -85,7 +85,7 @@ export function appearanceSection(settings) {
 
   // ------------------------------------------------ режим
   const modeSeg = h("div.segmented", { role: "group", "aria-label": "Светлая или тёмная" });
-  const paintMode = () => modeSeg.replaceChildren(...[["system", "Как в системе"], ["light", "Светлая"], ["dark", "Тёмная"]].map(([v, t]) => h("button", {
+  const paintMode = () => modeSeg.replaceChildren(...[["system", "Авто"], ["light", "Светлая"], ["dark", "Тёмная"]].map(([v, t]) => h("button", {
     type: "button", "aria-pressed": String(v === mode), onclick: () => { setMode(v); paintMode(); },
   }, t)));
 
@@ -207,20 +207,38 @@ export function appearanceSection(settings) {
   paint();
   paintMotion(currentMotion());
 
-  const reset = h("button.btn.ghost.sm", { type: "button", onclick: () => {
+  const reset = h("button.btn.ghost.sm.icon-only", { type: "button", onclick: () => {
     setMode("system");
     update({ ...PRESETS.orbit, preset: "orbit", palette: "violet", custom: null, dim: 35, blur: 0 }, { keepPreset: true });
     paint();
-  } }, icon("repeat", "sm"), "Сбросить оформление");
+  }, title: "Сбросить оформление", "aria-label": "Сбросить оформление" }, icon("repeat", "sm"));
+
+  // ---- компактная раскладка: переключатель светлая/тёмная сверху и вкладки
+  const PANES = {
+    themes: ["Темы", () => [presetsBox]],
+    color: ["Цвет", () => [swatches]],
+    bg: ["Фон", () => [bgGrid, bgExtra]],
+    font: ["Шрифт", () => [fontGrid]],
+    more: ["Ещё", () => [
+      h("div.look-row", h("span", "Углы"), shapeSeg),
+      h("div.look-row", h("span", "Анимации", h("small.muted", "На слабых телефонах можно выключить")), motionSeg),
+    ]],
+  };
+  let pane = "themes";
+  try { pane = sessionStorage.getItem("krug-look-pane") || "themes"; } catch { /* нет хранилища */ }
+  if (!PANES[pane]) pane = "themes";
+  const paneTabs = h("div.look-tabs", { role: "tablist" });
+  const paneBody = h("div.look-pane");
+  const paintPane = () => {
+    paneTabs.replaceChildren(...Object.entries(PANES).map(([k, [label]]) => h("button", {
+      type: "button", role: "tab", "aria-selected": String(k === pane),
+      onclick: () => { pane = k; try { sessionStorage.setItem("krug-look-pane", k); } catch { /* */ } paintPane(); },
+    }, label)));
+    paneBody.replaceChildren(...PANES[pane][1]());
+  };
+  paintPane();
 
   return h("section.card.settings-section.look-section",
-    h("div.row", h("h2", "Оформление"), h("div.spacer"), reset),
-    h("p.desc", "Меняется сразу и сохраняется в аккаунте — на всех ваших устройствах."),
-    sectionBlock("Готовые темы", "Цвета, фон, шрифт и форма — одним нажатием", presetsBox),
-    sectionBlock("Светлая или тёмная", null, modeSeg),
-    sectionBlock("Цвет", "Кнопки, ссылки, акценты и фон", swatches),
-    sectionBlock("Фон", "Можно поставить своё изображение", bgGrid, bgExtra),
-    sectionBlock("Шрифт", null, fontGrid),
-    sectionBlock("Углы", null, shapeSeg),
-    sectionBlock("Анимации и 3D-эффекты", "Параллакс, наклон карточек, появление элементов. На слабых устройствах можно выключить.", motionSeg));
+    h("div.look-top", h("h2", "Оформление"), h("div.spacer"), modeSeg, reset),
+    paneTabs, paneBody);
 }

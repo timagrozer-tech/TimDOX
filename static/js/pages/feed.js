@@ -10,13 +10,32 @@ import { storiesBar } from "../components/stories.js";
 export function verifyBanner() {
   if (!state.me || state.me.email_verified || !state.mailEnabled) return null;
   return h("div.banner.verify-banner", { role: "note" }, icon("mail"),
-    h("div.grow", h("b", "Подтвердите почту. "), `Код отправлен на ${state.me.email}.`,
-      state.requireEmailConfirm ? " Без подтверждения нельзя публиковать записи и писать сообщения." : ""),
-    codeForm({
-      submit: (code) => api.post("/api/auth/verify-code", { code }),
-      resend: () => api.post("/api/auth/resend"),
-      onDone: (el) => { state.me.email_verified = true; toast("Почта подтверждена 🎉", { icon: "check" }); el.closest(".banner")?.remove(); },
-    }));
+    h("div.grow", h("b", "Подтвердите почту. "),
+      state.requireEmailConfirm ? "Без подтверждения нельзя публиковать записи и писать сообщения." : "Так вы сможете восстановить пароль, если забудете его."),
+    verifyFlow({ onDone: (el) => el.closest(".banner")?.remove() }));
+}
+
+/** Подтверждение почты в два шага: кнопка «Подтвердить почту» → письмо с кодом → поле для кода */
+export function verifyFlow({ onDone } = {}) {
+  const box = h("div.verify-flow");
+  const start = h("button.btn.primary.sm", { type: "button" }, icon("mail", "sm"), "Подтвердить почту");
+  start.addEventListener("click", async () => {
+    start.disabled = true;
+    try {
+      await api.post("/api/auth/resend");
+      toast(`Код отправлен на ${state.me.email}`, { icon: "mail" });
+      box.replaceChildren(
+        h("small.verify-hint", `Код из письма на ${state.me.email}:`),
+        codeForm({
+          submit: (code) => api.post("/api/auth/verify-code", { code }),
+          resend: () => api.post("/api/auth/resend"),
+          onDone: () => { state.me.email_verified = true; toast("Почта подтверждена 🎉", { icon: "check" }); onDone?.(box); },
+        }));
+      box.querySelector("input")?.focus();
+    } catch (e) { start.disabled = false; toastError(e); }
+  });
+  box.append(start);
+  return box;
 }
 
 /** Поле для шестизначного кода из письма + «Отправить ещё раз» */
