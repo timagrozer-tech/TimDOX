@@ -17,12 +17,17 @@ WORK = Path("/tmp/trailer")
 
 
 def _ffmpeg() -> str:
-    sys.path.insert(0, "/tmp/iiof")
+    os.makedirs("/tmp/iiof", exist_ok=True)  # папка должна существовать заранее, иначе Python запомнит её как пустую
+    sys.path_importer_cache.pop("/tmp/iiof", None)
+    if "/tmp/iiof" not in sys.path:
+        sys.path.insert(0, "/tmp/iiof")
     try:
         import imageio_ffmpeg
     except ImportError:
         subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--target", "/tmp/iiof", "imageio-ffmpeg"],
                        check=True, timeout=300)
+        import importlib
+        importlib.invalidate_caches()  # папка появилась после старта — сбросить кэш путей импорта
         import imageio_ffmpeg
     return imageio_ffmpeg.get_ffmpeg_exe()
 
