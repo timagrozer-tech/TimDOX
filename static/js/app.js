@@ -65,7 +65,7 @@ import { guestsPage } from "./pages/guests.js";
 import { adminPage } from "./pages/admin.js";
 import { worldPage } from "./pages/world.js";
 import { statsPage } from "./pages/stats.js";
-import { musicPage, genrePage, playlistPage } from "./pages/music.js";
+import { musicPage, genrePage, playlistPage, artistPage, albumPage } from "./pages/music.js";
 import { initPlayer } from "./music/player.js";
 
 // public: доступна без входа; guestOnly: только для гостей
@@ -97,6 +97,8 @@ route("/stats", statsPage);
 route("/music", musicPage);
 route("/music/genre/:slug", genrePage);
 route("/music/playlist/:id", playlistPage);
+route("/music/artist/:id", artistPage);
+route("/music/album/:id", albumPage);
 route("/admin", adminPage);
 route("/world", worldPage);
 route("/collection", collectionPage);

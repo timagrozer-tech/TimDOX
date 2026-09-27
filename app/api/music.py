@@ -199,7 +199,8 @@ async def status(request: Request):
     """Проверка источников музыки (для мониторинга): сколько треков и станций сейчас доступно."""
     tracks, stations, chart_ru = await asyncio.gather(_call(music.trending, "", "week", 60, default=[]),
                                                       _call(music.radio, "", 60, default=[]), _call(music.ru_chart, 100, default=[]))
-    out = {"catalog": len(tracks), "radio": len(stations), "ru_chart": len(chart_ru), "ok": bool(tracks and stations and chart_ru)}
+    out = {"catalog": len(tracks), "radio": len(stations), "ru_chart": len(chart_ru), "ok": bool(tracks and stations and chart_ru),
+           "ru_top": [f"{t['artist']} — {t['title']}" for t in chart_ru[:5]]}
     return JSONResponse(out)
 
 

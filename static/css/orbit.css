@@ -2515,7 +2515,7 @@ body.fp-open .mp, body.reels-mode .mp { display: none; }
 .fp.queue-open .fp-queue { display: flex; }
 .fp-queue-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 10px 8px; }
 .fp-queue-head small { opacity: .6; }
-.fp-queue-list { overflow-y: auto; display: flex; flex-direction: column; gap: 2px; scrollbar-width: thin; }
+.fp-queue-list { overflow-y: auto; display: flex; flex-direction: column; gap: 2px; scrollbar-width: thin; flex: 1; min-height: 0; overscroll-behavior: contain; }
 .fp-q { display: flex; align-items: center; gap: 10px; border: 0; background: transparent; color: #fff; text-align: left; padding: 7px 8px; border-radius: 14px; cursor: pointer; font: inherit; }
 .fp-q:hover { background: rgba(255, 255, 255, .08); }
 .fp-q > .mu-cover { width: 42px; height: 42px; border-radius: 11px; flex: none; }
@@ -2552,3 +2552,113 @@ body.fp-open .mp, body.reels-mode .mp { display: none; }
   .composer .tools > .btn.ghost.icon-only { width: 34px; }
   .composer .tools .btn.primary { padding-left: 12px; padding-right: 12px; }
 }
+
+/* очередь в плеере: шапка с кнопками, удаление треков, шторка на телефоне */
+.fp-queue-head { align-items: center; gap: 8px; padding: 0 4px 8px 10px; }
+.fp-queue-head > div { flex: 1; display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.fp-qbtn { border: 0; background: rgba(255, 255, 255, .1); color: #fff; font: 700 12.5px/1 var(--font); padding: 8px 12px; border-radius: 999px; cursor: pointer; }
+.fp-qbtn:hover { background: rgba(255, 255, 255, .18); }
+.fp-qbtn[hidden] { display: none; }
+.fp-qclose { width: 38px; height: 38px; }
+.fp-queue-grip { display: none; width: 44px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .35); margin: -4px auto 10px; }
+.fp-q { display: flex; align-items: center; gap: 2px; padding: 0; border-radius: 14px; }
+.fp-q-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; border: 0; background: transparent; color: #fff; text-align: left; padding: 7px 8px; border-radius: 14px; cursor: pointer; font: inherit; }
+.fp-q-main > .mu-cover { width: 42px; height: 42px; border-radius: 11px; flex: none; }
+.fp-q-main > span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fp-q-main b, .fp-q-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-q-main small { opacity: .65; font-size: 12.5px; }
+.fp-q:hover .fp-q-main { background: rgba(255, 255, 255, .06); }
+.fp-q-del { flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: rgba(255, 255, 255, .55); display: grid; place-items: center; cursor: pointer; }
+.fp-q-del:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+.fp-q-now { flex: none; width: 36px; height: 36px; display: flex; align-items: flex-end; justify-content: center; gap: 2px; padding: 11px 10px; }
+.fp-q-now i { flex: 1; height: 40%; border-radius: 2px; background: #c4b5fd; animation: mu-eq .9s ease-in-out infinite; animation-play-state: paused; }
+.fp-q-now i:nth-child(2) { animation-delay: -.3s; } .fp-q-now i:nth-child(3) { animation-delay: -.6s; }
+.fp.playing .fp-q-now i { animation-play-state: running; }
+.fp-scrim { display: none; }
+.fp-badge { display: inline-block; margin-left: 8px; vertical-align: 2px; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 6px; background: rgba(255, 255, 255, .16); letter-spacing: .02em; }
+.fp-full { display: none; }
+.fp.is-preview .fp-full { display: inline-flex; background: #fff; color: #1a1240; border-color: transparent; }
+@media (max-width: 899px) {
+  .fp-scrim { position: fixed; inset: 0; z-index: 2; background: rgba(4, 3, 16, .55); }
+  .fp.queue-open .fp-inner { overflow: hidden; }
+  .fp.queue-open .fp-scrim { display: block; animation: fade-in .2s ease-out; }
+  .fp-queue { position: fixed; left: 0; right: 0; bottom: 0; height: min(72%, 620px); border-radius: 26px 26px 0 0; padding: 14px 6px max(10px, env(safe-area-inset-bottom)); border-bottom: 0; transition: transform .2s; }
+  .fp.queue-open .fp-queue { animation: fp-sheet .28s cubic-bezier(.2, .9, .3, 1); }
+  .fp-queue-grip { display: block; }
+  .fp-q-del { width: 42px; height: 42px; }
+}
+@keyframes fp-sheet { from { transform: translateY(100%); } }
+@media (max-width: 719px) {
+  body.has-player .toasts { bottom: calc(var(--dock-h) + 96px + env(safe-area-inset-bottom)); }
+  .fp-extra { gap: 6px; }
+  .fp-chip { padding: 10px 12px; }
+}
+@media (min-width: 720px) { body.has-player .toasts { bottom: 100px; } }
+
+/* ---------------------------------------------------------------- Русская музыка: чарт, артисты, альбомы */
+.ru-hero { position: relative; overflow: hidden; display: flex; align-items: center; gap: 18px; padding: 22px; border-radius: 28px; color: #fff; isolation: isolate; min-height: 200px;
+  background: radial-gradient(120% 120% at 100% 0%, #e0357f 0%, transparent 55%), radial-gradient(120% 140% at 0% 100%, #2563eb 0%, transparent 55%), linear-gradient(135deg, #3b1f8f, #120d2c); box-shadow: var(--shadow-lg); }
+.ru-hero::after { content: ""; position: absolute; right: -80px; top: -80px; width: 280px; height: 280px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .12); box-shadow: 0 0 0 30px rgba(255, 255, 255, .04), 0 0 0 62px rgba(255, 255, 255, .03); z-index: -1; }
+.ru-hero-body { flex: 1; min-width: 0; }
+.ru-kicker { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; background: rgba(255, 255, 255, .14); padding: 5px 11px; border-radius: 999px; }
+.ru-flag { width: 18px; height: 12px; border-radius: 2px; background: linear-gradient(#fff 0 33.3%, #1c57d6 33.3% 66.6%, #e5262e 66.6%); box-shadow: 0 0 0 1px rgba(0, 0, 0, .15); }
+.ru-hero h2 { font-family: var(--font-display); font-size: 32px; margin: 10px 0 6px; line-height: 1.05; }
+.ru-hero p { margin: 0 0 16px; font-size: 14px; opacity: .88; max-width: 420px; }
+.ru-hero-btns { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.ru-link { display: inline-flex; align-items: center; gap: 4px; color: #fff; font-weight: 800; font-size: 14px; text-decoration: none; opacity: .9; }
+.ru-link .icon { transform: rotate(180deg); }
+.ru-stack { position: relative; width: 240px; height: 170px; flex: none; }
+.ru-stack > span { position: absolute; width: 118px; height: 118px; border-radius: 22px; overflow: hidden; box-shadow: 0 18px 40px -12px rgba(0, 0, 0, .65); background: linear-gradient(135deg, #7c5cff, #e0357f); }
+.ru-stack img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ru-stack b { position: absolute; left: 8px; bottom: 6px; font-family: var(--font-display); font-size: 26px; text-shadow: 0 2px 12px rgba(0, 0, 0, .6); }
+.ru-stack-0 { right: 0; top: 26px; z-index: 3; transform: rotate(6deg); }
+.ru-stack-1 { right: 66px; top: 4px; z-index: 2; transform: rotate(-4deg) scale(.9); }
+.ru-stack-2 { right: 124px; top: 34px; z-index: 1; transform: rotate(-12deg) scale(.8); }
+.mu-prev { display: inline-block; font-size: 11px; font-weight: 800; color: var(--primary); background: var(--primary-soft); padding: 3px 7px; border-radius: 7px; }
+
+/* артисты — круги */
+.ac { width: 112px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; text-decoration: none; color: inherit; scroll-snap-align: start; }
+.ac-img { width: 104px; height: 104px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; margin-bottom: 4px; padding: 3px;
+  background: conic-gradient(from 200deg, hsl(var(--hue) 80% 60%), hsl(calc(var(--hue) + 90) 80% 60%), hsl(var(--hue) 80% 60%)); box-shadow: var(--shadow); transition: transform .2s; }
+.ac-img img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; border: 3px solid var(--surface); }
+.ac-img b { width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; font-size: 36px; color: #fff; border: 3px solid var(--surface);
+  background: linear-gradient(135deg, hsl(var(--hue) 70% 55%), hsl(calc(var(--hue) + 60) 70% 42%)); }
+.ac:hover .ac-img { transform: scale(1.04); }
+.ac-name { font-weight: 800; font-size: 13.5px; line-height: 1.2; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ac-top { font-size: 11.5px; color: var(--text-3); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* альбомы — карточка с пластинкой */
+.pc.alb .pc-art { overflow: visible; }
+.pc-vinyl { position: absolute; top: 8px; right: -14px; width: 134px; height: 134px; border-radius: 50%; z-index: 1; transition: right .3s;
+  background: radial-gradient(circle, hsl(var(--hue) 70% 60%) 0 16%, #111 17% 19%, #1b1b22 20%), repeating-radial-gradient(circle, #1b1b22 0 3px, #26262f 3px 5px); box-shadow: var(--shadow); }
+.pc.alb:hover .pc-vinyl { right: -34px; }
+.pc.alb { margin-right: 14px; padding-top: 0; }
+
+/* легенды */
+.lg-cloud { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 4px; }
+.lg { padding: 9px 15px; border-radius: 999px; font-weight: 800; font-size: 14px; text-decoration: none; color: var(--text); background: var(--glass-strong); border: 1px solid var(--border-strong);
+  box-shadow: inset 0 -3px 0 hsl(calc(var(--gi) * 47 + 260) 75% 60% / .55); transition: transform .15s, background .15s; }
+.lg:hover { transform: translateY(-2px); background: hsl(calc(var(--gi) * 47 + 260) 75% 60% / .16); }
+
+/* разделитель и ряд станций */
+.mu-divider { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 10px 0 -4px; text-align: center; }
+.mu-divider span { font-family: var(--font-display); font-size: 17px; display: flex; align-items: center; gap: 12px; width: 100%; }
+.mu-divider span::before, .mu-divider span::after { content: ""; flex: 1; height: 1px; background: var(--border-strong); }
+.mu-divider small { color: var(--text-3); font-size: 12.5px; }
+.sr-row .st-radio { width: 150px; flex: none; scroll-snap-align: start; }
+.mu-cover-img.round, .mu-cover-emoji.round { border-radius: 50%; }
+.mu-cover-head.artist .mu-cover-img { width: 120px; height: 120px; border: 4px solid rgba(255, 255, 255, .85); }
+.mu-cover-head.chart { background: linear-gradient(135deg, #e0357f, #7c3aed 55%, #2563eb); }
+@media (max-width: 719px) {
+  .ru-hero { margin: 0 8px; padding: 18px; flex-direction: column-reverse; align-items: stretch; gap: 4px; }
+  .ru-stack { width: 100%; height: 118px; }
+  .ru-stack > span { width: 96px; height: 96px; }
+  .ru-stack-0 { right: 8px; top: 12px; } .ru-stack-1 { right: 64px; top: 4px; } .ru-stack-2 { right: 116px; top: 18px; }
+  .ru-hero h2 { font-size: 28px; margin-top: 0; }
+  .ru-kicker { position: absolute; top: 18px; left: 18px; }
+  .lg-cloud { padding: 0 8px; }
+  .ac { width: 96px; } .ac-img { width: 88px; height: 88px; }
+}
+.mu-cover-head .btn.soft { background: rgba(255, 255, 255, .2); color: #fff; }
+.mu-cover-head .btn.soft:hover { background: rgba(255, 255, 255, .3); }
+@media (max-width: 719px) { .mu-tabs a { padding: 8px 12px; font-size: 13.5px; gap: 6px; } .mu-tabs { gap: 6px; } }

@@ -281,10 +281,22 @@ function buildMini() {
       h("button.mp-btn.mp-play", { type: "button", "aria-label": "Играть", onclick: () => toggle() }, icon("play")),
       h("button.mp-btn.mp-next", { type: "button", "aria-label": "Следующий", onclick: () => next() }, icon("skipForward")),
       h("button.mp-btn.mp-close", { type: "button", "aria-label": "Закрыть плеер", title: "Закрыть", onclick: () => stop() }, icon("x"))));
-  // смахнуть мини-плеер вверх — открыть большой
-  let y0 = null;
-  el.addEventListener("touchstart", (e) => { y0 = e.touches[0].clientY; }, { passive: true });
-  el.addEventListener("touchend", (e) => { if (y0 != null && y0 - e.changedTouches[0].clientY > 40) openFull(); y0 = null; });
+  // жесты: вверх — открыть большой плеер, влево/вправо — следующий/предыдущий трек
+  let x0 = null, y0 = null;
+  el.addEventListener("touchstart", (e) => { if (e.target.closest(".mp-ctrls")) { x0 = null; return; } x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+  el.addEventListener("touchmove", (e) => {
+    if (x0 == null) return;
+    const dx = e.touches[0].clientX - x0;
+    if (Math.abs(dx) > 12) el.querySelector(".mp-open").style.transform = `translateX(${Math.max(-80, Math.min(80, dx * 0.5))}px)`;
+  }, { passive: true });
+  el.addEventListener("touchend", (e) => {
+    if (x0 == null) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    el.querySelector(".mp-open").style.transform = "";
+    if (dy < -40 && Math.abs(dy) > Math.abs(dx)) openFull();
+    else if (Math.abs(dx) > 70 && !current()?.live) { if (dx < 0) next(); else prev(); }
+    x0 = null;
+  });
   document.body.append(el);
   return el;
 }
@@ -331,14 +343,40 @@ function buildFull() {
           h("button.fp-icon.fp-repeat", { type: "button", "aria-label": "Повтор", onclick: () => cycleRepeat() }, icon("repeat"), h("small", "1"))),
         h("div.fp-extra",
           h("label.fp-volume", icon("volume", "sm"), vol),
+          h("button.fp-chip.fp-full", { type: "button", onclick: (e) => fullVersionMenu(e.currentTarget, current()) }, icon("headphones", "sm"), "Полностью"),
           h("button.fp-chip", { type: "button", onclick: () => shareTrack(current()) }, icon("share", "sm"), "В ленту"),
-          h("button.fp-chip.fp-queue-btn", { type: "button", onclick: () => { queueOpen = !queueOpen; paintUi(); } }, icon("list", "sm"), "Очередь"))),
-      h("aside.fp-queue", { "aria-label": "Очередь" }, h("div.fp-queue-head", h("b", "Очередь"), h("small.fp-queue-count")), h("div.fp-queue-list"))));
+          h("button.fp-chip.fp-queue-btn", { type: "button", "aria-expanded": "false", onclick: () => (queueOpen ? closeQueue() : openQueue()) }, icon("list", "sm"), "Очередь"))),
+      h("div.fp-scrim", { onclick: () => closeQueue() }),
+      h("aside.fp-queue", { "aria-label": "Очередь" },
+        h("div.fp-queue-grip", { "aria-hidden": "true" }),
+        h("div.fp-queue-head",
+          h("div", h("b", "Очередь"), h("small.fp-queue-count")),
+          h("button.fp-qbtn.fp-clear", { type: "button", onclick: () => clearUpcoming() }, "Очистить"),
+          h("button.fp-icon.fp-qclose", { type: "button", "aria-label": "Закрыть очередь", onclick: () => closeQueue() }, icon("x"))),
+        h("div.fp-queue-list"))));
   el.querySelector(".fp-more").addEventListener("click", (e) => trackMenu(e.currentTarget, current(), { inPlayer: true }));
+  // очередь на телефоне — шторка: смахнуть вниз за заголовок, чтобы закрыть
+  let qy0 = null, qdy = 0;
+  const sheet = el.querySelector(".fp-queue");
+  sheet.addEventListener("touchstart", (e) => {
+    if (!e.target.closest(".fp-queue-head, .fp-queue-grip")) { qy0 = null; return; }
+    qy0 = e.touches[0].clientY; qdy = 0;
+  }, { passive: true });
+  sheet.addEventListener("touchmove", (e) => {
+    if (qy0 == null) return;
+    qdy = Math.max(0, e.touches[0].clientY - qy0);
+    sheet.style.transform = `translateY(${qdy}px)`;
+  }, { passive: true });
+  sheet.addEventListener("touchend", () => {
+    if (qy0 == null) return;
+    sheet.style.transform = "";
+    if (qdy > 70) closeQueue();
+    qy0 = null;
+  });
   // свайп вниз — свернуть
   let y0 = null, dy = 0;
   const top = el.querySelector(".fp-main");
-  top.addEventListener("touchstart", (e) => { if (e.target.closest("input")) return; y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
+  top.addEventListener("touchstart", (e) => { if (e.target.closest("input") || queueOpen) { y0 = null; return; } y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
   top.addEventListener("touchmove", (e) => {
     if (y0 == null) return;
     dy = Math.max(0, e.touches[0].clientY - y0);
@@ -350,7 +388,13 @@ function buildFull() {
     if (dy > 110) closeFull();
     y0 = null;
   });
-  el.addEventListener("keydown", (e) => { if (e.key === "Escape") closeFull(); });
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { if (queueOpen) closeQueue(); else closeFull(); return; }
+    if (e.target.closest("input, textarea")) return;
+    if (e.key === " " || e.key === "k") { e.preventDefault(); toggle(); }
+    else if (e.key === "ArrowRight") seek((audio.currentTime || 0) + 10);
+    else if (e.key === "ArrowLeft") seek((audio.currentTime || 0) - 10);
+  });
   el._seek = seekInput;
   document.body.append(el);
   return el;
@@ -367,8 +411,40 @@ export function openFull() {
   paintUi();
   full.querySelector(".fp-play").focus({ preventScroll: true });
 }
+let releaseQueue = null;
+const queueIsSheet = () => window.innerWidth < 900;
+export function openQueue() {
+  if (!full || full.hidden) return;
+  queueOpen = true;
+  full.querySelector(".fp-inner").scrollTop = 0;
+  if (queueIsSheet()) releaseQueue = pushOverlay(() => closeQueue(true));
+  paintUi();
+}
+export function closeQueue(fromBack = false) {
+  if (!queueOpen) return;
+  queueOpen = false;
+  const r = releaseQueue; releaseQueue = null;
+  if (!fromBack) r?.();
+  paintUi();
+}
+export function removeFromQueue(i) {
+  if (i === index || i < 0 || i >= queue.length) return;
+  const [gone] = queue.splice(i, 1);
+  if (original) original = original.filter((t) => t.key !== gone.key);
+  if (i < index) index -= 1;
+  save(); notify();
+}
+export function clearUpcoming() {
+  if (queue.length <= index + 1) return;
+  queue = queue.slice(0, index + 1);
+  original = null;
+  toast("Очередь очищена", { icon: "check" });
+  save(); notify();
+}
+
 export function closeFull(fromBack = false) {
   if (!full || full.hidden) return;
+  if (queueOpen) { queueOpen = false; const r = releaseQueue; releaseQueue = null; if (!fromBack) r?.(); }
   full.classList.remove("on");
   document.body.classList.remove("fp-open");
   setTimeout(() => { if (!full.classList.contains("on")) full.hidden = true; }, 260);
@@ -425,7 +501,7 @@ function paintUi() {
     mini.dataset.key = t.key;
     mini.querySelector(".mp-art").replaceChildren(cover(t));
     mini.querySelector(".mp-title").textContent = t.title;
-    mini.querySelector(".mp-artist").textContent = t.live ? `В эфире · ${t.artist}` : t.artist;
+    mini.querySelector(".mp-artist").textContent = t.live ? `В эфире · ${t.artist}` : t.preview ? `Фрагмент · ${t.artist}` : t.artist;
     mini.querySelector(".mp-like-slot").replaceChildren(likeButton(t, "mp-btn"));
   }
   const pb = mini.querySelector(".mp-play");
@@ -437,9 +513,11 @@ function paintUi() {
   full.classList.toggle("buffering", buffering && playing);
   full.classList.toggle("live", !!t.live);
   full.classList.toggle("queue-open", queueOpen);
+  full.classList.toggle("is-preview", !!t.preview);
+  full.querySelector(".fp-queue-btn").setAttribute("aria-expanded", String(queueOpen));
   full.classList.toggle("shuffle-on", shuffle);
   full.dataset.repeat = repeat;
-  full.querySelector(".fp-ctx-name").textContent = ctx || (t.live ? "Радио" : "Музыка Круга");
+  full.querySelector(".fp-ctx-name").textContent = (ctx || (t.live ? "Радио" : "Музыка Круга")) + (sleepAt ? " · ⏾" : "");
   const fpPlay = full.querySelector(".fp-play");
   fpPlay.replaceChildren(icon(playing ? "pause" : "play"));
   fpPlay.setAttribute("aria-label", playing ? "Пауза" : "Играть");
@@ -450,7 +528,7 @@ function paintUi() {
     if (t.artwork) { bg.src = t.artwork; bg.hidden = false; } else bg.hidden = true;
     full.querySelector(".fp-disc").replaceChildren(cover(t, "fp-cover"));
     full.querySelector(".fp-title").textContent = t.title;
-    full.querySelector(".fp-artist").textContent = t.artist || "";
+    full.querySelector(".fp-artist").replaceChildren(t.artist || "", t.preview ? h("span.fp-badge", { title: "Официальный 30-секундный фрагмент" }, "30 с") : "");
     full.querySelector(".fp-like-slot").replaceChildren(likeButton(t, "fp-like"));
   }
   const list = full.querySelector(".fp-queue-list");
@@ -458,9 +536,17 @@ function paintUi() {
   if (queueOpen && list.dataset.sig !== sig) {
     list.dataset.sig = sig;
     full.querySelector(".fp-queue-count").textContent = `${index + 1} из ${queue.length}`;
-    list.replaceChildren(...queue.map((q, i) => h(`button.fp-q${i === index ? ".now" : ""}${i < index ? ".past" : ""}`, { type: "button", onclick: () => jump(i) },
-      cover(q), h("span", h("b", q.title), h("small", q.artist)), h("small.fp-q-dur", q.live ? "эфир" : fmtDur(q.duration)))));
-    list.querySelector(".now")?.scrollIntoView({ block: "center" });
+    full.querySelector(".fp-clear").hidden = queue.length <= index + 1;
+    list.replaceChildren(...queue.map((q, i) => h(`div.fp-q${i === index ? ".now" : ""}${i < index ? ".past" : ""}`,
+      h("button.fp-q-main", { type: "button", onclick: () => jump(i), "aria-label": `Играть «${q.title}»` },
+        cover(q), h("span", h("b", q.title), h("small", q.artist)), h("small.fp-q-dur", q.live ? "эфир" : fmtDur(q.duration))),
+      i === index ? h("span.fp-q-now", { "aria-label": "Играет сейчас" }, h("i"), h("i"), h("i"))
+        : h("button.fp-q-del", { type: "button", "aria-label": `Убрать «${q.title}» из очереди`, onclick: () => removeFromQueue(i) }, icon("x", "sm")))));
+    // прокручиваем только сам список (scrollIntoView сдвигал весь плеер, и кнопки уезжали за экран)
+    requestAnimationFrame(() => {
+      const now = list.querySelector(".now");
+      if (now) list.scrollTop = Math.max(0, now.offsetTop - list.offsetTop - list.clientHeight / 2 + now.offsetHeight / 2);
+    });
   }
 }
 
@@ -472,6 +558,47 @@ export async function shareTrack(t) {
   openComposerModal({ music: t });
 }
 
+// полные версии песен из чарта — в сервисах, где у них есть права
+const openUrl = (url) => window.open(url, "_blank", "noopener");
+export function fullVersionLinks(t) {
+  const q = encodeURIComponent(`${t.artist} ${t.title}`);
+  return [
+    { label: "Яндекс Музыка", icon: "external", onClick: () => openUrl(`https://music.yandex.ru/search?text=${q}`) },
+    { label: "VK Музыка", icon: "external", onClick: () => openUrl(`https://vk.com/audio?q=${q}`) },
+    t.permalink ? { label: "Apple Music", icon: "external", onClick: () => openUrl(t.permalink) } : null,
+  ];
+}
+export function fullVersionMenu(anchor, t) {
+  if (!t) return;
+  showMenu(anchor, fullVersionLinks(t), { title: "Слушать полностью" });
+}
+
+// ---------------------------------------------------------------- таймер сна
+let sleepTimer = null, sleepAt = 0;
+export function setSleep(min) {
+  clearTimeout(sleepTimer); sleepTimer = null; sleepAt = 0;
+  if (min === "track") {
+    const left = Math.max(1, duration() - (audio.currentTime || 0));
+    min = left / 60;
+  }
+  if (min) {
+    sleepAt = Date.now() + min * 60000;
+    sleepTimer = setTimeout(() => { audio.pause(); sleepAt = 0; toast("Таймер сна: музыка остановлена", { icon: "moon" }); paintUi(); }, min * 60000);
+    toast(`Музыка выключится через ${Math.round(min)} мин`, { icon: "moon" });
+  } else toast("Таймер сна выключен", { icon: "x" });
+  paintUi();
+}
+function sleepMenu(anchor) {
+  const left = sleepAt ? Math.max(1, Math.round((sleepAt - Date.now()) / 60000)) : 0;
+  showMenu(anchor, [
+    { label: "Через 15 минут", icon: "moon", onClick: () => setSleep(15) },
+    { label: "Через 30 минут", icon: "moon", onClick: () => setSleep(30) },
+    { label: "Через час", icon: "moon", onClick: () => setSleep(60) },
+    current() && !current().live ? { label: "В конце трека", icon: "moon", onClick: () => setSleep("track") } : null,
+    left ? { label: `Выключить (осталось ${left} мин)`, icon: "x", danger: true, onClick: () => setSleep(0) } : null,
+  ], { title: "Таймер сна" });
+}
+
 export function trackMenu(anchor, t, { inPlayer = false } = {}) {
   if (!t) return;
   const liked = isLiked(t.key);
@@ -479,7 +606,12 @@ export function trackMenu(anchor, t, { inPlayer = false } = {}) {
     !inPlayer && !t.live ? { label: "Играть следующим", icon: "queueAdd", onClick: () => playNext(t) } : null,
     { label: liked ? "Убрать из «Моей музыки»" : "В «Мою музыку»", icon: "heart", onClick: () => toggleLike(t) },
     { label: "Поделиться в ленте", icon: "share", onClick: () => shareTrack(t) },
-    t.permalink ? { label: t.source === "audius" ? "Открыть на Audius" : "Сайт станции", icon: "external", onClick: () => window.open(t.permalink, "_blank", "noopener") } : null,
+    t.preview ? "-" : null,
+    ...(t.preview ? fullVersionLinks(t).map((x) => x && { ...x, label: `Полностью: ${x.label}` }) : []),
+    t.artist_id ? { label: `Все песни: ${t.artist}`, icon: "user", onClick: () => { closeFull(); navigate(`/music/artist/${t.artist_id}`); } } : null,
+    !t.preview && t.permalink ? { label: t.source === "audius" ? "Открыть на Audius" : "Сайт станции", icon: "external", onClick: () => openUrl(t.permalink) } : null,
+    inPlayer ? "-" : null,
+    inPlayer ? { label: sleepAt ? `Таймер сна · ${Math.max(1, Math.round((sleepAt - Date.now()) / 60000))} мин` : "Таймер сна", icon: "moon", onClick: () => setTimeout(() => sleepMenu(anchor), 50) } : null,
     inPlayer ? { label: "Раздел «Музыка»", icon: "music", onClick: () => { closeFull(); navigate("/music"); } } : null,
   ], { title: t.title });
 }

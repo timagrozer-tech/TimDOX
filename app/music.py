@@ -335,7 +335,9 @@ def ru_artist(artist_id: str = "", name: str = "") -> dict:
             if k not in seen:
                 seen.add(k)
                 uniq.append(t)
-        return {"artist": {"id": artist_id, "name": str(title)[:120], "artwork": uniq[0]["artwork"] if uniq else None}, "tracks": uniq}
+        if not title and uniq:
+            title = uniq[0]["artist"]
+        return {"artist": {"id": artist_id, "name": str(title or "Исполнитель")[:120], "artwork": uniq[0]["artwork"] if uniq else None}, "tracks": uniq}
     return cached(f"ru:artist:{artist_id}:{name.lower()}", 24 * 3600, load)
 
 
