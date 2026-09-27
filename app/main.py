@@ -1,24 +1,26 @@
 """Точка входа приложения «Круг»."""
 import asyncio
 import logging
+import re
 from contextlib import asynccontextmanager
 
 from starlette.applications import Starlette
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse, Response
+from starlette.responses import RedirectResponse, FileResponse, JSONResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from . import collection, config, db, media
-from .api import auth_routes, collection_routes, communities, events, messages, misc, people_extra, posts, stories, users
+from .api import auth_routes, collection_routes, reels, stickers, communities, events, messages, misc, people_extra, posts, stories, users
 from .security import load_extra_banned
 from .web import ApiError, load_session
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("krug")
 
-CSP = ("default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; "
+_CDN = f" {config.SUPABASE_URL}" if config.MEDIA_STORAGE == "supabase" else ""
+CSP = (f"default-src 'self'; img-src 'self' data: blob:{_CDN}; media-src 'self' blob:{_CDN}; "
        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; "
        "script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'")
 
@@ -107,10 +109,29 @@ async def uploads(request: Request):
     rel = request.path_params["path"]
     if ".." in rel or rel.startswith("/"):
         return JSONResponse({"error": "Не найдено"}, status_code=404)
+    cdn = media.public_url(rel)
+    if cdn:
+        return RedirectResponse(cdn, status_code=301, headers={"Cache-Control": "public, max-age=31536000, immutable"})
     data = media.read_file(rel)
     if data is None:
         return Response(status_code=404)
-    return Response(data, media_type="image/webp", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+    ctype = media.content_type_of(rel)
+    headers = {"Cache-Control": "public, max-age=31536000, immutable", "Accept-Ranges": "bytes"}
+    # видео и музыка: браузеры запрашивают куски (Range) — без этого не работает перемотка
+    rng = request.headers.get("range", "")
+    m = re.match(r"bytes=(\d*)-(\d*)$", rng.strip())
+    if m and (m.group(1) or m.group(2)):
+        size = len(data)
+        if m.group(1):
+            start = int(m.group(1))
+            end = min(int(m.group(2)) if m.group(2) else size - 1, size - 1)
+        else:
+            start, end = max(0, size - int(m.group(2))), size - 1
+        if start >= size or start > end:
+            return Response(status_code=416, headers={"Content-Range": f"bytes */{size}"})
+        headers["Content-Range"] = f"bytes {start}-{end}/{size}"
+        return Response(data[start:end + 1], status_code=206, media_type=ctype, headers=headers)
+    return Response(data, media_type=ctype, headers=headers)
 
 
 async def health(request: Request):
@@ -125,6 +146,7 @@ async def housekeeping():
             removed = stories.cleanup_expired()
             db.run("DELETE FROM sessions WHERE expires_at < ?", (db.now(),))
             db.run("DELETE FROM profile_visits WHERE visited_at < ?", (db.future(days=-90),))
+            db.run("DELETE FROM email_codes WHERE expires_at < ?", (db.now(),))
             if removed:
                 log.info("Удалено истёкших историй: %s", removed)
         except Exception:
@@ -136,6 +158,8 @@ async def housekeeping():
 async def lifespan(app):
     db.connect()
     load_extra_banned(config.DATA_DIR / "banned_words.txt")
+    from .starter_stickers import ensure_starter_pack
+    await asyncio.to_thread(ensure_starter_pack)
     task = asyncio.create_task(housekeeping())
     log.info("«%s» запущен: %s", config.APP_NAME, config.APP_URL)
     yield
@@ -145,7 +169,7 @@ async def lifespan(app):
 routes = [
     Route("/api/health", health),
     *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
-    *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *collection_routes.routes,
+    *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *collection_routes.routes, *reels.routes, *stickers.routes,
     Mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static"),
     Route("/uploads/{path:path}", uploads, methods=["GET", "HEAD"]),
     Route("/{path:path}", spa, methods=["GET"]),

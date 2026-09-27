@@ -338,3 +338,58 @@ CREATE TABLE IF NOT EXISTS email_codes (
 );
 CREATE INDEX IF NOT EXISTS idx_email_codes_user ON email_codes(user_id, purpose);
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS equipped TEXT;
+
+-- Наборы стикеров (как в Telegram): свои и добавленные чужие
+CREATE TABLE IF NOT EXISTS sticker_packs (
+    id         BIGSERIAL PRIMARY KEY,
+    owner_id   BIGINT REFERENCES users(id) ON DELETE CASCADE,
+    slug       TEXT NOT NULL UNIQUE,
+    title      TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE TABLE IF NOT EXISTS stickers (
+    id         BIGSERIAL PRIMARY KEY,
+    pack_id    BIGINT NOT NULL REFERENCES sticker_packs(id) ON DELETE CASCADE,
+    file       TEXT NOT NULL,
+    emoji      TEXT NOT NULL DEFAULT '🙂',
+    animated   INTEGER NOT NULL DEFAULT 0,
+    position   INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE INDEX IF NOT EXISTS idx_stickers_pack ON stickers(pack_id, position);
+CREATE TABLE IF NOT EXISTS user_sticker_packs (
+    user_id  BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    pack_id  BIGINT NOT NULL REFERENCES sticker_packs(id) ON DELETE CASCADE,
+    added_at TEXT NOT NULL DEFAULT krug_now(),
+    PRIMARY KEY (user_id, pack_id)
+);
+
+-- Клипы (короткие вертикальные видео)
+CREATE TABLE IF NOT EXISTS reels (
+    id         BIGSERIAL PRIMARY KEY,
+    author_id  BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    video      TEXT NOT NULL,
+    poster     TEXT,
+    caption    TEXT NOT NULL DEFAULT '',
+    duration   REAL NOT NULL DEFAULT 0,
+    width      INTEGER,
+    height     INTEGER,
+    views      INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE INDEX IF NOT EXISTS idx_reels_author ON reels(author_id, id DESC);
+CREATE TABLE IF NOT EXISTS reel_likes (
+    reel_id    BIGINT NOT NULL REFERENCES reels(id) ON DELETE CASCADE,
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT krug_now(),
+    PRIMARY KEY (reel_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS reel_comments (
+    id         BIGSERIAL PRIMARY KEY,
+    reel_id    BIGINT NOT NULL REFERENCES reels(id) ON DELETE CASCADE,
+    author_id  BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    text       TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE INDEX IF NOT EXISTS idx_reel_comments ON reel_comments(reel_id, id);
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS media TEXT;

@@ -64,10 +64,11 @@ export function confirmDialog({ title, text, confirm = "Подтвердить",
   });
 }
 
-export function promptDialog({ title, label, placeholder = "", confirm = "Отправить", options }) {
+export function promptDialog({ title, label, placeholder = "", confirm = "Отправить", options, value = "" }) {
   return new Promise((resolve) => {
     let done = false;
     const input = h("textarea.textarea", { placeholder, maxlength: 500, rows: 3 });
+    input.value = value;
     const finish = (v) => { if (!done) { done = true; resolve(v); m.close(); } };
     const opts = options ? h("div.stack", { style: { gap: "6px", marginBottom: "12px" } },
       options.map((o) => h("label.check", h("input", { type: "radio", name: "opt", value: o, onchange: () => { input.value = o; } }), o))) : null;

@@ -10,16 +10,19 @@ let shell = null;
 let listenersBound = false;
 
 const NAV = [
-  { href: "/", icon: "home", label: "Лента", match: (p) => p === "/" || p === "/explore" },
   { href: () => `/u/${state.me.username}`, icon: "user", label: "Моя страница", match: (p) => p === `/u/${state.me.username}` },
-  { href: "/friends", icon: "users", label: "Друзья", badge: "friend_requests", match: (p) => p.startsWith("/friends") },
   { href: "/messages", icon: "message", label: "Сообщения", badge: "messages", match: (p) => p.startsWith("/messages") },
+  { href: "/", icon: "home", label: "Лента", match: (p) => p === "/" || p === "/explore" },
+  { href: "/reels", icon: "film", label: "Клипы", match: (p) => p.startsWith("/reels") },
+  { href: "/friends", icon: "users", label: "Друзья", badge: "friend_requests", match: (p) => p.startsWith("/friends") },
   { href: "/notifications", icon: "bell", label: "Уведомления", badge: "notifications", match: (p) => p === "/notifications" },
   { href: "/communities", icon: "community", label: "Сообщества", match: (p) => p.startsWith("/communities") || p.startsWith("/c/") },
   { href: "/events", icon: "calendar", label: "Мероприятия", badge: "events", match: (p) => p.startsWith("/events") },
   { href: "/guests", icon: "eye", label: "Гости", badge: "guests", match: (p) => p === "/guests" },
   { href: "/collection", icon: "gift", label: "Коллекция", match: (p) => p === "/collection" },
+  { href: "/stickers", icon: "sticker", label: "Стикеры", match: (p) => p.startsWith("/stickers") },
   { href: "/bookmarks", icon: "bookmark", label: "Закладки", match: (p) => p === "/bookmarks" },
+  { href: "/search", icon: "search", label: "Поиск", cls: "nav-search", match: (p) => p.startsWith("/search") || p.startsWith("/tag/") },
   { href: "/settings", icon: "settings", label: "Настройки", match: (p) => p.startsWith("/settings") },
 ];
 
@@ -32,25 +35,17 @@ function badge(key) {
 
 function sidebar() {
   const nav = h("nav.nav", { "aria-label": "Основное меню" },
-    NAV.map((item) => h("a", { href: hrefOf(item), dataset: { nav: item.label }, title: item.label },
+    NAV.map((item) => h(`a${item.cls ? "." + item.cls : ""}`, { href: hrefOf(item), dataset: { nav: item.label }, title: item.label },
       icon(item.icon), h("span", item.label), item.badge ? badge(item.badge) : null)));
-  const search = h("form.side-search", { role: "search", onsubmit: (e) => {
-    e.preventDefault();
-    const q = e.target.q.value.trim();
-    navigate(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
-  } },
-  h("a.side-search-icon", { href: "/search", "aria-label": "Поиск", title: "Поиск", dataset: { nav: "Поиск" } }, icon("search")),
-  h("input", { name: "q", type: "search", placeholder: "Поиск", "aria-label": "Поиск людей, записей и #тегов", autocomplete: "off" }));
   return h("aside.sidebar", { "aria-label": "Навигация" },
     logo(),
-    search,
     nav,
     h("button.btn.accent.create-btn", { type: "button", onclick: () => openComposerModal(), title: "Создать запись", "aria-label": "Создать запись" }, icon("plus"), h("span.create-label", "Создать запись")));
 }
 
 function mobileMenu(btn) {
   showMenu(btn, [
-    ...NAV.filter((n) => !["Лента", "Моя страница", "Сообщения"].includes(n.label)).map((n) => ({
+    ...NAV.filter((n) => !["Лента", "Моя страница", "Сообщения", "Клипы"].includes(n.label)).map((n) => ({
       label: n.badge && state.counters[n.badge] ? `${n.label} (${state.counters[n.badge]})` : n.label,
       icon: n.icon, onClick: () => navigate(hrefOf(n)),
     })),
@@ -65,6 +60,7 @@ function topbar() {
   return h("header.topbar",
     logo(),
     h("div.spacer"),
+    h("a.btn.ghost.icon-only.icon-btn", { href: "/search", "aria-label": "Поиск" }, icon("search")),
     h("a.btn.ghost.icon-only.icon-btn", { href: "/notifications", "aria-label": "Уведомления" }, icon("bell"), badge("notifications")),
     menuBtn);
 }
@@ -72,7 +68,7 @@ function topbar() {
 function tabbar() {
   return h("nav.tabbar", { "aria-label": "Меню" },
     h("a", { href: "/", dataset: { nav: "Лента" } }, icon("home"), "Лента"),
-    h("a", { href: "/search", dataset: { nav: "Поиск" } }, icon("search"), "Поиск"),
+    h("a", { href: "/reels", dataset: { nav: "Клипы" } }, icon("film"), "Клипы"),
     h("a", { href: "#", "aria-label": "Создать запись", onclick: (e) => { e.preventDefault(); openComposerModal(); } }, h("span.create", icon("plus"))),
     h("a", { href: "/messages", dataset: { nav: "Сообщения" } }, icon("message"), "Чаты", badge("messages")),
     h("a", { href: `/u/${state.me.username}`, dataset: { nav: "Моя страница" } }, icon("user"), "Профиль"));
@@ -90,8 +86,18 @@ async function fillAside(aside) {
   const events = h("div.mini-people");
   const eventsWidget = widget("Ближайшие мероприятия", "calendar", events, h("a", { href: "/events" }, "Все"));
   const onlineTitle = h("span", "Друзья онлайн");
+  const onlineWidget = widget(onlineTitle, "users", online);
+  onlineWidget.classList.add("hidden");
+  const search = h("form.side-search.aside-search", { role: "search", onsubmit: (e) => {
+    e.preventDefault();
+    const q = e.target.q.value.trim();
+    navigate(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
+  } },
+  h("span.side-search-icon", icon("search")),
+  h("input", { name: "q", type: "search", placeholder: "Поиск людей, записей, #тегов", "aria-label": "Поиск людей, записей и #тегов", autocomplete: "off" }));
   aside.replaceChildren(
-    widget(onlineTitle, "users", online),
+    search,
+    onlineWidget,
     eventsWidget,
     widget("Актуальное", "trend", trends),
     widget("Возможно, вы знакомы", "userPlus", sugg, h("a", { href: "/friends?tab=suggestions" }, "Все")),
@@ -101,6 +107,7 @@ async function fillAside(aside) {
     try {
       const { items, total } = await api.get("/api/friends/online");
       onlineTitle.textContent = total ? `Друзья онлайн · ${total}` : "Друзья онлайн";
+      onlineWidget.classList.toggle("hidden", !total);
       online.replaceChildren(...(items.length ? items.map((u) => h("a", { href: `/u/${u.username}`, title: u.name, "aria-label": u.name }, avatar(u))) : [h("p.muted", { style: { fontSize: "14px" } }, "Сейчас никого нет в сети")]));
     } catch { online.replaceChildren(); }
   };
@@ -172,9 +179,11 @@ export function destroyShell() { shell = null; }
 
 export function setActive(path, wide = false) {
   document.body.classList.toggle("wide", wide);
+  // на странице поиска своё поле — второе в правой колонке не нужно
+  document.body.classList.toggle("on-search", path.startsWith("/search"));
   document.querySelectorAll("[data-nav]").forEach((a) => {
     const item = NAV.find((n) => n.label === a.dataset.nav);
-    const active = item ? item.match(path) : a.dataset.nav === "Поиск" ? (path.startsWith("/search") || path.startsWith("/tag/")) : false;
+    const active = item ? item.match(path) : false;
     a.classList.toggle("active", active);
     if (active) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   });

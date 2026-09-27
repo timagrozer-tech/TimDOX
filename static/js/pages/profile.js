@@ -142,6 +142,7 @@ export async function profilePage({ params, query }) {
   const TABS = [
     { id: "posts", label: "Записи", icon: "edit" },
     { id: "photos", label: "Фото", icon: "image" },
+    { id: "reels", label: "Клипы", icon: "film" },
     { id: "friends", label: "Друзья", icon: "users" },
   ];
   let current = null;
@@ -181,6 +182,18 @@ export async function profilePage({ params, query }) {
           return h("button", { type: "button", "aria-label": m.alt || "Фото", onclick: () => lightbox(all, idx) }, h("img", { src: m.thumb, alt: m.alt || "", loading: "lazy" }));
         },
         empty: h("div.empty", icon("image"), h("h3", "Фотографий пока нет")),
+        container: grid,
+      });
+      content.replaceChildren(h("div.card", { style: { overflow: "hidden" } }, list.el));
+    } else if (id === "reels") {
+      const grid = h("div.reel-grid");
+      const list = infiniteList({
+        load: (cursor) => api.get("/api/reels", { cursor, user: u.username }),
+        render: (r) => h("a.reel-tile", { href: `/reels/${r.id}?user=${encodeURIComponent(u.username)}`, "aria-label": r.caption || "Клип" },
+          r.poster ? h("img", { src: r.poster, alt: "", loading: "lazy" }) : h("span.reel-tile-ph", icon("film")),
+          h("span.reel-tile-views", icon("play", "sm"), String(r.views))),
+        empty: h("div.empty", icon("film"), h("h3", "Клипов пока нет"),
+          isMe ? h("a.btn.primary.sm", { href: "/reels" }, "Снять первый клип") : null),
         container: grid,
       });
       content.replaceChildren(h("div.card", { style: { overflow: "hidden" } }, list.el));

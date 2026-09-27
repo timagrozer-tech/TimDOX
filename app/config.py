@@ -67,6 +67,16 @@ MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", MAIL_FROM_NAME).strip()
 MEDIA_STORAGE = os.environ.get("MEDIA_STORAGE", "disk").lower()
 
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "10"))
+MAX_VIDEO_MB = int(os.environ.get("MAX_VIDEO_MB", "30"))
+MAX_AUDIO_MB = int(os.environ.get("MAX_AUDIO_MB", "15"))
+REEL_MAX_SECONDS = int(os.environ.get("REEL_MAX_SECONDS", "90"))
+
+# Supabase Storage для фото, видео и музыки (MEDIA_STORAGE=supabase)
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
+SUPABASE_BUCKET = os.environ.get("SUPABASE_BUCKET", "krug-media")
+if MEDIA_STORAGE == "supabase" and not (SUPABASE_URL and SUPABASE_SERVICE_KEY):
+    MEDIA_STORAGE = "db"
 MAX_PHOTOS_PER_POST = 10
 POST_MAX_LEN = 5000
 NOTE_MAX_LEN = 500

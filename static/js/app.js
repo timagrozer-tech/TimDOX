@@ -20,6 +20,9 @@ import { searchPage, tagPage } from "./pages/search.js";
 import { bookmarksPage } from "./pages/bookmarks.js";
 import { settingsPage } from "./pages/settings.js";
 import { collectionPage, showReveal } from "./pages/collection.js";
+import { reelsPage } from "./pages/reels.js";
+import { stickersPage } from "./pages/stickers.js";
+import { previewOf } from "./pages/messages.js";
 import { legalPage } from "./pages/legal.js";
 import { communitiesPage, communityPage } from "./pages/communities.js";
 import { eventsPage, eventPage } from "./pages/events.js";
@@ -51,6 +54,10 @@ route("/events", eventsPage);
 route("/events/:id", eventPage);
 route("/guests", guestsPage);
 route("/collection", collectionPage);
+route("/reels", reelsPage);
+route("/reels/:id", reelsPage);
+route("/stickers", stickersPage);
+route("/stickers/:slug", stickersPage);
 
 const root = document.getElementById("app");
 
@@ -109,7 +116,7 @@ on("notification", (n) => {
 on("message", ({ message, sender }) => {
   if (!state.me || sender.id === state.me.id) return;
   if (location.pathname === `/messages/${message.conversation_id}`) return;
-  toast(message.text, { title: sender.name, avatar: avatar(sender, "sm", { presence: false }), href: `/messages/${message.conversation_id}` });
+  toast(previewOf(message), { title: sender.name, avatar: avatar(sender, "sm", { presence: false }), href: `/messages/${message.conversation_id}` });
 });
 on("logged-out", () => {
   state.me = null;

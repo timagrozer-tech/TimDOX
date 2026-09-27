@@ -20,3 +20,7 @@ services:
         sync: false
       - key: MAIL_FROM_NAME
         value: Круг
+      - key: SUPABASE_URL        # для хранения фото/видео/музыки в Supabase Storage (MEDIA_STORAGE=supabase)
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false

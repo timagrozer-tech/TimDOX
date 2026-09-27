@@ -67,6 +67,28 @@ export const api = {
   patch: (url, data) => request("PATCH", url, data),
   del: (url, data) => request("DELETE", url, data),
   form: (url, formData, method = "POST") => request(method, url, formData, true),
+  /** Загрузка с прогрессом (0..1). Возвращает { promise, abort }. */
+  upload(url, formData, onProgress) {
+    const xhr = new XMLHttpRequest();
+    const promise = new Promise((resolve, reject) => {
+      xhr.open("POST", url);
+      if (state.csrf) xhr.setRequestHeader("X-CSRF-Token", state.csrf);
+      xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress?.(e.loaded / e.total); };
+      xhr.onload = () => {
+        let data = null;
+        try { data = JSON.parse(xhr.responseText); } catch { /* не JSON */ }
+        if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+        else {
+          if (xhr.status === 401 && state.me) emit("logged-out");
+          reject(new ApiError(xhr.status, data || { error: xhr.status === 413 ? "Файл слишком большой" : "Ошибка загрузки" }));
+        }
+      };
+      xhr.onerror = () => reject(new ApiError(0, { error: "Нет соединения с сервером. Проверьте интернет." }));
+      xhr.onabort = () => reject(new ApiError(0, { error: "Загрузка отменена", code: "aborted" }));
+      xhr.send(formData);
+    });
+    return { promise, abort: () => xhr.abort() };
+  },
 };
 
 export async function loadMe() {

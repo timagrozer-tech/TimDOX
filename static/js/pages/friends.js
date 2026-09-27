@@ -28,7 +28,7 @@ export async function friendsPage({ query }) {
       if (current === "all") {
         const { items } = await api.get(`/api/users/${state.me.username}/friends`);
         if (!items.length) return content.replaceChildren(card(empty("users", "У вас пока нет друзей", "Найдите знакомых по имени, городу, месту учёбы или работы.",
-          h("a.btn.primary", { href: "/friends?tab=suggestions", onclick: (e) => { e.preventDefault(); current = "suggestions"; draw(); } }, "Найти друзей"))));
+          h("a.btn.primary", { href: "/friends?tab=suggestions", onclick: (e) => { e.preventDefault(); current = "suggestions"; draw(); } }, "Смотреть рекомендации"))));
         const filter = h("input.input", { type: "search", placeholder: "Поиск среди друзей", "aria-label": "Поиск среди друзей" });
         const list = h("div.people");
         const online = items.filter((i) => i.online).length;
@@ -101,6 +101,6 @@ export async function friendsPage({ query }) {
       t.label, n ? h("span.badge", { dataset: { badge: t.badge, count: String(n) } }, String(n)) : null);
   }));
   draw();
-  return h("div.stack", h("div.page-head", h("h1", "Друзья"), h("div.spacer"), h("a.btn.soft.sm", { href: "/search" }, icon("search", "sm"), "Найти людей")),
+  return h("div.stack", h("div.page-head", h("h1", "Друзья")),
     h("div.card", tabBar), content);
 }

@@ -1,12 +1,13 @@
 """Личные и групповые сообщения, поток событий реального времени (SSE)."""
 import asyncio
+import json
 
 from sse_starlette.sse import EventSourceResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from .. import config, db, social
+from .. import config, db, media, social
 from ..realtime import hub
 from ..security import censor, clean_text
 from ..web import ApiError, auth, body, int_param, limit, ok, path_int
@@ -38,8 +39,14 @@ def _other_id(conv_id: int, v: int) -> int | None:
 
 
 def _msg_view(m: dict) -> dict:
-    return {"id": m["id"], "conversation_id": m["conversation_id"], "sender_id": m["sender_id"],
+    view = {"id": m["id"], "conversation_id": m["conversation_id"], "sender_id": m["sender_id"],
             "text": m["text"], "kind": m.get("kind") or "text", "created_at": m["created_at"]}
+    if m.get("media"):
+        try:
+            view["media"] = json.loads(m["media"])
+        except ValueError:
+            pass
+    return view
 
 
 def _can_message(v: int, other: int) -> tuple[bool, str]:
@@ -91,12 +98,13 @@ def direct_conversation(v: int, other: int) -> int:
     return conv
 
 
-def deliver_message(conv_id: int, sender: int, text: str, kind: str = "text") -> dict:
+def deliver_message(conv_id: int, sender: int, text: str, kind: str = "text", media_info: dict | None = None) -> dict:
     """Сохраняет сообщение и рассылает его участникам в реальном времени."""
     now = db.now()
     with db.tx() as c:
-        mid = c.execute("INSERT INTO messages (conversation_id, sender_id, text, kind, created_at) VALUES (?,?,?,?,?)",
-                        (conv_id, sender, text, kind, now)).lastrowid
+        mid = c.execute("INSERT INTO messages (conversation_id, sender_id, text, kind, created_at, media) VALUES (?,?,?,?,?,?)",
+                        (conv_id, sender, text, kind, now,
+                         json.dumps(media_info, ensure_ascii=False) if media_info else None)).lastrowid
         c.execute("UPDATE conversations SET last_message_at=? WHERE id=?", (now, conv_id))
         c.execute("UPDATE conversation_members SET last_read_id=? WHERE conversation_id=? AND user_id=?", (mid, conv_id, sender))
     msg = _msg_view(db.one("SELECT * FROM messages WHERE id=?", (mid,)))
@@ -236,11 +244,7 @@ async def list_messages(request: Request):
                          "senders": {str(k): val for k, val in senders.items()}})
 
 
-@auth(require_verified=True)
-async def send_message(request: Request):
-    limit(request, "message")
-    v = request.state.user["id"]
-    conv_id = path_int(request)
+def _check_can_send(conv_id: int, v: int) -> None:
     _member(conv_id, v)
     conv = _conv(conv_id)
     if not conv["is_group"]:
@@ -250,11 +254,76 @@ async def send_message(request: Request):
         allowed, reason = _can_message(v, other)
         if not allowed:
             raise ApiError(403, reason)
+
+
+@auth(require_verified=True)
+async def send_message(request: Request):
+    limit(request, "message")
+    v = request.state.user["id"]
+    conv_id = path_int(request)
+    _check_can_send(conv_id, v)
     data = await body(request)
+    if data.get("sticker_id") is not None:
+        from .stickers import sticker_for_message
+        info = sticker_for_message(data["sticker_id"])
+        return JSONResponse(deliver_message(conv_id, v, info["emoji"], "sticker", info), status_code=201)
     text = censor(clean_text(data.get("text"), config.MESSAGE_MAX_LEN))
     if not text:
         raise ApiError(400, "Пустое сообщение")
     return JSONResponse(deliver_message(conv_id, v, text), status_code=201)
+
+
+def _num(value, lo: float, hi: float) -> float | None:
+    try:
+        x = float(value)
+    except (TypeError, ValueError):
+        return None
+    return max(lo, min(hi, x)) if x == x else None
+
+
+@auth(require_verified=True)
+async def send_media(request: Request):
+    """Фото, видео или музыка в переписке (одно вложение + подпись)."""
+    limit(request, "upload")
+    v = request.state.user["id"]
+    conv_id = path_int(request)
+    _check_can_send(conv_id, v)
+    form = await request.form(max_files=2, max_fields=10, max_part_size=1024 * 1024)
+    saved_files = []
+    try:
+        kind = str(form.get("type") or "")
+        f = form.get("file")
+        if kind not in ("photo", "video", "audio") or not getattr(f, "filename", None):
+            raise ApiError(400, "Прикрепите фото, видео или музыку")
+        caption = censor(clean_text(str(form.get("caption") or ""), 1000))
+        if kind == "photo":
+            saved = await media.save_upload(f, "message")
+            saved_files.append(saved["path"])
+            info = {"type": "photo", "url": saved["path"], "thumb": saved["thumb"], "w": saved["width"], "h": saved["height"]}
+        else:
+            saved = await media.save_media(f, "video" if kind == "video" else "audio")
+            saved_files.append(saved["path"])
+            info = {"type": kind, "url": saved["path"], "size": saved["size"], "mime": saved["mime"],
+                    "duration": _num(form.get("duration"), 0, 36000)}
+            if kind == "video":
+                poster = form.get("poster")
+                if getattr(poster, "filename", None):
+                    ps = await media.save_upload(poster, "message")
+                    saved_files.append(ps["path"])
+                    info["poster"] = ps["thumb"]
+                    info["poster_src"] = ps["path"]
+                info["w"] = int(_num(form.get("width"), 1, 10000) or 0) or None
+                info["h"] = int(_num(form.get("height"), 1, 10000) or 0) or None
+            else:
+                title = clean_text(str(form.get("title") or f.filename or "Аудио"), 120)
+                info["title"] = title.rsplit(".", 1)[0] if "." in title[-5:] else title
+                info["artist"] = clean_text(str(form.get("artist") or ""), 80) or None
+    except Exception:
+        media.delete_files(*saved_files)
+        raise
+    finally:
+        await form.close()
+    return JSONResponse(deliver_message(conv_id, v, caption, kind, info), status_code=201)
 
 
 @auth()
@@ -321,6 +390,7 @@ routes = [
     Route("/api/conversations/{id:int}/leave", leave_group, methods=["POST"]),
     Route("/api/conversations/{id:int}/messages", list_messages, methods=["GET"]),
     Route("/api/conversations/{id:int}/messages", send_message, methods=["POST"]),
+    Route("/api/conversations/{id:int}/media", send_media, methods=["POST"]),
     Route("/api/conversations/{id:int}/read", mark_read, methods=["POST"]),
     Route("/api/conversations/{id:int}/typing", typing, methods=["POST"]),
     Route("/api/stream", stream, methods=["GET"]),

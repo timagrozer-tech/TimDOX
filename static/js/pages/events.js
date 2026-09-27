@@ -51,7 +51,8 @@ export async function eventsPage({ query }) {
       const { items } = await api.get("/api/events", { tab });
       list.replaceChildren(...(items.length ? [h("div.event-grid", items.map(eventCard))] : [h("div.card.empty", icon("calendar"),
         h("h3", { upcoming: "Ближайших мероприятий нет", mine: "Вы пока никуда не собираетесь", invites: "Приглашений нет", past: "Прошедших мероприятий нет" }[tab]),
-        tab !== "past" ? h("button.btn.accent", { type: "button", onclick: () => createEvent() }, icon("plus", "sm"), "Создать мероприятие") : null)]));
+        h("p", { upcoming: "Соберите друзей на встречу, праздник или прогулку — кнопка «Создать» вверху.", mine: "Отмечайте «Пойду» на интересных мероприятиях — они появятся здесь.",
+          invites: "Когда друзья позовут вас куда-нибудь, приглашение будет здесь.", past: "Здесь будут мероприятия, которые уже прошли." }[tab]))]));
     } catch (e) { list.replaceChildren(h("p.muted", e.message)); }
   }
   tabBar.append(...[["upcoming", "Ближайшие"], ["mine", "Я иду"], ["invites", "Приглашения", "events"], ["past", "Прошедшие"]].map(([id, label, badge]) =>

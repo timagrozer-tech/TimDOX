@@ -547,6 +547,17 @@ async def delete_account(request: Request):
         delete_post_files(post_ids)
     prof = db.one("SELECT avatar, cover, background FROM profiles WHERE user_id=?", (v,))
     media.delete_files(prof["avatar"], prof["cover"], prof["background"])
+    # клипы, свои стикеры и вложения из сообщений
+    for r in db.all("SELECT video, poster FROM reels WHERE author_id=?", (v,)):
+        media.delete_files(r["video"], r["poster"])
+    for r in db.all("SELECT s.file FROM stickers s JOIN sticker_packs p ON p.id=s.pack_id WHERE p.owner_id=?", (v,)):
+        media.delete_files(r["file"])
+    for r in db.all("SELECT media FROM messages WHERE sender_id=? AND media IS NOT NULL AND kind != 'sticker'", (v,)):
+        try:
+            m = json.loads(r["media"])
+        except ValueError:
+            continue
+        media.delete_files(m.get("url"), m.get("poster_src"))
     for r in db.all("SELECT media FROM stories WHERE author_id=?", (v,)):
         media.delete_files(r["media"])
     for r in db.all("SELECT cover FROM events WHERE creator_id=?", (v,)):

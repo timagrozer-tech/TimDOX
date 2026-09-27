@@ -18,12 +18,15 @@ export function notifText(n) {
     case "community_approved": return `одобрил(а) вашу заявку в сообщество «${n.extra?.name || ""}»`;
     case "event_invite": return `приглашает вас на мероприятие «${n.extra?.title || ""}»`;
     case "event_going": return `пойдёт на ваше мероприятие «${n.extra?.title || ""}»`;
+    case "reel_like": return "оценил(а) ваш клип ❤️";
+    case "reel_comment": return `прокомментировал(а) ваш клип: «${n.extra?.text || ""}»`;
     case "item": return `Новый предмет в коллекции: «${n.extra?.name || ""}» ✨`;
     default: return "новое событие";
   }
 }
 
 export function notifLink(n) {
+  if (n.type.startsWith("reel_")) return `/reels/${n.extra?.reel_id}`;
   if (n.type === "item") return `/collection?slot=${n.extra?.slot || "frame"}`;
   if (n.type === "community_request") return `/c/${n.extra?.slug}?tab=members`;
   if (n.type === "community_approved") return `/c/${n.extra?.slug}`;
@@ -41,7 +44,7 @@ export function notifBadge(n) {
     friend_request: ["userPlus", "orange"], friend_accept: ["userCheck", "green"],
     follow: ["user", ""], repost: ["repeat", "green"], quote: ["quote", ""],
     community_request: ["users", "orange"], community_approved: ["users", "green"],
-    event_invite: ["calendar", "orange"], event_going: ["calendar", "green"], item: ["gift", "gold"],
+    event_invite: ["calendar", "orange"], event_going: ["calendar", "green"], item: ["gift", "gold"], reel_like: ["heart", ""], reel_comment: ["comment", ""],
   };
   const [ic, color] = map[n.type] || ["bell", ""];
   return h(`span.n-type${color ? "." + color : ""}`, icon(ic));

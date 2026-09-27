@@ -330,3 +330,57 @@ CREATE TABLE IF NOT EXISTS email_codes (
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_email_codes_user ON email_codes(user_id, purpose);
+
+-- Наборы стикеров (как в Telegram): свои и добавленные чужие
+CREATE TABLE IF NOT EXISTS sticker_packs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id   INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    slug       TEXT NOT NULL UNIQUE,
+    title      TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE TABLE IF NOT EXISTS stickers (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    pack_id    INTEGER NOT NULL REFERENCES sticker_packs(id) ON DELETE CASCADE,
+    file       TEXT NOT NULL,
+    emoji      TEXT NOT NULL DEFAULT '🙂',
+    animated   INTEGER NOT NULL DEFAULT 0,
+    position   INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_stickers_pack ON stickers(pack_id, position);
+CREATE TABLE IF NOT EXISTS user_sticker_packs (
+    user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    pack_id  INTEGER NOT NULL REFERENCES sticker_packs(id) ON DELETE CASCADE,
+    added_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (user_id, pack_id)
+);
+
+-- Клипы (короткие вертикальные видео)
+CREATE TABLE IF NOT EXISTS reels (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    author_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    video      TEXT NOT NULL,
+    poster     TEXT,
+    caption    TEXT NOT NULL DEFAULT '',
+    duration   REAL NOT NULL DEFAULT 0,
+    width      INTEGER,
+    height     INTEGER,
+    views      INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_reels_author ON reels(author_id, id DESC);
+CREATE TABLE IF NOT EXISTS reel_likes (
+    reel_id    INTEGER NOT NULL REFERENCES reels(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (reel_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS reel_comments (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    reel_id    INTEGER NOT NULL REFERENCES reels(id) ON DELETE CASCADE,
+    author_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    text       TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_reel_comments ON reel_comments(reel_id, id);
