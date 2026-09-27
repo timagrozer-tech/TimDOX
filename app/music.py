@@ -13,7 +13,7 @@ log = logging.getLogger("krug.music")
 
 APP = "KRUG"
 AUDIUS = "https://api.audius.co/v1"
-RADIO = ["https://de1.api.radio-browser.info", "https://nl1.api.radio-browser.info", "https://at1.api.radio-browser.info"]
+RADIO = ["https://de1.api.radio-browser.info", "https://de2.api.radio-browser.info", "https://fi1.api.radio-browser.info"]
 UA = "KrugSocial/1.0 (+https://krug-social.onrender.com)"
 
 GENRES = [  # (как в Audius, адрес в Круге, по-русски, эмодзи)
@@ -161,8 +161,9 @@ def _radio(path: str, **params):
     last = None
     for host in RADIO:
         try:
-            return _http_json(f"{host}/json{path}?{urllib.parse.urlencode(params)}", timeout=6)
+            return _http_json(f"{host}/json{path}?{urllib.parse.urlencode(params)}", timeout=12)
         except Exception as e:  # зеркала равноправны — пробуем следующее
+            log.info("Радио: %s не ответил — %s", host, e)
             last = e
     raise last or Unavailable("radio")
 
@@ -179,7 +180,7 @@ def station(s: dict) -> dict | None:
 
 
 def radio(tag: str = "", limit: int = 40, name: str = "") -> list[dict]:
-    params = {"hidebroken": "true", "order": "clickcount", "reverse": "true", "limit": 150}
+    params = {"hidebroken": "true", "order": "clickcount", "reverse": "true", "limit": 100}
     if name:
         params["name"] = name[:60]
     else:
