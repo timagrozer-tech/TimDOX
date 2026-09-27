@@ -118,8 +118,8 @@ async function fillAside(aside) {
     search,
     onlineWidget,
     eventsWidget,
-    widget("Актуальное", "trend", trends),
     widget("Возможно, вы знакомы", "userPlus", sugg, h("a", { href: "/friends?tab=suggestions" }, "Все")),
+    widget("Актуальное", "trend", trends),
     h("footer.aside-footer", h("a", { href: "/privacy" }, "Конфиденциальность"), h("a", { href: "/terms" }, "Правила"), h("span", "© 2026 Круг")));
 
   const loadOnline = async () => {
@@ -148,7 +148,7 @@ async function fillAside(aside) {
   }).catch(() => {});
 
   api.get("/api/trends").then(({ items }) => {
-    trends.replaceChildren(...(items.length ? items.map((t) => h("a.trend", { href: `/tag/${encodeURIComponent(t.tag)}` }, h("b", `#${t.tag}`), h("small", pl(t.n, ["запись", "записи", "записей"])))) : [h("p.muted", { style: { fontSize: "14px" } }, "Пока нет популярных тем")]));
+    trends.replaceChildren(...(items.length ? items.slice(0, 5).map((t) => h("a.trend", { href: `/tag/${encodeURIComponent(t.tag)}` }, h("b", `#${t.tag}`), h("small", pl(t.n, ["запись", "записи", "записей"])))) : [h("p.muted", { style: { fontSize: "14px" } }, "Пока нет популярных тем")]));
   }).catch(() => trends.replaceChildren());
 
   api.get("/api/friends/suggestions").then(({ items }) => {
@@ -203,6 +203,10 @@ export function setActive(path, wide = false) {
   document.body.classList.toggle("wide", wide);
   // на странице поиска своё поле — второе в правой колонке не нужно
   document.body.classList.toggle("on-search", path.startsWith("/search"));
+  // открытый чат на телефоне — во весь экран, без общих панелей
+  document.body.classList.toggle("in-chat", /^\/messages\/\d+/.test(path));
+  // правая колонка нужна только в ленте, на профилях и записях
+  document.body.classList.toggle("no-aside", !/^\/($|explore|u\/|tag\/|post\/|c\/)/.test(path));
   document.querySelectorAll("[data-nav]").forEach((a) => {
     const item = NAV.find((n) => n.label === a.dataset.nav);
     const active = item ? item.match(path) : false;

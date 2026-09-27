@@ -1780,3 +1780,136 @@ h1 > .vbadge { width: .8em; height: .8em; vertical-align: -.06em; margin-left: .
 .se-bottom { padding-top: 6px; }
 .se-publish { height: 42px; }
 .sv-stage .st-photo { object-fit: cover; }
+
+/* ==========================================================================
+   Большое обновление: редизайн
+   ========================================================================== */
+/* один главный цвет для действий: «акцентные» кнопки = основные */
+.btn.accent, .btn.accent:hover { background: var(--grad); background-size: 180% 100%; box-shadow: var(--glow); }
+
+/* неактивные кнопки — читаемые, а не полупрозрачные */
+.btn:disabled, .btn[disabled] { opacity: 1 !important; background: var(--surface-3) !important; color: var(--text-3) !important; box-shadow: none !important; filter: none !important; cursor: not-allowed; }
+.btn:disabled::before { display: none; }
+
+/* плашка «Создатель»: достаточный контраст */
+.official-chip { color: #0a64a8; background: rgba(29, 155, 240, .12); border-color: rgba(29, 155, 240, .32); }
+[data-theme="dark"] .official-chip { color: #7cc8ff; background: rgba(29, 155, 240, .16); }
+
+/* крупные зоны нажатия на сенсорных экранах */
+@media (pointer: coarse) {
+  .btn.sm { min-height: 40px; }
+  .post-actions .action { min-height: 44px; min-width: 44px; }
+  .post .post-menu, .post-head .btn.icon-only, .post .btn.ghost.icon-only.sm { min-width: 40px; min-height: 40px; }
+  .poll-undo, .link-btn { padding: 8px 4px; }
+  .msg-react, .reaction-chip { min-height: 32px; }
+  .vp-speed { min-width: 36px; min-height: 28px; }
+  .story-add-mini { width: 30px; height: 30px; }
+}
+
+/* переключатели вместо «галочек» в настройках, гостях и формах */
+.setting-row input[type="checkbox"], .switch, .guest-toggle input[type="checkbox"], label.check.switchy input[type="checkbox"] {
+  -webkit-appearance: none; appearance: none; flex: none; width: 46px; height: 28px; border-radius: 999px; position: relative; cursor: pointer; margin: 0;
+  background: var(--surface-3); border: 1px solid var(--border-strong, var(--border)); transition: background-color .2s, border-color .2s; }
+.setting-row input[type="checkbox"]::after, .switch::after, .guest-toggle input[type="checkbox"]::after, label.check.switchy input[type="checkbox"]::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+  transition: transform .22s cubic-bezier(.2, .9, .3, 1.3); }
+.setting-row input[type="checkbox"]:checked, .switch:checked, .guest-toggle input[type="checkbox"]:checked, label.check.switchy input[type="checkbox"]:checked {
+  background: var(--primary); border-color: transparent; }
+.setting-row input[type="checkbox"]:checked::after, .switch:checked::after, .guest-toggle input[type="checkbox"]:checked::after, label.check.switchy input[type="checkbox"]:checked::after { transform: translateX(18px); }
+
+/* строки людей: имя не обрезается кнопками; действия — вторым рядом, если их несколько */
+.person { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 12px; row-gap: 8px; align-items: center; }
+.person .who { min-width: 0; }
+.person .acts { flex-wrap: nowrap; }
+.btn.round { border-radius: 50%; }
+@media (max-width: 719px) {
+  .person:has(.acts > .row), .person:has(.acts > .btn + .btn):has(.btn:not(.icon-only) + .btn:not(.icon-only)) { grid-template-columns: auto minmax(0, 1fr); }
+  .person .acts:has(> .row), .person .acts:has(> .btn:not(.icon-only) + .btn:not(.icon-only)) { grid-column: 2; }
+  .person .acts > .row { width: 100%; display: grid !important; grid-template-columns: 1fr 1fr; }
+  .person .acts > .row .btn { justify-content: center; }
+  .person .acts .btn.sm:not(.icon-only) { padding: 0 12px; }
+}
+
+/* открытый чат на телефоне — во весь экран, как в мессенджерах */
+@media (max-width: 719px) {
+  body.in-chat .topbar, body.in-chat .tabbar { display: none; }
+  body.in-chat .layout { padding: 0; }
+  body.in-chat .main { gap: 0; }
+  body.in-chat .chat-layout { height: 100dvh; min-height: 0; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+  body.in-chat .chat-head { padding-top: calc(8px + env(safe-area-inset-top)); position: sticky; top: 0; }
+  body.in-chat .chat-input { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+  body.in-chat .toasts { bottom: calc(86px + env(safe-area-inset-bottom)); }
+}
+
+/* правая колонка — только в ленте, на профилях и записях; на остальных страницах шире основная */
+@media (min-width: 1100px) {
+  body.no-aside:not(.wide) .layout { grid-template-columns: 240px minmax(0, 760px); }
+  body.no-aside .aside { display: none; }
+}
+
+/* сообщество на телефоне: аватар и подписи не наезжают друг на друга */
+@media (max-width: 719px) {
+  .profile-top .comm-avatar.big { position: relative; z-index: 2; }
+  .profile-main .row:has(> a > .avatar.xs) { justify-content: center; position: relative; z-index: 1; margin-top: 12px !important; }
+  .cover .cover-btn { width: 36px; padding: 0; justify-content: center; font-size: 0; gap: 0; }
+  .cover .cover-btn .icon { width: 18px; height: 18px; }
+  .cover .cover-btn .cover-btn-text { display: none; }
+}
+
+/* профиль: компактные сведения с «Подробнее» */
+.info-more { border: 0; background: none; color: var(--primary); font-weight: 700; padding: 4px 0; cursor: pointer; font-size: 14px; }
+@media (max-width: 719px) {
+  .profile-info.collapsible:not(.open) > span:nth-of-type(n+3) { display: none; }
+  .stat { padding: 8px 2px; }
+  .stat span { font-size: 11px; letter-spacing: -.02em; overflow: visible; text-overflow: clip; }
+}
+@media (min-width: 720px) { .info-more { display: none; } .profile-info.collapsible > span { display: inline-flex !important; } }
+
+/* лента на телефоне: одна строка вместо большого редактора */
+.quick-compose { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 0; background: none; cursor: pointer; text-align: left;
+  color: var(--text-3); font: inherit; font-size: 15.5px; border-top: 1px solid var(--border); }
+.quick-compose .avatar { width: 38px; height: 38px; }
+.quick-compose .qc-icon { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-3); color: var(--primary); }
+
+/* мероприятие: главная кнопка «Пойду», выбранный ответ — плашкой */
+.rsvp-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.rsvp-row .rsvp-go { min-width: 140px; }
+.rsvp-chosen { background: rgba(34, 197, 94, .14); color: #15803d; border: 1px solid rgba(34, 197, 94, .35); }
+.rsvp-chosen.maybe { background: rgba(245, 158, 11, .14); color: #b45309; border-color: rgba(245, 158, 11, .35); }
+.rsvp-chosen.declined { background: var(--surface-3); color: var(--text-2); border-color: var(--border); }
+[data-theme="dark"] .rsvp-chosen { color: #4ade80; } [data-theme="dark"] .rsvp-chosen.maybe { color: #fbbf24; }
+@media (max-width: 719px) {
+  .rsvp-row { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .rsvp-row .rsvp-go { grid-column: 1 / -1; }
+  .rsvp-row .btn { justify-content: center; }
+  .event-main .event-h1 { text-align: left; font-size: 22px; }
+  .event-main .row .grow { text-align: left; }
+}
+
+/* уведомления: две аватарки, если людей несколько */
+.n-icon.stacked { position: relative; }
+.n-icon.stacked > .avatar.sm { position: absolute; left: -8px; bottom: -6px; width: 26px; height: 26px; border: 2px solid var(--surface); }
+
+/* просмотр фото: плотный фон, точки, жест «вниз — закрыть» */
+.lightbox { background: rgba(0, 0, 0, calc(.96 * var(--lb-dim, 1))); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.lightbox img { transition: transform .2s; }
+.lightbox.leaving { animation: fade-out .16s forwards; }
+@keyframes fade-out { to { opacity: 0; } }
+.lb-dots { position: absolute; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: 6px; }
+.lb-dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, .4); transition: background-color .2s, transform .2s; }
+.lb-dots i.on { background: #fff; transform: scale(1.2); }
+
+/* листы снизу: «ручка» сверху */
+@media (max-width: 719px) {
+  .menu::before, .modal-backdrop.sheet .modal::before { content: ""; display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--border-strong, rgba(127, 127, 127, .4)); margin: 0 auto 8px; }
+  .modal-backdrop.sheet .modal::before { margin-top: 8px; margin-bottom: 0; }
+  .menu.rich button > .icon { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
+}
+
+/* офлайн-ошибка списка */
+.list-error { padding: 28px 16px; }
+.list-error .icon { width: 28px; height: 28px; color: var(--text-3); }
+@media (max-width: 719px) {
+  :where(.profile-main > *) { order: 9; }
+}
+input[type="checkbox"].switch { width: 46px !important; height: 28px !important; min-width: 46px; }

@@ -120,7 +120,7 @@ export async function communityPage({ params, query }) {
           h("div", { style: { position: "relative" } }, h("span.avatar.xl.comm-avatar.big", c.avatar ? h("img", { src: c.avatar, alt: "" }) : c.name[0]),
             isAdmin ? h("button.avatar-edit", { type: "button", "aria-label": "Изменить аватар", onclick: () => upload("avatar") }, icon("camera", "sm")) : null),
           actions),
-        h("div.profile-name", h("h1", c.name, c.is_private ? h("span.status-pill", icon("lock", "sm"), " закрытое") : null), h("div.handle", `/c/${c.slug}`)),
+        h("div.profile-name", h("h1", c.name.replace(/№ /g, "№\u00a0"), c.is_private ? h("span.status-pill", icon("lock", "sm"), " закрытое") : null), h("div.handle", `/c/${c.slug}`)),
         c.description ? h("p.profile-bio", c.description) : null,
         h("div.profile-counts",
           h("a", { href: "#", onclick: (e) => { e.preventDefault(); select("members"); } }, h("b", c.members_count), " ", pl(c.members_count, ["участник", "участника", "участников"]).split(" ")[1]),

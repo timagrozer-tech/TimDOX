@@ -35,7 +35,7 @@ export async function friendsPage({ query }) {
         const render = () => {
           const q = filter.value.trim().toLowerCase();
           list.replaceChildren(...items.filter((p) => !q || `${p.name} ${p.username} ${p.city}`.toLowerCase().includes(q))
-            .map((p) => personRow(p, () => h("button.btn.soft.sm", { type: "button", onclick: () => openChat(p.id) }, icon("message", "sm"), "Написать"))));
+            .map((p) => personRow(p, () => h("button.btn.soft.icon-only.round", { type: "button", "aria-label": `Написать ${p.name}`, title: "Написать", onclick: () => openChat(p.id) }, icon("message", "sm")))));
         };
         filter.addEventListener("input", render);
         render();

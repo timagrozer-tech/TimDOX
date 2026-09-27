@@ -1,7 +1,7 @@
 // Мероприятия: список, создание, страница мероприятия, ответы и приглашения.
 import { api, state, setCounters } from "../api.js";
 import { h, icon, avatar, pl, hm } from "../dom.js";
-import { setTitle, toast, toastError, modal, busy, confirmDialog } from "../ui.js";
+import { setTitle, toast, toastError, modal, busy, confirmDialog, showMenu } from "../ui.js";
 import { navigate } from "../router.js";
 import { pickFriends } from "../components/people.js";
 
@@ -120,8 +120,21 @@ export async function eventPage({ params }) {
   const root = h("div.stack");
 
   function render() {
-    const rsvp = h("div.segmented.rsvp", { role: "group", "aria-label": "Ваш ответ" },
-      Object.entries(STATUS).map(([k, label]) => h("button", { type: "button", "aria-pressed": String(e.my_status === k), onclick: () => answer(k) }, label)));
+    // ответ: пока его нет — одна главная кнопка «Пойду» и две второстепенные; после — плашка с выбором
+    let rsvp;
+    if (e.my_status && STATUS[e.my_status] && !e.can_edit) {
+      const chip = h(`button.btn.rsvp-chosen.${e.my_status}`, { type: "button", "aria-haspopup": "menu" },
+        icon(e.my_status === "declined" ? "x" : "check", "sm"), e.my_status === "going" ? "Вы идёте" : e.my_status === "maybe" ? "Возможно пойдёте" : "Вы не пойдёте", icon("down", "sm"));
+      chip.addEventListener("click", () => showMenu(chip, [
+        ...Object.entries(STATUS).filter(([k]) => k !== e.my_status).map(([k, label]) => ({ label, icon: k === "declined" ? "x" : "check", onClick: () => answer(k) })),
+        "-", { label: "Отменить ответ", icon: "trash", danger: true, onClick: () => answer("none") }]));
+      rsvp = h("div.rsvp-row", chip);
+    } else if (!e.can_edit) {
+      rsvp = h("div.rsvp-row",
+        h("button.btn.primary.rsvp-go", { type: "button", onclick: () => answer("going") }, icon("check", "sm"), "Пойду"),
+        h("button.btn.soft", { type: "button", onclick: () => answer("maybe") }, "Возможно"),
+        h("button.btn.ghost", { type: "button", onclick: () => answer("declined") }, "Не пойду"));
+    } else rsvp = h("span.status-pill", icon("star", "sm"), " Вы организатор");
     const going = e.attendees.filter((a) => a.status === "going");
     const maybe = e.attendees.filter((a) => a.status === "maybe");
     const past = new Date(e.ends_at || e.starts_at) < new Date();
@@ -143,6 +156,7 @@ export async function eventPage({ params }) {
           past ? h("p.muted", { style: { marginTop: "12px" } }, "Мероприятие уже прошло") : h("div.row", { style: { marginTop: "14px", flexWrap: "wrap" } }, rsvp,
             h("div.spacer"),
             e.visibility !== "invited" || e.can_edit ? h("button.btn.soft", { type: "button", onclick: invite }, icon("userPlus", "sm"), "Пригласить друзей") : null,
+            e.can_edit ? h("button.btn.ghost.icon-only", { type: "button", "aria-label": "Изменить мероприятие", title: "Изменить", onclick: edit }, icon("edit")) : null,
             e.can_edit ? h("button.btn.ghost.icon-only", { type: "button", "aria-label": "Удалить мероприятие", title: "Удалить", onclick: remove }, icon("trash")) : null))),
       h("section.card.card-pad",
         h("h2.card-title", icon("users", "sm"), `Пойдут · ${going.length}`),
@@ -150,12 +164,37 @@ export async function eventPage({ params }) {
         maybe.length ? [h("h2.card-title", { style: { marginTop: "16px" } }, `Возможно · ${maybe.length}`),
           h("div.online-strip", maybe.map((a) => h("a", { href: `/u/${a.username}`, title: a.name }, avatar(a))))] : null));
   }
+  async function edit() {
+    const title = h("input.input", { maxlength: 120, value: e.title });
+    const starts = h("input.input", { type: "datetime-local", value: toLocalInput(new Date(e.starts_at)) });
+    const ends = h("input.input", { type: "datetime-local", value: e.ends_at ? toLocalInput(new Date(e.ends_at)) : "" });
+    const place = h("input.input", { maxlength: 200, value: e.place || "" });
+    const desc = h("textarea.textarea", { rows: 4, maxlength: 3000 });
+    desc.value = e.description || "";
+    const err = h("div.form-error.hidden");
+    const save = h("button.btn.primary", { type: "button" }, "Сохранить");
+    const m = modal({
+      title: "Изменить мероприятие",
+      body: h("div.stack", err, h("div.field", h("label", "Название"), title),
+        h("div.grid-2", h("div.field", h("label", "Начало"), starts), h("div.field", h("label", "Окончание"), ends)),
+        h("div.field", h("label", "Место"), place), h("div.field", h("label", "Описание"), desc)),
+      footer: [h("button.btn.ghost", { type: "button", onclick: () => m.close() }, "Отмена"), save],
+    });
+    save.addEventListener("click", () => busy(save, async () => {
+      try {
+        await api.patch(`/api/events/${e.id}`, { title: title.value, place: place.value, description: desc.value,
+          starts_at: starts.value ? new Date(starts.value).toISOString() : null, ends_at: ends.value ? new Date(ends.value).toISOString() : null });
+        e = await api.get(`/api/events/${e.id}`);
+        m.close(); render(); toast("Изменения сохранены", { icon: "check" });
+      } catch (x) { err.textContent = Object.values(x.fields || {}).join(". ") || x.message; err.classList.remove("hidden"); }
+    }));
+  }
   async function answer(status) {
     try {
       const fresh = await api.post(`/api/events/${e.id}/rsvp`, { status });
-      e = { ...(await api.get(`/api/events/${e.id}`)), ...{ my_status: fresh.my_status } };
+      e = { ...(await api.get(`/api/events/${e.id}`)), ...{ my_status: status === "none" ? null : fresh.my_status } };
       render();
-      toast(status === "going" ? "Отлично, вас ждут!" : "Ответ сохранён", { icon: "check" });
+      toast(status === "going" ? "Отлично, вас ждут!" : status === "none" ? "Ответ отменён" : "Ответ сохранён", { icon: "check" });
       api.get("/api/counters").then(setCounters).catch(() => {});
     } catch (err) { toastError(err); }
   }

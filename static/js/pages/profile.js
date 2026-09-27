@@ -98,7 +98,9 @@ export async function profilePage({ params, query }) {
           h("div.handle", `@${u.username}`, u.badge ? h("span.official-chip", u.badge) : null),
           statusChip()),
         data.bio && !data.hidden ? h("p.profile-bio", data.bio) : null,
-        h("div.profile-info", info),
+        info.length > 3 ? h("div.profile-info.collapsible", ...info,
+          h("button.info-more", { type: "button", onclick: (ev) => { ev.currentTarget.parentElement.classList.add("open"); ev.currentTarget.remove(); } }, "Подробнее…"))
+          : h("div.profile-info", info),
         showcaseRow(),
         h("div.profile-counts",
           stat(data.counts.posts, ["запись", "записи", "записей"], () => selectTab("posts")),

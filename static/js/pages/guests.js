@@ -7,7 +7,7 @@ export async function guestsPage() {
   setTitle("Гости");
   const data = await api.get("/api/guests");
   setCounters({ guests: 0 });
-  const toggle = h("input", { type: "checkbox", checked: data.invisible });
+  const toggle = h("input.switch", { type: "checkbox", checked: data.invisible, role: "switch" });
   toggle.addEventListener("change", async () => {
     try {
       await api.patch("/api/me/settings", { invisible: toggle.checked });

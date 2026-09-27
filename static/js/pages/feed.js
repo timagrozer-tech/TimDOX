@@ -1,9 +1,9 @@
 // Лента: записи друзей, подписок и свои. Вкладка «Обзор» — все публичные записи.
 import { api, state, on } from "../api.js";
-import { h, icon } from "../dom.js";
+import { h, icon, avatar } from "../dom.js";
 import { infiniteList, setTitle, toast, toastError } from "../ui.js";
 import { setCleanup, navigate } from "../router.js";
-import { composer } from "../components/composer.js";
+import { composer, openComposerModal } from "../components/composer.js";
 import { postCard } from "../components/post.js";
 import { storiesBar } from "../components/stories.js";
 import { featuredStrip } from "../components/people.js";
@@ -70,7 +70,10 @@ export async function feedPage({ path, query }) {
   const tabs = h("div.card", h("div.tabs", { role: "tablist" },
     h("a", { href: "/explore", role: "tab", "aria-selected": String(explore) }, icon("compass", "sm"), "Обзор"),
     h("a", { href: "/", role: "tab", "aria-selected": String(!explore) }, icon("home", "sm"), "Друзья и подписки")),
-  composer({ placeholder: `Что у вас нового, ${state.me.name.split(" ")[0]}?` }));
+  matchMedia("(max-width: 719px)").matches
+    ? h("button.quick-compose", { type: "button", onclick: () => openComposerModal() },
+      avatar(state.me, "", { presence: false }), h("span.grow", `Что у вас нового, ${state.me.name.split(" ")[0]}?`), h("span.qc-icon", icon("image")))
+    : composer({ placeholder: `Что у вас нового, ${state.me.name.split(" ")[0]}?` }));
 
   const feedCard = h("div.card.feed");
   let emptyShown = false;
