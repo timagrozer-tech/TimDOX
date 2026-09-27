@@ -260,7 +260,7 @@ export async function settingsPage() {
   paintEmail();
 
   // ---------------------------------------------------------------- Данные
-  const deleteBtn = h("button.btn.danger", { type: "button" }, icon("trash", "sm"), "Удалить аккаунт");
+  const deleteBtn = h("button.btn.orange", { type: "button" }, icon("trash", "sm"), "Удалить аккаунт");
   deleteBtn.addEventListener("click", async () => {
     if (!await confirmDialog({ title: "Удалить аккаунт навсегда?", text: "Будут удалены профиль, записи, фото, комментарии, сообщения и друзья. Восстановить их будет невозможно.", confirm: "Продолжить", danger: true })) return;
     const pw = h("input.input", { type: "password", autocomplete: "current-password", placeholder: "Пароль" });
