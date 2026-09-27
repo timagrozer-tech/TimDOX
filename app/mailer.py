@@ -72,8 +72,12 @@ def _send_webhook(to: str, subject: str, text: str, html: str) -> None:
                "name": config.MAIL_FROM_NAME}
     req = urllib.request.Request(config.MAIL_WEBHOOK_URL, data=json.dumps(payload).encode(), method="POST",
                                  headers={"content-type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as resp:  # Google отвечает перенаправлением — urllib проходит его сам
-        body = resp.read()[:500]
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:  # Google отвечает перенаправлением — urllib проходит его сам
+            body = resp.read()[:500]
+    except urllib.error.HTTPError as e:
+        hint = " — в развёртывании скрипта нужно выбрать доступ «Все»" if e.code in (401, 403) else ""
+        raise RuntimeError(f"Скрипт отправки писем ответил {e.code}{hint}") from None
     try:
         ok = json.loads(body).get("ok")
     except ValueError:
