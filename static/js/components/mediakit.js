@@ -119,3 +119,67 @@ export function videoPlayer(m) {
   v.addEventListener("play", () => { if (playing && playing !== v) playing.pause(); playing = v; });
   return h("div.video-wrap", v, m.duration ? h("span.video-dur", fmtDur(m.duration)) : null);
 }
+
+// ---------------------------------------------------------------- Голосовые сообщения
+const SPEEDS = [1, 1.5, 2];
+
+export function voicePlayer(m) {
+  const audio = new Audio();
+  audio.preload = "none";
+  audio.src = m.url;
+  const wave = (m.waveform && m.waveform.length ? m.waveform : Array.from({ length: 40 }, (_, i) => 25 + Math.abs(Math.sin(i * 1.3)) * 60));
+  const btn = h("button.ap-play", { type: "button", "aria-label": "Слушать голосовое" }, icon("play"));
+  const bars = h("div.vp-wave", { role: "slider", "aria-label": "Перемотка", tabindex: 0 },
+    wave.map((v) => h("span", { style: { height: `${Math.max(12, v)}%` } })));
+  const time = h("span.ap-time", fmtDur(m.duration || 0));
+  let speed = 0;
+  const speedBtn = h("button.vp-speed", { type: "button", "aria-label": "Скорость воспроизведения" }, "1×");
+  const el = h("div.voice-player", btn, h("div.ap-main", bars, h("div.ap-foot", time, speedBtn)));
+  const spans = [...bars.children];
+  const paint = () => {
+    const d = audio.duration && Number.isFinite(audio.duration) ? audio.duration : m.duration || 0;
+    const p = d ? audio.currentTime / d : 0;
+    const upto = Math.round(p * spans.length);
+    spans.forEach((s, i) => s.classList.toggle("on", i < upto));
+    time.textContent = audio.paused && !audio.currentTime ? fmtDur(d) : fmtDur(audio.currentTime);
+  };
+  btn.addEventListener("click", () => {
+    if (audio.paused) {
+      if (playing && playing !== audio) playing.pause();
+      playing = audio;
+      audio.playbackRate = SPEEDS[speed];
+      audio.play().catch(() => {});
+    } else audio.pause();
+  });
+  speedBtn.addEventListener("click", () => {
+    speed = (speed + 1) % SPEEDS.length;
+    audio.playbackRate = SPEEDS[speed];
+    speedBtn.textContent = `${SPEEDS[speed]}×`;
+  });
+  audio.addEventListener("play", () => { btn.replaceChildren(icon("pause")); el.classList.add("playing"); });
+  audio.addEventListener("pause", () => { btn.replaceChildren(icon("play")); el.classList.remove("playing"); });
+  audio.addEventListener("timeupdate", paint);
+  audio.addEventListener("ended", () => { audio.currentTime = 0; paint(); });
+  const seek = (x) => {
+    const r = bars.getBoundingClientRect();
+    const d = audio.duration && Number.isFinite(audio.duration) ? audio.duration : m.duration;
+    if (!d) return;
+    audio.currentTime = Math.max(0, Math.min(1, (x - r.left) / r.width)) * d;
+    paint();
+  };
+  bars.addEventListener("pointerdown", (e) => { seek(e.clientX); bars.setPointerCapture(e.pointerId); });
+  bars.addEventListener("pointermove", (e) => { if (e.buttons) seek(e.clientX); });
+  return el;
+}
+
+/** Уровни громкости записи → 48 столбиков 0..100 */
+export function downsampleLevels(levels, n = 48) {
+  if (!levels.length) return [];
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = Math.floor((i / n) * levels.length), b = Math.max(a + 1, Math.floor(((i + 1) / n) * levels.length));
+    out.push(Math.max(...levels.slice(a, b)));
+  }
+  const max = Math.max(...out) || 1;
+  return out.map((v) => Math.round(Math.max(6, (v / max) * 100)));
+}

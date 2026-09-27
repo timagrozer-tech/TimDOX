@@ -5,6 +5,7 @@ import { navigate } from "../router.js";
 import { showMenu, toastError } from "../ui.js";
 import { openComposerModal } from "./composer.js";
 import { logout } from "../app-actions.js";
+import { canInstall, install, installButton } from "../pwa.js";
 
 let shell = null;
 let listenersBound = false;
@@ -40,7 +41,8 @@ function sidebar() {
   return h("aside.sidebar", { "aria-label": "Навигация" },
     logo(),
     nav,
-    h("button.btn.accent.create-btn", { type: "button", onclick: () => openComposerModal(), title: "Создать запись", "aria-label": "Создать запись" }, icon("plus"), h("span.create-label", "Создать запись")));
+    h("button.btn.accent.create-btn", { type: "button", onclick: () => openComposerModal(), title: "Создать запись", "aria-label": "Создать запись" }, icon("plus"), h("span.create-label", "Создать запись")),
+    installButton("btn.ghost.sm.install-side"));
 }
 
 function mobileMenu(btn) {
@@ -50,6 +52,7 @@ function mobileMenu(btn) {
       icon: n.icon, onClick: () => navigate(hrefOf(n)),
     })),
     "-",
+    canInstall() ? { label: "Установить приложение", icon: "install", onClick: install } : null,
     { label: "Выйти", icon: "logout", danger: true, onClick: logout },
   ]);
 }

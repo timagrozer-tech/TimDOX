@@ -38,9 +38,47 @@ def _other_id(conv_id: int, v: int) -> int | None:
     return db.value("SELECT user_id FROM conversation_members WHERE conversation_id=? AND user_id!=?", (conv_id, v))
 
 
+REACTION_EMOJI = {"👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👎", "🙏", "😡"}
+EDIT_WINDOW_HOURS = 48
+
+
+def _preview_text(m: dict) -> str:
+    kind = m.get("kind") or "text"
+    if kind == "deleted":
+        return "Сообщение удалено"
+    labels = {"photo": "📷 Фото", "video": "🎬 Видео", "audio": "🎵 Музыка", "voice": "🎤 Голосовое", "sticker": "Стикер"}
+    base = labels.get(kind, "")
+    text = (m.get("text") or "").strip()
+    if kind == "sticker":
+        return f"{text} Стикер".strip()
+    return (f"{base} {text}".strip() if base else text)[:120]
+
+
+def _enrich(views: list[dict]) -> list[dict]:
+    """Добавляет к сообщениям цитату (ответ) и реакции — пачкой, без запроса на каждое сообщение."""
+    if not views:
+        return views
+    ids = [v["id"] for v in views]
+    reacts: dict[int, dict[str, list[int]]] = {}
+    for r in db.all(f"SELECT message_id, user_id, emoji FROM message_reactions WHERE message_id IN ({db.placeholders(ids)}) ORDER BY created_at",
+                    tuple(ids)):
+        reacts.setdefault(r["message_id"], {}).setdefault(r["emoji"], []).append(r["user_id"])
+    reply_ids = list({v["reply_to"] for v in views if v.get("reply_to")})
+    replies = {r["id"]: r for r in db.all(f"SELECT id, sender_id, text, kind FROM messages WHERE id IN ({db.placeholders(reply_ids)})",
+                                          tuple(reply_ids))} if reply_ids else {}
+    for v in views:
+        v["reactions"] = [{"emoji": e, "users": u} for e, u in reacts.get(v["id"], {}).items()]
+        if v.get("reply_to"):
+            r = replies.get(v["reply_to"])
+            v["reply"] = {"id": r["id"], "sender_id": r["sender_id"], "kind": r["kind"], "text": _preview_text(r)} if r \
+                else {"id": v["reply_to"], "sender_id": None, "kind": "deleted", "text": "Сообщение удалено"}
+    return views
+
+
 def _msg_view(m: dict) -> dict:
     view = {"id": m["id"], "conversation_id": m["conversation_id"], "sender_id": m["sender_id"],
-            "text": m["text"], "kind": m.get("kind") or "text", "created_at": m["created_at"]}
+            "text": m["text"], "kind": m.get("kind") or "text", "created_at": m["created_at"],
+            "reply_to": m.get("reply_to"), "edited_at": m.get("edited_at")}
     if m.get("media"):
         try:
             view["media"] = json.loads(m["media"])
@@ -78,6 +116,8 @@ def _conv_view(conv_id: int, v: int) -> dict:
                 "members": sorted(members.values(), key=lambda m: m["name"]), "created_by": conv["created_by"]}
     other = others[0]["user_id"] if others else None
     card = social.cards_by_ids([other]).get(other) if other else None
+    if card:
+        card = {**card, "last_seen_at": db.value("SELECT last_seen_at FROM users WHERE id=?", (other,))}
     return {**base, "user": card or {"id": None, "name": "Удалённый пользователь", "username": "", "avatar": None, "online": False},
             "title": card["name"] if card else "Удалённый пользователь",
             "can_write": bool(other) and _can_message(v, other)[0]}
@@ -98,16 +138,19 @@ def direct_conversation(v: int, other: int) -> int:
     return conv
 
 
-def deliver_message(conv_id: int, sender: int, text: str, kind: str = "text", media_info: dict | None = None) -> dict:
+def deliver_message(conv_id: int, sender: int, text: str, kind: str = "text", media_info: dict | None = None,
+                    reply_to: int | None = None) -> dict:
     """Сохраняет сообщение и рассылает его участникам в реальном времени."""
     now = db.now()
+    if reply_to and not db.value("SELECT 1 FROM messages WHERE id=? AND conversation_id=?", (reply_to, conv_id)):
+        reply_to = None
     with db.tx() as c:
-        mid = c.execute("INSERT INTO messages (conversation_id, sender_id, text, kind, created_at, media) VALUES (?,?,?,?,?,?)",
+        mid = c.execute("INSERT INTO messages (conversation_id, sender_id, text, kind, created_at, media, reply_to) VALUES (?,?,?,?,?,?,?)",
                         (conv_id, sender, text, kind, now,
-                         json.dumps(media_info, ensure_ascii=False) if media_info else None)).lastrowid
+                         json.dumps(media_info, ensure_ascii=False) if media_info else None, reply_to)).lastrowid
         c.execute("UPDATE conversations SET last_message_at=? WHERE id=?", (now, conv_id))
         c.execute("UPDATE conversation_members SET last_read_id=? WHERE conversation_id=? AND user_id=?", (mid, conv_id, sender))
-    msg = _msg_view(db.one("SELECT * FROM messages WHERE id=?", (mid,)))
+    msg = _enrich([_msg_view(db.one("SELECT * FROM messages WHERE id=?", (mid,)))])[0]
     sender_card = social.cards_by_ids([sender])[sender]
     for uid in member_ids(conv_id):
         hub.publish(uid, "message", {"message": msg, "sender": sender_card})
@@ -238,7 +281,7 @@ async def list_messages(request: Request):
     before = int_param(request, "before", 2**62)
     rows = db.all("SELECT * FROM messages WHERE conversation_id=? AND id<? ORDER BY id DESC LIMIT ?",
                   (conv, before, PAGE + 1))
-    items = [_msg_view(m) for m in reversed(rows[:PAGE])]
+    items = _enrich([_msg_view(m) for m in reversed(rows[:PAGE])])
     senders = social.cards_by_ids({m["sender_id"] for m in items})
     return JSONResponse({"items": items, "has_more": len(rows) > PAGE,
                          "senders": {str(k): val for k, val in senders.items()}})
@@ -266,11 +309,93 @@ async def send_message(request: Request):
     if data.get("sticker_id") is not None:
         from .stickers import sticker_for_message
         info = sticker_for_message(data["sticker_id"])
-        return JSONResponse(deliver_message(conv_id, v, info["emoji"], "sticker", info), status_code=201)
+        return JSONResponse(deliver_message(conv_id, v, info["emoji"], "sticker", info, reply_to=_reply_id(data)), status_code=201)
     text = censor(clean_text(data.get("text"), config.MESSAGE_MAX_LEN))
     if not text:
         raise ApiError(400, "Пустое сообщение")
-    return JSONResponse(deliver_message(conv_id, v, text), status_code=201)
+    return JSONResponse(deliver_message(conv_id, v, text, reply_to=_reply_id(data)), status_code=201)
+
+
+def _reply_id(data) -> int | None:
+    try:
+        return int(data.get("reply_to")) if data.get("reply_to") else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _own_message(request: Request) -> dict:
+    v = request.state.user["id"]
+    m = db.one("SELECT * FROM messages WHERE id=?", (path_int(request),))
+    if not m:
+        raise ApiError(404, "Сообщение не найдено")
+    _member(m["conversation_id"], v)
+    return m
+
+
+def _broadcast_update(m_id: int) -> dict:
+    row = db.one("SELECT * FROM messages WHERE id=?", (m_id,))
+    msg = _enrich([_msg_view(row)])[0]
+    for uid in member_ids(row["conversation_id"]):
+        hub.publish(uid, "message_update", msg)
+    return msg
+
+
+@auth()
+async def edit_message(request: Request):
+    limit(request, "message")
+    v = request.state.user["id"]
+    m = _own_message(request)
+    if m["sender_id"] != v:
+        raise ApiError(403, "Изменять можно только свои сообщения")
+    if (m["kind"] or "text") not in ("text", "photo", "video", "audio"):
+        raise ApiError(400, "Это сообщение нельзя изменить")
+    if m["created_at"] < db.future(hours=-EDIT_WINDOW_HOURS):
+        raise ApiError(400, "Изменить можно только в течение 48 часов")
+    data = await body(request)
+    text = censor(clean_text(data.get("text"), config.MESSAGE_MAX_LEN))
+    if not text and (m["kind"] or "text") == "text":
+        raise ApiError(400, "Пустое сообщение")
+    db.run("UPDATE messages SET text=?, edited_at=? WHERE id=?", (text, db.now(), m["id"]))
+    return JSONResponse(_broadcast_update(m["id"]))
+
+
+@auth()
+async def delete_message(request: Request):
+    v = request.state.user["id"]
+    m = _own_message(request)
+    if m["sender_id"] != v:
+        raise ApiError(403, "Удалять можно только свои сообщения")
+    if m["kind"] == "deleted":
+        return ok()
+    if m.get("media") and m["kind"] != "sticker":
+        try:
+            info = json.loads(m["media"])
+            media.delete_files(info.get("url"), info.get("poster_src"))
+        except ValueError:
+            pass
+    db.run("UPDATE messages SET text='', media=NULL, kind='deleted', edited_at=? WHERE id=?", (db.now(), m["id"]))
+    db.run("DELETE FROM message_reactions WHERE message_id=?", (m["id"],))
+    return JSONResponse(_broadcast_update(m["id"]))
+
+
+@auth()
+async def react_message(request: Request):
+    limit(request, "write")
+    v = request.state.user["id"]
+    m = _own_message(request)
+    if m["kind"] in ("deleted", "system"):
+        raise ApiError(400, "На это сообщение нельзя отреагировать")
+    data = await body(request)
+    emoji = str(data.get("emoji") or "")
+    if emoji not in REACTION_EMOJI:
+        raise ApiError(400, "Недопустимая реакция")
+    current = db.value("SELECT emoji FROM message_reactions WHERE message_id=? AND user_id=?", (m["id"], v))
+    if current == emoji:  # повторное нажатие снимает реакцию
+        db.run("DELETE FROM message_reactions WHERE message_id=? AND user_id=?", (m["id"], v))
+    else:
+        db.run("DELETE FROM message_reactions WHERE message_id=? AND user_id=?", (m["id"], v))
+        db.run("INSERT INTO message_reactions (message_id, user_id, emoji) VALUES (?,?,?)", (m["id"], v, emoji))
+    return JSONResponse(_broadcast_update(m["id"]))
 
 
 def _num(value, lo: float, hi: float) -> float | None:
@@ -293,9 +418,10 @@ async def send_media(request: Request):
     try:
         kind = str(form.get("type") or "")
         f = form.get("file")
-        if kind not in ("photo", "video", "audio") or not getattr(f, "filename", None):
+        if kind not in ("photo", "video", "audio", "voice") or not getattr(f, "filename", None):
             raise ApiError(400, "Прикрепите фото, видео или музыку")
         caption = censor(clean_text(str(form.get("caption") or ""), 1000))
+        reply_to = _reply_id(form)
         if kind == "photo":
             saved = await media.save_upload(f, "message")
             saved_files.append(saved["path"])
@@ -305,7 +431,13 @@ async def send_media(request: Request):
             saved_files.append(saved["path"])
             info = {"type": kind, "url": saved["path"], "size": saved["size"], "mime": saved["mime"],
                     "duration": _num(form.get("duration"), 0, 36000)}
-            if kind == "video":
+            if kind == "voice":
+                try:
+                    wave = json.loads(str(form.get("waveform") or "[]"))
+                    info["waveform"] = [max(0, min(100, int(x))) for x in wave[:64]] if isinstance(wave, list) else []
+                except (ValueError, TypeError):
+                    info["waveform"] = []
+            elif kind == "video":
                 poster = form.get("poster")
                 if getattr(poster, "filename", None):
                     ps = await media.save_upload(poster, "message")
@@ -314,7 +446,7 @@ async def send_media(request: Request):
                     info["poster_src"] = ps["path"]
                 info["w"] = int(_num(form.get("width"), 1, 10000) or 0) or None
                 info["h"] = int(_num(form.get("height"), 1, 10000) or 0) or None
-            else:
+            elif kind == "audio":
                 title = clean_text(str(form.get("title") or f.filename or "Аудио"), 120)
                 info["title"] = title.rsplit(".", 1)[0] if "." in title[-5:] else title
                 info["artist"] = clean_text(str(form.get("artist") or ""), 80) or None
@@ -323,7 +455,7 @@ async def send_media(request: Request):
         raise
     finally:
         await form.close()
-    return JSONResponse(deliver_message(conv_id, v, caption, kind, info), status_code=201)
+    return JSONResponse(deliver_message(conv_id, v, caption, kind, info, reply_to=reply_to), status_code=201)
 
 
 @auth()
@@ -391,6 +523,9 @@ routes = [
     Route("/api/conversations/{id:int}/messages", list_messages, methods=["GET"]),
     Route("/api/conversations/{id:int}/messages", send_message, methods=["POST"]),
     Route("/api/conversations/{id:int}/media", send_media, methods=["POST"]),
+    Route("/api/messages/{id:int}", edit_message, methods=["PATCH"]),
+    Route("/api/messages/{id:int}", delete_message, methods=["DELETE"]),
+    Route("/api/messages/{id:int}/react", react_message, methods=["POST"]),
     Route("/api/conversations/{id:int}/read", mark_read, methods=["POST"]),
     Route("/api/conversations/{id:int}/typing", typing, methods=["POST"]),
     Route("/api/stream", stream, methods=["GET"]),

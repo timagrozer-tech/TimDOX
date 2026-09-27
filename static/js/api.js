@@ -114,7 +114,7 @@ export function connectStream() {
   if (source || !state.me) return;
   source = new EventSource("/api/stream");
   source.addEventListener("hello", () => { retry = 1000; emit("stream-open"); });
-  for (const ev of ["notification", "message", "typing", "read", "presence", "counters"]) {
+  for (const ev of ["notification", "message", "message_update", "typing", "read", "presence", "counters", "items"]) {
     source.addEventListener(ev, (e) => {
       let data;
       try { data = JSON.parse(e.data); } catch { return; }

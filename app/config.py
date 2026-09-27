@@ -51,6 +51,9 @@ SMTP_TLS = _bool("SMTP_TLS", True)
 
 # Brevo (бывш. Sendinblue): письма через HTTPS API — работает там, где SMTP-порты закрыты (бесплатный Render)
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "").strip()
+# Google Apps Script: письма уходят с вашего Gmail через веб-приложение скрипта (HTTPS, бесплатно)
+MAIL_WEBHOOK_URL = os.environ.get("MAIL_WEBHOOK_URL", "").strip()
+MAIL_WEBHOOK_SECRET = os.environ.get("MAIL_WEBHOOK_SECRET", "").strip()
 
 
 def _from_parts(raw: str) -> tuple[str, str]:

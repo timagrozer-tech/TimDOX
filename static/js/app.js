@@ -3,6 +3,7 @@ import { state, loadMe, connectStream, on } from "./api.js";
 import { h, avatar } from "./dom.js";
 import { route, onRender, start, navigate } from "./router.js";
 import { restoreLook } from "./look.js";
+import { initPwa } from "./pwa.js";
 import { applyUserLook } from "./app-actions.js";
 import { toast, closeAllModals, closeMenu, setTitle, applyTheme } from "./ui.js";
 import { ensureShell, setActive, destroyShell } from "./components/layout.js";
@@ -127,6 +128,7 @@ on("logged-out", () => {
 // ---------------------------------------------------------------- Запуск
 restoreLook();
 initFx();
+initPwa();
 
 (async function boot() {
   try {

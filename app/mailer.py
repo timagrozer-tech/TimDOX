@@ -22,7 +22,7 @@ log = logging.getLogger("krug.mail")
 
 
 def configured() -> bool:
-    return bool(config.BREVO_API_KEY or config.SMTP_HOST)
+    return bool((config.MAIL_WEBHOOK_URL and config.MAIL_WEBHOOK_SECRET) or config.BREVO_API_KEY or config.SMTP_HOST)
 
 
 def _render_html(text: str, link: str | None, code: str | None) -> str:
@@ -66,6 +66,22 @@ def _send_brevo(to: str, subject: str, text: str, html: str) -> None:
         raise RuntimeError(f"Brevo ответил {e.code}: {e.read()[:300]!r}") from None
 
 
+def _send_webhook(to: str, subject: str, text: str, html: str) -> None:
+    """Google Apps Script (или любой сервис с тем же форматом): POST JSON, ответ {"ok": true}."""
+    payload = {"secret": config.MAIL_WEBHOOK_SECRET, "to": to, "subject": subject, "text": text, "html": html,
+               "name": config.MAIL_FROM_NAME}
+    req = urllib.request.Request(config.MAIL_WEBHOOK_URL, data=json.dumps(payload).encode(), method="POST",
+                                 headers={"content-type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as resp:  # Google отвечает перенаправлением — urllib проходит его сам
+        body = resp.read()[:500]
+    try:
+        ok = json.loads(body).get("ok")
+    except ValueError:
+        ok = False
+    if not ok:
+        raise RuntimeError(f"Скрипт отправки ответил: {body!r}")
+
+
 def _send_smtp(to: str, subject: str, text: str, html: str) -> None:
     msg = EmailMessage()
     msg["From"] = formataddr((config.MAIL_FROM_NAME, config.MAIL_FROM_EMAIL))
@@ -99,7 +115,9 @@ async def send(to: str, subject: str, text: str, link: str | None = None, code: 
             pass
         return False
     try:
-        if config.BREVO_API_KEY:
+        if config.MAIL_WEBHOOK_URL and config.MAIL_WEBHOOK_SECRET:
+            await run_in_threadpool(_send_webhook, to, subject, full_text, html)
+        elif config.BREVO_API_KEY:
             await run_in_threadpool(_send_brevo, to, subject, full_text, html)
         else:
             await run_in_threadpool(_send_smtp, to, subject, full_text, html)

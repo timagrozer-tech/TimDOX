@@ -1,9 +1,9 @@
 // Личные сообщения в реальном времени: список диалогов и окно переписки.
 import { api, state, on, setCounters } from "../api.js";
-import { h, icon, avatar, shortTime, hm, dayLabel, richText, autosize } from "../dom.js";
+import { h, icon, avatar, shortTime, hm, dayLabel, richText, autosize, timeAgo } from "../dom.js";
 import { setTitle, toast, toastError, showMenu, modal, promptDialog, confirmDialog, lightbox } from "../ui.js";
 import { openPanel } from "../components/stickerpanel.js";
-import { audioPlayer, videoPlayer, videoMeta, audioMeta, parseTrackName } from "../components/mediakit.js";
+import { audioPlayer, videoPlayer, voicePlayer, videoMeta, audioMeta, parseTrackName, downsampleLevels, fmtDur } from "../components/mediakit.js";
 import { showPackPreview } from "./stickers.js";
 import { setCleanup, navigate } from "../router.js";
 import { pickFriends } from "../components/people.js";
@@ -31,6 +31,35 @@ function isBigEmoji(text) {
   return n <= 3 ? n : 0;
 }
 
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "🙏"];
+
+/** Всплывающее меню сообщения: реакции + действия. items: [{label, icon, onClick, danger}] */
+function messageMenu(anchor, { onReact, current, items }) {
+  document.querySelector(".msg-menu")?.remove();
+  const menu = h("div.msg-menu", { role: "menu" },
+    onReact ? h("div.mm-reacts", QUICK_REACTIONS.map((e) => h(`button${e === current ? ".on" : ""}`, { type: "button", "aria-label": `Реакция ${e}`, onclick: () => { close(); onReact(e); } }, e))) : null,
+    h("div.mm-items", items.filter(Boolean).map((it) => h(`button${it.danger ? ".danger" : ""}`, { type: "button", role: "menuitem", onclick: () => { close(); it.onClick(); } }, icon(it.icon), it.label))));
+  document.body.append(menu);
+  const r = anchor.getBoundingClientRect();
+  const mw = menu.offsetWidth, mh = menu.offsetHeight;
+  let left = Math.min(Math.max(8, r.left + r.width / 2 - mw / 2), innerWidth - mw - 8);
+  let top = r.top - mh - 8;
+  if (top < 8) top = Math.min(r.bottom + 8, innerHeight - mh - 8);
+  Object.assign(menu.style, { left: `${left}px`, top: `${top}px` });
+  anchor.classList.add("menu-open");
+  const onDoc = (e) => { if (!menu.contains(e.target)) close(); };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  function close() {
+    menu.remove(); anchor.classList.remove("menu-open");
+    document.removeEventListener("pointerdown", onDoc, true); document.removeEventListener("keydown", onKey);
+    window.removeEventListener("scroll", close, true);
+  }
+  setTimeout(() => {
+    document.addEventListener("pointerdown", onDoc, true); document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", close, true);
+  });
+}
+
 /** Короткое описание сообщения для списка диалогов */
 export function previewOf(m) {
   if (!m) return "";
@@ -39,6 +68,8 @@ export function previewOf(m) {
     case "photo": return `📷 Фото${cap}`;
     case "video": return `🎬 Видео${cap}`;
     case "audio": return `🎵 ${m.media?.title || "Аудио"}${cap}`;
+    case "voice": return `🎤 Голосовое${m.media?.duration ? ` ${fmtDur(m.media.duration)}` : ""}`;
+    case "deleted": return "🚫 Сообщение удалено";
     case "sticker": return `${m.media?.emoji || m.text || ""} Стикер`;
     default: return m.text;
   }
@@ -103,7 +134,8 @@ export async function messagesPage({ params }) {
     }
     setTitle(conv.title);
     const isGroup = conv.is_group;
-    const statusText = () => (isGroup ? `${conv.members.length} участников` : conv.user.online ? "в сети" : "не в сети");
+    const statusText = () => (isGroup ? `${conv.members.length} участников` : conv.user.online ? "в сети"
+      : conv.user.last_seen_at ? `был(а) ${timeAgo(conv.user.last_seen_at)}` : "не в сети");
     const body = h("div.chat-body", { role: "log", "aria-live": "polite", "aria-label": `Переписка: ${conv.title}` });
     const sub = h("div.sub", statusText());
     const ta = h("textarea", { rows: 1, placeholder: conv.can_write ? "Напишите сообщение…" : "Вы не можете написать этому пользователю", maxlength: 4000, disabled: !conv.can_write, "aria-label": "Текст сообщения" });
@@ -113,7 +145,27 @@ export async function messagesPage({ params }) {
     const attachBtn = h("button.btn.ghost.icon-only.attach-btn", { type: "button", "aria-label": "Прикрепить", title: "Фото, видео или музыка", disabled: !conv.can_write, "aria-haspopup": "menu" }, icon("clip"));
     const pickMedia = h("input", { type: "file", accept: "image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime", multiple: true, hidden: true });
     const pickAudio = h("input", { type: "file", accept: "audio/*,.mp3,.m4a,.ogg,.wav,.flac", multiple: true, hidden: true });
-    const form = h("form.chat-form", h("div.chat-input", attachBtn, ta, emojiBtn, send), pickMedia, pickAudio);
+    const micBtn = h("button.btn.primary.icon-only.mic-btn", { type: "button", "aria-label": "Записать голосовое сообщение", title: "Голосовое сообщение", disabled: !conv.can_write }, icon("mic"));
+    const ctxBar = h("div.ctx-bar", { hidden: true });
+    const form = h("form.chat-form", ctxBar, h("div.chat-input", attachBtn, ta, emojiBtn, send, micBtn), pickMedia, pickAudio);
+    let replyTo = null, editing = null;
+    const syncButtons = () => form.classList.toggle("has-text", !!ta.value.trim() || !!editing);
+    ta.addEventListener("input", syncButtons);
+    function paintCtx() {
+      const target = editing || replyTo;
+      ctxBar.hidden = !target;
+      if (!target) { syncButtons(); return; }
+      const who = editing ? "Редактирование" : (target.sender_id === state.me.id ? "Вы" : (chat.senders[target.sender_id]?.name || conv.user?.name || "Собеседник"));
+      ctxBar.replaceChildren(icon(editing ? "edit" : "reply"),
+        h("button.ctx-body", { type: "button", onclick: () => jumpTo(target.id) }, h("b", who), h("span", previewOf(target))),
+        h("button.ctx-close", { type: "button", "aria-label": "Отменить", onclick: () => { if (editing) { ta.value = ""; fit(); } replyTo = null; editing = null; paintCtx(); } }, icon("x", "sm")));
+      syncButtons();
+    }
+    function startReply(m) { editing = null; replyTo = m; paintCtx(); ta.focus(); }
+    function startEdit(m) { replyTo = null; editing = m; ta.value = m.text; fit(); paintCtx(); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    ta.addEventListener("keydown", (e) => { if (e.key === "Escape" && (editing || replyTo)) { e.stopPropagation(); if (editing) { ta.value = ""; fit(); } replyTo = null; editing = null; paintCtx(); } });
+    micBtn.addEventListener("click", () => startRecording());
+    syncButtons();
     emojiBtn.addEventListener("click", () => openPanel(form, {
       onEmoji: (em) => {
         const pos = ta.selectionStart ?? ta.value.length;
@@ -189,29 +241,46 @@ export async function messagesPage({ params }) {
         const snd = chat.senders[m.sender_id];
         nodes.push(h("div.msg-sender", snd ? avatar(snd, "xs", { presence: false }) : null, snd ? snd.name : "Участник"));
       }
-      const meta = h("span.m-meta", hm(new Date(m.created_at)), mine ? icon(m.pending ? "check" : (m.id <= chat.otherRead ? "checks" : "check")) : null);
+      const meta = h("span.m-meta", m.edited_at && m.kind !== "deleted" ? h("i.edited", "изм.") : null, hm(new Date(m.created_at)),
+        mine ? icon(m.pending ? "check" : (m.id <= chat.otherRead ? "checks" : "check")) : null);
       const last = !sameGroup(m, next);
       const big = m.kind === "text" ? isBigEmoji(m.text) : 0;
       const cls = `${mine ? ".mine" : ""}${first ? ".first" : ""}${last ? ".last" : ""}${m.pending ? ".pending" : ""}`;
       let bubble;
-      if (m.kind === "sticker" && m.media) {
+      const quote = m.reply ? h("button.msg-quote", { type: "button", onclick: (e) => { e.stopPropagation(); jumpTo(m.reply.id); } },
+        h("b", m.reply.sender_id === state.me.id ? "Вы" : (chat.senders[m.reply.sender_id]?.name || conv.user?.name || "Сообщение")),
+        h("span", m.reply.text)) : null;
+      const reacts = m.reactions?.length ? h("div.msg-reacts", m.reactions.map((r) => h(`button${r.users.includes(state.me.id) ? ".mine" : ""}`, {
+        type: "button", title: r.users.map((u) => (u === state.me.id ? "Вы" : chat.senders[u]?.name || conv.user?.name || "")).join(", "),
+        onclick: (e) => { e.stopPropagation(); react(m, r.emoji); },
+      }, r.emoji, r.users.length > 1 ? h("span", String(r.users.length)) : null))) : null;
+      if (m.kind === "deleted") {
+        bubble = h(`div.msg.deleted${cls}`, { dataset: { id: m.id, sender: m.sender_id } }, h("span.del-text", "🚫 Сообщение удалено"), meta);
+      } else if (m.kind === "sticker" && m.media) {
         bubble = h(`div.msg-sticker${cls}`, { dataset: { id: m.id, sender: m.sender_id } },
           h("button.sticker-img", { type: "button", title: `Набор «${m.media.pack?.title || ""}»`, onclick: () => showPackPreview(m.media.pack?.slug) },
             h("img", { src: m.media.url, alt: m.media.emoji || "Стикер", loading: "lazy", draggable: false })), meta);
+        if (quote) bubble.prepend(quote);
+        if (reacts) bubble.append(reacts);
       } else if (big) {
-        bubble = h(`div.msg-bigemoji.e${big}${cls}`, { dataset: { id: m.id, sender: m.sender_id } }, h("span", m.text), meta);
-      } else if (m.media && ["photo", "video", "audio"].includes(m.kind)) {
+        bubble = h(`div.msg-bigemoji.e${big}${cls}`, { dataset: { id: m.id, sender: m.sender_id } }, h("span", m.text), quote, reacts, meta);
+        if (quote) bubble.prepend(quote);
+      } else if (m.media && ["photo", "video", "audio", "voice"].includes(m.kind)) {
         const md = m.media;
         const content = md.type === "photo"
           ? h("button.chat-photo", { type: "button", "aria-label": "Открыть фото", onclick: () => lightbox([{ url: md.url, alt: m.text || "Фото" }]) },
             h("img", { src: md.thumb || md.url, alt: m.text || "Фото", loading: "lazy", style: md.w && md.h ? { aspectRatio: `${md.w} / ${md.h}` } : {} }))
-          : md.type === "video" ? videoPlayer(md) : audioPlayer(md);
+          : md.type === "video" ? videoPlayer(md) : md.type === "voice" ? voicePlayer(md) : audioPlayer(md);
         bubble = h(`div.msg.media-msg.k-${md.type}${m.text ? ".with-caption" : ""}${cls}`, { dataset: { id: m.id, sender: m.sender_id } },
-          content, m.text ? h("div.caption", ...richText(m.text).childNodes) : null, meta);
+          quote, content, m.text ? h("div.caption", ...richText(m.text).childNodes) : null, reacts, meta);
       } else {
         bubble = h(`div.msg${cls}`, { dataset: { id: m.id, sender: m.sender_id } });
-        bubble.append(...richText(m.text).childNodes, meta);
+        if (quote) bubble.append(quote);
+        bubble.append(...richText(m.text).childNodes);
+        if (reacts) bubble.append(reacts);
+        bubble.append(meta);
       }
+      if (!m.pending && m.kind !== "deleted") attachMenu(bubble, m);
       if (mine) bubble.title = m.pending ? "Отправляется…" : (m.id <= chat.otherRead ? "Прочитано" : "Доставлено");
       nodes.push(bubble);
       return nodes;
@@ -274,9 +343,125 @@ export async function messagesPage({ params }) {
     };
     chat.setOnline = (online) => { if (isGroup) return; conv.user.online = online; if (!sub.classList.contains("typing")) sub.textContent = statusText(); };
 
+    function attachMenu(bubble, m) {
+      const open = () => openMsgMenu(m, bubble);
+      bubble.addEventListener("contextmenu", (e) => { if (e.target.closest("a, video, audio")) return; e.preventDefault(); open(); });
+      let timer = null, sx = 0, sy = 0;
+      bubble.addEventListener("pointerdown", (e) => {
+        if (e.pointerType !== "touch") return;
+        sx = e.clientX; sy = e.clientY;
+        timer = setTimeout(() => { timer = null; navigator.vibrate?.(10); open(); }, 430);
+      });
+      const cancel = (e) => { if (timer && (!e || e.type !== "pointermove" || Math.hypot(e.clientX - sx, e.clientY - sy) > 10)) { clearTimeout(timer); timer = null; } };
+      bubble.addEventListener("pointerup", cancel); bubble.addEventListener("pointercancel", cancel); bubble.addEventListener("pointermove", cancel);
+      if (matchMedia("(hover: hover)").matches && conv.can_write) {
+        bubble.append(h("button.msg-more", { type: "button", "aria-label": "Действия с сообщением", onclick: (e) => { e.stopPropagation(); open(); } }, icon("smile", "sm")));
+      }
+    }
+    function openMsgMenu(m, bubble) {
+      const mine = m.sender_id === state.me.id;
+      const canEdit = mine && ["text", "photo", "video", "audio"].includes(m.kind) && Date.now() - new Date(m.created_at) < 48 * 3600 * 1000;
+      const current = m.reactions?.find((r) => r.users.includes(state.me.id))?.emoji;
+      messageMenu(bubble, {
+        onReact: conv.can_write ? (e) => react(m, e) : null,
+        current,
+        items: [
+          conv.can_write ? { label: "Ответить", icon: "reply", onClick: () => startReply(m) } : null,
+          m.text && m.kind !== "sticker" ? { label: "Копировать текст", icon: "copy", onClick: () => navigator.clipboard?.writeText(m.text).then(() => toast("Скопировано", { icon: "check", duration: 1200 })) } : null,
+          m.media?.url && m.kind !== "sticker" ? { label: "Открыть файл", icon: "download", onClick: () => window.open(m.media.url, "_blank", "noopener") } : null,
+          canEdit ? { label: "Изменить", icon: "edit", onClick: () => startEdit(m) } : null,
+          mine ? { label: "Удалить у всех", icon: "trash", danger: true, onClick: () => removeMsg(m) } : null,
+        ],
+      });
+    }
+    async function react(m, emoji) {
+      try { applyUpdate(await api.post(`/api/messages/${m.id}/react`, { emoji })); } catch (e) { toastError(e); }
+    }
+    async function removeMsg(m) {
+      if (!await confirmDialog({ title: "Удалить сообщение?", text: "Оно исчезнет у всех участников переписки.", confirm: "Удалить", danger: true })) return;
+      try { applyUpdate(await api.del(`/api/messages/${m.id}`)); } catch (e) { toastError(e); }
+    }
+    function applyUpdate(msg) {
+      const i = chat.messages.findIndex((x) => x.id === msg.id);
+      if (i < 0) return;
+      chat.messages[i] = msg;
+      // обновляем цитаты в ответах на это сообщение
+      chat.messages.forEach((x) => { if (x.reply?.id === msg.id) x.reply = { ...x.reply, kind: msg.kind, text: msg.kind === "deleted" ? "Сообщение удалено" : previewOf(msg) }; });
+      drawAll(body.scrollHeight - body.scrollTop);
+    }
+    chat.applyUpdate = applyUpdate;
+    function jumpTo(mid) {
+      const el = body.querySelector(`[data-id="${mid}"]`);
+      if (!el) { toast("Сообщение выше — прокрутите переписку вверх", { duration: 1800 }); return; }
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+    }
+
+    // ---- голосовые сообщения
+    async function startRecording() {
+      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) { toast("Этот браузер не умеет записывать голос", { error: true }); return; }
+      let stream;
+      try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); } catch {
+        toast("Нет доступа к микрофону — разрешите его в настройках браузера", { error: true }); return;
+      }
+      const mime = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4"].find((t) => MediaRecorder.isTypeSupported?.(t)) || "";
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      const chunks = [];
+      rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+      const actx = new (window.AudioContext || window.webkitAudioContext)();
+      const an = actx.createAnalyser();
+      an.fftSize = 512;
+      actx.createMediaStreamSource(stream).connect(an);
+      const buf = new Uint8Array(an.fftSize);
+      const levels = [];
+      const t0 = Date.now();
+      const timer = h("span.rec-time", "0:00");
+      const live = h("div.rec-live", Array.from({ length: 32 }, () => h("i")));
+      const liveBars = [...live.children];
+      const recBar = h("div.rec-bar",
+        h("button.btn.ghost.icon-only.rec-cancel", { type: "button", "aria-label": "Отменить запись", onclick: () => finish(false) }, icon("trash")),
+        h("span.rec-dot"), timer, live,
+        h("button.btn.primary.icon-only.rec-send", { type: "button", "aria-label": "Отправить голосовое", onclick: () => finish(true) }, icon("send")));
+      form.classList.add("recording");
+      form.append(recBar);
+      const tick = setInterval(() => {
+        an.getByteTimeDomainData(buf);
+        let sum = 0;
+        for (const v of buf) { const x = (v - 128) / 128; sum += x * x; }
+        const lvl = Math.sqrt(sum / buf.length);
+        levels.push(lvl);
+        liveBars.forEach((b, i) => { const v = levels[levels.length - liveBars.length + i] || 0; b.style.transform = `scaleY(${Math.min(1, .12 + v * 5)})`; });
+        const sec = (Date.now() - t0) / 1000;
+        timer.textContent = fmtDur(sec);
+        if (sec >= 300) finish(true); // не длиннее 5 минут
+      }, 100);
+      rec.start(250);
+      let finished = false;
+      function finish(sendIt) {
+        if (finished) return;
+        finished = true;
+        rec.onstop = () => {
+          clearInterval(tick);
+          stream.getTracks().forEach((t) => t.stop());
+          actx.close().catch(() => {});
+          recBar.remove();
+          form.classList.remove("recording");
+          if (!sendIt) return;
+          const dur = (Date.now() - t0) / 1000;
+          if (dur < .8) { toast("Слишком короткое сообщение — удерживайте запись дольше"); return; }
+          const type = rec.mimeType || mime || "audio/webm";
+          const ext = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
+          const file = new File([new Blob(chunks, { type })], `voice.${ext}`, { type });
+          uploadOne(file, "voice", { duration: dur, waveform: downsampleLevels(levels) });
+        };
+        rec.stop();
+      }
+    }
+
     async function sendSticker(st) {
       try {
-        const m = await api.post(`/api/conversations/${id}/messages`, { sticker_id: st.id });
+        const m = await api.post(`/api/conversations/${id}/messages`, { sticker_id: st.id, reply_to: replyTo?.id });
+        replyTo = null; paintCtx();
         chat.append(m);
         upsertConv(id, m);
       } catch (err) { toastError(err); }
@@ -292,18 +477,19 @@ export async function messagesPage({ params }) {
         await uploadOne(file, type);
       }
     }
-    async function uploadOne(file, type) {
+    async function uploadOne(file, type, extra = {}) {
       const fd = new FormData();
       fd.append("type", type);
+      if (replyTo) { fd.append("reply_to", String(replyTo.id)); replyTo = null; paintCtx(); }
       const caption = ta.value.trim();
       if (caption) { fd.append("caption", caption); ta.value = ""; fit(); }
-      const localUrl = type === "audio" ? null : URL.createObjectURL(file);
+      const localUrl = type === "audio" || type === "voice" ? null : URL.createObjectURL(file);
       const ring = h("span.up-ring", { style: { "--p": "0" } }, h("b", "0%"));
       const cancel = h("button.up-cancel", { type: "button", "aria-label": "Отменить загрузку" }, icon("x", "sm"));
       const card = h("div.msg.mine.media-msg.uploading.first.last",
         type === "photo" ? h("img.up-preview", { src: localUrl, alt: "" })
           : type === "video" ? h("video.up-preview", { src: localUrl, muted: true, playsinline: true })
-            : h("div.up-audio", icon("music"), h("span", file.name)),
+            : h("div.up-audio", icon(type === "voice" ? "mic" : "music"), h("span", type === "voice" ? `Голосовое · ${fmtDur(extra.duration)}` : file.name)),
         h("div.up-overlay", ring, cancel));
       body.querySelector(".chat-empty")?.remove();
       body.append(card);
@@ -314,6 +500,9 @@ export async function messagesPage({ params }) {
           if (meta.duration) fd.append("duration", String(meta.duration));
           if (meta.width) { fd.append("width", String(meta.width)); fd.append("height", String(meta.height)); }
           if (meta.poster) fd.append("poster", meta.poster, "poster.jpg");
+        } else if (type === "voice") {
+          fd.append("duration", String(extra.duration));
+          fd.append("waveform", JSON.stringify(extra.waveform || []));
         } else if (type === "audio") {
           const meta = await audioMeta(file);
           if (Number.isFinite(meta.duration)) fd.append("duration", String(meta.duration));
@@ -351,12 +540,22 @@ export async function messagesPage({ params }) {
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = ta.value.trim();
+      if (editing) {
+        const m0 = editing;
+        if (!text && m0.kind === "text") return;
+        editing = null; ta.value = ""; fit(); paintCtx();
+        try { applyUpdate(await api.patch(`/api/messages/${m0.id}`, { text })); } catch (err) { toastError(err); }
+        return;
+      }
       if (!text) return;
       ta.value = ""; fit();
-      const temp = { id: Number.MAX_SAFE_INTEGER - Date.now(), sender_id: state.me.id, text, created_at: new Date().toISOString(), pending: true };
+      const reply = replyTo;
+      replyTo = null; paintCtx();
+      const temp = { id: Number.MAX_SAFE_INTEGER - Date.now(), sender_id: state.me.id, text, created_at: new Date().toISOString(), pending: true,
+        reply: reply ? { id: reply.id, sender_id: reply.sender_id, text: previewOf(reply) } : null };
       chat.append(temp);
       try {
-        const m = await api.post(`/api/conversations/${id}/messages`, { text });
+        const m = await api.post(`/api/conversations/${id}/messages`, { text, reply_to: reply?.id });
         chat.messages = chat.messages.filter((x) => x !== temp && x.id !== m.id);
         chat.messages.push(m);
         chat.messages.sort((a, b) => a.id - b.id);
@@ -406,6 +605,11 @@ export async function messagesPage({ params }) {
       }
     }
     upsertConv(id, message);
+  }));
+  cleanups.push(on("message_update", (msg) => {
+    if (chat && chat.id === msg.conversation_id) chat.applyUpdate(msg);
+    const c = convs.find((x) => x.id === msg.conversation_id);
+    if (c?.last_message?.id === msg.id) { c.last_message = msg; drawList(); }
   }));
   cleanups.push(on("typing", ({ conversation_id, name }) => { if (chat && chat.id === conversation_id) chat.showTyping(name); }));
   cleanups.push(on("read", ({ conversation_id, last_read_id }) => {

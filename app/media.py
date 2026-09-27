@@ -74,7 +74,7 @@ def _process(data: bytes, kind: str) -> dict:
 CONTENT_TYPES = {
     "webp": "image/webp", "png": "image/png", "jpg": "image/jpeg", "gif": "image/gif",
     "mp4": "video/mp4", "webm": "video/webm", "mov": "video/quicktime",
-    "mp3": "audio/mpeg", "m4a": "audio/mp4", "ogg": "audio/ogg", "oga": "audio/ogg", "wav": "audio/wav", "flac": "audio/flac",
+    "weba": "audio/webm", "mp3": "audio/mpeg", "m4a": "audio/mp4", "ogg": "audio/ogg", "oga": "audio/ogg", "wav": "audio/wav", "flac": "audio/flac",
 }
 
 
@@ -168,11 +168,13 @@ async def save_media(upload, kind: str) -> dict:
     if len(data) > limit_mb * 1024 * 1024:
         raise ApiError(413, f"Файл больше {limit_mb} МБ")
     ext = _sniff(data)
-    allowed = VIDEO_EXT if kind == "video" else AUDIO_EXT | {"mp4"}
+    allowed = VIDEO_EXT if kind == "video" else AUDIO_EXT | {"mp4", "webm"}
     if ext not in allowed:
         raise ApiError(400, "Видео: MP4, WebM или MOV" if kind == "video" else "Музыка: MP3, M4A, OGG, WAV или FLAC")
     if kind == "audio" and ext == "mp4":
         ext = "m4a"
+    if kind == "audio" and ext == "webm":  # голосовые из браузера (Opus в WebM)
+        ext = "weba"
     sub = datetime.now().strftime("%Y/%m")
     rel = f"{sub}/{secrets.token_hex(12)}.{ext}"
     if config.MEDIA_STORAGE == "supabase":

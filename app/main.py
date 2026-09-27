@@ -134,6 +134,17 @@ async def uploads(request: Request):
     return Response(data, media_type=ctype, headers=headers)
 
 
+async def service_worker(request: Request):
+    """Сервис-воркер должен лежать в корне сайта, чтобы управлять всеми страницами."""
+    return FileResponse(config.STATIC_DIR / "sw.js", media_type="text/javascript",
+                        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"})
+
+
+async def manifest(request: Request):
+    return FileResponse(config.STATIC_DIR / "manifest.webmanifest", media_type="application/manifest+json",
+                        headers={"Cache-Control": "public, max-age=3600"})
+
+
 async def health(request: Request):
     db.value("SELECT 1")
     return JSONResponse({"status": "ok"})
@@ -168,6 +179,8 @@ async def lifespan(app):
 
 routes = [
     Route("/api/health", health),
+    Route("/sw.js", service_worker),
+    Route("/manifest.webmanifest", manifest),
     *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
     *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *collection_routes.routes, *reels.routes, *stickers.routes,
     Mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static"),

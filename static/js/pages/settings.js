@@ -6,6 +6,7 @@ import { pickFriends } from "../components/people.js";
 import { loadCircles } from "../components/composer.js";
 import { appearanceSection } from "../components/appearance.js";
 import { codeForm } from "./feed.js";
+import { installButton } from "../pwa.js";
 import { refreshSidebarUser } from "../components/layout.js";
 import { logout } from "../app-actions.js";
 
@@ -295,6 +296,7 @@ export async function settingsPage() {
       h("div.row", { style: { flexWrap: "wrap" } },
         h("a.btn.outline", { href: "/api/me/export", download: "krug-export.json" }, icon("download", "sm"), "Скачать мои данные"),
         h("div.spacer"), deleteBtn)),
+    h("div.row", { style: { justifyContent: "center", paddingTop: "4px" } }, installButton("btn.soft")),
     h("div.row", { style: { justifyContent: "center", padding: "8px 0 16px" } },
       h("button.btn.ghost", { type: "button", onclick: logout }, icon("logout", "sm"), "Выйти из аккаунта")));
 }

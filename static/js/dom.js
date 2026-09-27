@@ -50,6 +50,10 @@ export function clear(el) { while (el.firstChild) el.firstChild.remove(); return
 
 // ---------------------------------------------------------------- Иконки
 const ICONS = {
+  mic: '<rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="21.5"/>',
+  reply: '<polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>',
+  copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  install: '<path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><rect x="3" y="17" width="18" height="4" rx="1.5"/>',
   play: '<polygon points="7 4.5 19.5 12 7 19.5 7 4.5" fill="currentColor"/>',
   pause: '<rect x="6.5" y="4.5" width="3.8" height="15" rx="1" fill="currentColor"/><rect x="13.7" y="4.5" width="3.8" height="15" rx="1" fill="currentColor"/>',
   clip: '<path d="M21.4 11.1 12.2 20.3a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',

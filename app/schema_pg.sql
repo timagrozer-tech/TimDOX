@@ -393,3 +393,14 @@ CREATE TABLE IF NOT EXISTS reel_comments (
 );
 CREATE INDEX IF NOT EXISTS idx_reel_comments ON reel_comments(reel_id, id);
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS media TEXT;
+
+-- Реакции на сообщения (одна реакция от человека на сообщение)
+CREATE TABLE IF NOT EXISTS message_reactions (
+    message_id BIGINT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    emoji      TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT krug_now(),
+    PRIMARY KEY (message_id, user_id)
+);
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to BIGINT;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited_at TEXT;
