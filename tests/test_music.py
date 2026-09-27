@@ -80,6 +80,11 @@ class MusicTest(unittest.TestCase):
         w = self.a.get("/api/music/wave").json()
         self.assertGreater(len(w["items"]), 5)
 
+    def test_status_public(self):
+        d = Client().get("/api/music/status").json()
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["radio"], 1)
+
     def test_likes_and_friends(self):
         self.assertEqual(self.b.post("/api/music/likes", {"key": "audius:T3"}).status_code, 200)
         self.assertEqual(self.b.post("/api/music/likes", {"key": "radio:aaaa-1111"}).status_code, 200)

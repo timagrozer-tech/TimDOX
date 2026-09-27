@@ -167,7 +167,14 @@ async def like(request: Request):
     return ok({"ok": True, "track": track})
 
 
+async def status(request: Request):
+    """Проверка источников музыки (для мониторинга): сколько треков и станций сейчас доступно."""
+    tracks, stations = await asyncio.gather(_call(music.trending, "", "week", 60, default=[]), _call(music.radio, "", 60, default=[]))
+    return JSONResponse({"catalog": len(tracks), "radio": len(stations), "ok": bool(tracks) and bool(stations)})
+
+
 routes = [
+    Route("/api/music/status", status, methods=["GET"]),
     Route("/api/music/home", home, methods=["GET"]),
     Route("/api/music/genre", genre, methods=["GET"]),
     Route("/api/music/search", search, methods=["GET"]),
