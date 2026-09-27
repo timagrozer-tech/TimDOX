@@ -74,16 +74,21 @@ def _friends_listen(v: int, limit_n: int = 12) -> list[dict]:
 @auth()
 async def home(request: Request):
     v = request.state.user["id"]
-    trending, fresh, lists = await asyncio.gather(
+    trending, fresh, lists, chart, albums, stations = await asyncio.gather(
         _call(music.trending, "", "week", 12, default=[]),
         _call(music.underground, 14, default=[]),
-        _call(music.playlists, 10, default=[]))
+        _call(music.playlists, 10, default=[]),
+        _call(music.ru_chart, 100, default=[]),
+        _call(music.ru_albums, 16, default=[]),
+        _call(music.radio, "", 12, default=[]))
+    artists = await _call(music.ru_artists, 16, default=[]) if chart else []
     return JSONResponse({
+        "ru": {"chart": chart, "artists": artists, "albums": albums, "radio": stations, "legends": music.LEGENDS},
         "trending": trending, "underground": fresh, "playlists": lists,
         "genres": [{"id": g, "slug": s, "name": n, "emoji": e} for g, s, n, e in music.GENRES],
         "krug_top": _krug_top(), "friends": _friends_listen(v),
         "liked": _liked_keys(v),
-        "online": bool(trending or fresh or lists),
+        "online": bool(trending or fresh or lists or chart),
     })
 
 
@@ -107,10 +112,33 @@ async def search(request: Request):
     limit(request, "search_music")
     q = (request.query_params.get("q") or "").strip()[:80]
     if len(q) < 2:
-        return JSONResponse({"tracks": [], "stations": []})
-    tracks, stations = await asyncio.gather(_call(music.search, q, 30, default=[]),
-                                            _call(music.radio, "", 6, q, default=[]))
-    return JSONResponse({"tracks": tracks, "stations": stations})
+        return JSONResponse({"ru": [], "tracks": [], "stations": []})
+    ru, tracks, stations = await asyncio.gather(_call(music.ru_search, q, 25, default=[]),
+                                                _call(music.search, q, 30, default=[]),
+                                                _call(music.radio, "", 6, q, default=[]))
+    return JSONResponse({"ru": ru, "tracks": tracks, "stations": stations})
+
+
+@auth()
+async def chart(request: Request):
+    return JSONResponse({"items": await _call(music.ru_chart, 100)})
+
+
+@auth()
+async def artist(request: Request):
+    aid = (request.query_params.get("id") or "").strip()[:20]
+    name = (request.query_params.get("name") or "").strip()[:80]
+    if not aid.isdigit() and len(name) < 2:
+        raise ApiError(400, "Не указан исполнитель")
+    return JSONResponse(await _call(music.ru_artist, aid if aid.isdigit() else "", name))
+
+
+@auth()
+async def album(request: Request):
+    aid = request.path_params["id"]
+    if not aid.isdigit():
+        raise ApiError(404, "Альбом не найден")
+    return JSONResponse(await _call(music.ru_album, aid))
 
 
 @auth()
@@ -169,8 +197,9 @@ async def like(request: Request):
 
 async def status(request: Request):
     """Проверка источников музыки (для мониторинга): сколько треков и станций сейчас доступно."""
-    tracks, stations = await asyncio.gather(_call(music.trending, "", "week", 60, default=[]), _call(music.radio, "", 60, default=[]))
-    out = {"catalog": len(tracks), "radio": len(stations), "ok": bool(tracks) and bool(stations)}
+    tracks, stations, chart_ru = await asyncio.gather(_call(music.trending, "", "week", 60, default=[]),
+                                                      _call(music.radio, "", 60, default=[]), _call(music.ru_chart, 100, default=[]))
+    out = {"catalog": len(tracks), "radio": len(stations), "ru_chart": len(chart_ru), "ok": bool(tracks and stations and chart_ru)}
     return JSONResponse(out)
 
 
@@ -178,6 +207,9 @@ routes = [
     Route("/api/music/status", status, methods=["GET"]),
     Route("/api/music/home", home, methods=["GET"]),
     Route("/api/music/genre", genre, methods=["GET"]),
+    Route("/api/music/chart", chart, methods=["GET"]),
+    Route("/api/music/artist", artist, methods=["GET"]),
+    Route("/api/music/album/{id}", album, methods=["GET"]),
     Route("/api/music/search", search, methods=["GET"]),
     Route("/api/music/playlist/{id}", playlist, methods=["GET"]),
     Route("/api/music/radio", radio, methods=["GET"]),

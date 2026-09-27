@@ -209,6 +209,150 @@ def radio_station(uuid: str) -> dict | None:
     return cached(f"station:{uuid}", 3600, load)
 
 
+# ---------------------------------------------------------------- Российская музыка: чарт Apple Music (Россия)
+# Полные версии популярных российских песен легально доступны только в платных сервисах, поэтому здесь —
+# официальные 30-секундные фрагменты Apple Music и ссылки «Слушать полностью» на Яндекс Музыку, VK и Apple Music.
+ITUNES = "https://itunes.apple.com"
+APPLE_RSS = "https://rss.applemarketingtools.com/api/v2/ru/music/most-played"
+LEGENDS = ["Кино", "Руки Вверх!", "Сплин", "Звери", "Мумий Тролль", "Любэ", "Ленинград", "Григорий Лепс",
+           "Дима Билан", "Полина Гагарина", "Сергей Лазарев", "Ани Лорак", "Баста", "Макс Корж", "Zivert", "Мот",
+           "Каста", "Jah Khalib", "Егор Крид", "Клава Кока", "Три дня дождя", "Artik & Asti", "HammAli & Navai", "Jony"]
+
+
+def _itunes(path: str, **params):
+    params.setdefault("country", "ru")
+    data = _http_json(f"{ITUNES}{path}?{urllib.parse.urlencode(params)}", timeout=10)
+    return data.get("results") if isinstance(data, dict) else None
+
+
+def _big_art(url, size: int = 600) -> str | None:
+    url = _https(url)
+    return re.sub(r"/\d+x\d+bb\.(jpg|png|webp)$", f"/{size}x{size}bb.jpg", url) if url else None
+
+
+def track_from_itunes(r: dict) -> dict | None:
+    if not isinstance(r, dict) or r.get("wrapperType") != "track" or r.get("kind") != "song":
+        return None
+    tid, stream = str(r.get("trackId") or ""), _https(r.get("previewUrl"))
+    if not tid.isdigit() or not stream:
+        return None
+    return {
+        "key": f"itunes:{tid}", "source": "itunes", "id": tid,
+        "title": str(r.get("trackName") or "Без названия")[:200], "artist": str(r.get("artistName") or "")[:120],
+        "artwork": _big_art(r.get("artworkUrl100")), "duration": 30,
+        "full_duration": int((r.get("trackTimeMillis") or 0) / 1000), "genre": str(r.get("primaryGenreName") or "")[:40],
+        "permalink": _https(r.get("trackViewUrl")), "stream": stream, "preview": True,
+        "album": str(r.get("collectionName") or "")[:160], "artist_id": str(r.get("artistId") or ""),
+    }
+
+
+def _lookup(ids: list[str]) -> list[dict]:
+    found: dict[str, dict] = {}
+    for i in range(0, len(ids), 150):
+        for r in _itunes("/lookup", id=",".join(ids[i:i + 150])) or []:
+            t = track_from_itunes(r)
+            if t:
+                found[t["id"]] = t
+    return [found[i] for i in ids if i in found]
+
+
+def _feed(kind: str, n: int) -> list[dict]:
+    data = _http_json(f"{APPLE_RSS}/{n}/{kind}.json", timeout=12)
+    return ((data or {}).get("feed") or {}).get("results") or []
+
+
+def ru_chart(limit: int = 100) -> list[dict]:
+    """Топ-100 самых популярных песен в России (Apple Music), по местам."""
+    def load():
+        ids = [str(x.get("id")) for x in _feed("songs", 100) if str(x.get("id") or "").isdigit()]
+        tracks = _lookup(ids)
+        if not tracks:
+            raise Unavailable("пустой чарт")
+        return tracks
+    return cached("ru:chart", 6 * 3600, load)[:limit]
+
+
+def ru_albums(limit: int = 20) -> list[dict]:
+    def load():
+        out = []
+        for x in _feed("albums", 50):
+            aid = str(x.get("id") or "")
+            if aid.isdigit():
+                out.append({"id": aid, "title": str(x.get("name") or "")[:200], "artist": str(x.get("artistName") or "")[:120],
+                            "artwork": _big_art(x.get("artworkUrl100"), 400), "source": "itunes"})
+        return out
+    return cached("ru:albums", 6 * 3600, load)[:limit]
+
+
+def ru_album(aid: str) -> dict:
+    if not aid.isdigit():
+        raise Unavailable("bad id")
+
+    def load():
+        rows = _itunes("/lookup", id=aid, entity="song") or []
+        info = next((r for r in rows if r.get("wrapperType") == "collection"), None) or {}
+        tracks = [t for t in (track_from_itunes(r) for r in rows) if t]
+        return {"album": {"id": aid, "title": str(info.get("collectionName") or "Альбом")[:200],
+                          "artist": str(info.get("artistName") or "")[:120], "artwork": _big_art(info.get("artworkUrl100")),
+                          "year": str(info.get("releaseDate") or "")[:4], "permalink": _https(info.get("collectionViewUrl"))},
+                "tracks": tracks}
+    return cached(f"ru:album:{aid}", 24 * 3600, load)
+
+
+def ru_artists(limit: int = 16) -> list[dict]:
+    """Артисты из чарта — с обложкой их самого популярного трека."""
+    seen, out = set(), []
+    for t in ru_chart():
+        name = t["artist"]
+        if name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        out.append({"id": t["artist_id"], "name": name, "artwork": t["artwork"], "top": t["title"]})
+        if len(out) >= limit:
+            break
+    return out
+
+
+def ru_artist(artist_id: str = "", name: str = "") -> dict:
+    """Песни артиста: по номеру в Apple Music или по имени."""
+    name = name.strip()[:80]
+
+    def load():
+        if artist_id.isdigit():
+            rows = _itunes("/lookup", id=artist_id, entity="song", limit=60) or []
+            info = next((r for r in rows if r.get("wrapperType") == "artist"), {}) or {}
+            title = info.get("artistName") or name
+        else:
+            rows = _itunes("/search", term=name, entity="song", attribute="artistTerm", limit=60) or []
+            title = name
+        tracks = [t for t in (track_from_itunes(r) for r in rows) if t]
+        if not artist_id.isdigit() and name:  # поиск по имени находит и однофамильцев — оставим точные совпадения
+            exact = [t for t in tracks if name.lower() in t["artist"].lower()]
+            tracks = exact or tracks
+        seen, uniq = set(), []
+        for t in tracks:
+            k = t["title"].lower()
+            if k not in seen:
+                seen.add(k)
+                uniq.append(t)
+        return {"artist": {"id": artist_id, "name": str(title)[:120], "artwork": uniq[0]["artwork"] if uniq else None}, "tracks": uniq}
+    return cached(f"ru:artist:{artist_id}:{name.lower()}", 24 * 3600, load)
+
+
+def ru_search(q: str, limit: int = 25) -> list[dict]:
+    q = q.strip()[:80]
+    if not q:
+        return []
+    return cached(f"ru:search:{q.lower()}", 900,
+                  lambda: [t for t in (track_from_itunes(r) for r in _itunes("/search", term=q, entity="song", limit=40) or []) if t])[:limit]
+
+
+def itunes_track(tid: str) -> dict | None:
+    if not tid.isdigit():
+        return None
+    return cached(f"ru:track:{tid}", 24 * 3600, lambda: (_lookup([tid]) or [None])[0])
+
+
 # ---------------------------------------------------------------- Общее
 def resolve(key: str) -> dict | None:
     """Проверенные данные трека по ключу вида source:id — клиенту на слово не верим."""
@@ -218,6 +362,8 @@ def resolve(key: str) -> dict | None:
             return audius_track(tid)
         if source == "radio":
             return radio_station(tid)
+        if source == "itunes":
+            return itunes_track(tid)
     except Unavailable:
         return None
     return None
@@ -250,5 +396,6 @@ def public(track: dict | None) -> dict | None:
     """Сохранённая копия трека (в лайках и записях) — только разрешённые поля."""
     if not track:
         return None
-    keep = ("key", "source", "id", "title", "artist", "artwork", "duration", "genre", "permalink", "stream", "live")
+    keep = ("key", "source", "id", "title", "artist", "artwork", "duration", "genre", "permalink", "stream", "live",
+            "preview", "full_duration", "album", "artist_id")
     return {k: track.get(k) for k in keep if track.get(k) is not None}

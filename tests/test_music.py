@@ -31,6 +31,23 @@ def fake_http(url, timeout=8.0):
         if "/tracks/T" in url:
             tid = url.split("/tracks/T", 1)[1].split("?", 1)[0]
             return {"data": _track(int(tid))}
+    if "rss.applemarketingtools.com" in url:
+        if "albums" in url:
+            return {"feed": {"results": [{"id": "900", "name": "Альбом", "artistName": "Zivert", "artworkUrl100": "https://is1.mzstatic.com/a/100x100bb.jpg"}]}}
+        return {"feed": {"results": [{"id": str(700 + i)} for i in range(5)]}}
+    if "itunes.apple.com" in url:
+        def song(i, artist="Zivert"):
+            return {"wrapperType": "track", "kind": "song", "trackId": 700 + i, "trackName": f"Песня {i}", "artistName": artist,
+                    "artistId": 55, "artworkUrl100": "https://is1.mzstatic.com/x/100x100bb.jpg", "previewUrl": f"https://audio.example/{i}.m4a",
+                    "trackTimeMillis": 200000, "primaryGenreName": "Поп", "trackViewUrl": f"https://music.apple.com/ru/{i}", "collectionName": "Альбом"}
+        if "/lookup" in url and "id=900" in url:
+            return {"results": [{"wrapperType": "collection", "collectionName": "Альбом", "artistName": "Zivert", "releaseDate": "2025-01-01"}, song(1), song(2)]}
+        if "/lookup" in url and "id=55" in url:
+            return {"results": [{"wrapperType": "artist", "artistName": "Zivert"}, song(1), song(2), song(3)]}
+        if "/lookup" in url:
+            return {"results": [song(i, "Баста" if i == 2 else "Zivert") for i in range(5)]}
+        if "/search" in url:
+            return {"results": [song(9), song(8, "Другой"), {"wrapperType": "track", "kind": "song", "trackId": 1, "previewUrl": "http://insecure"}]}
     if "radio-browser" in url:
         return [{"stationuuid": "aaaa-1111", "name": "Радио Круг", "url_resolved": "https://stream.example/live",
                  "favicon": "https://img.example/r.png", "tags": "pop,hits"},
@@ -84,6 +101,33 @@ class MusicTest(unittest.TestCase):
         d = Client().get("/api/music/status").json()
         self.assertTrue(d["ok"])
         self.assertEqual(d["radio"], 1)
+
+    def test_russian_chart(self):
+        d = self.a.get("/api/music/home").json()
+        chart = d["ru"]["chart"]
+        self.assertEqual([t["key"] for t in chart], [f"itunes:{700 + i}" for i in range(5)], "порядок мест чарта сохраняется")
+        t = chart[0]
+        self.assertTrue(t["preview"])
+        self.assertEqual(t["duration"], 30)
+        self.assertEqual(t["full_duration"], 200)
+        self.assertEqual(t["artwork"], "https://is1.mzstatic.com/x/600x600bb.jpg")
+        self.assertEqual([a["name"] for a in d["ru"]["artists"]], ["Zivert", "Баста"])
+        self.assertEqual(d["ru"]["albums"][0]["id"], "900")
+        self.assertIn("Кино", d["ru"]["legends"])
+        self.assertEqual(len(self.a.get("/api/music/chart").json()["items"]), 5)
+        al = self.a.get("/api/music/album/900").json()
+        self.assertEqual((al["album"]["title"], len(al["tracks"])), ("Альбом", 2))
+        ar = self.a.get("/api/music/artist", params={"id": "55"}).json()
+        self.assertEqual((ar["artist"]["name"], len(ar["tracks"])), ("Zivert", 3))
+        byname = self.a.get("/api/music/artist", params={"name": "Zivert"}).json()
+        self.assertEqual([t["artist"] for t in byname["tracks"]], ["Zivert"], "однофамильцы отброшены")
+        s = self.a.get("/api/music/search", params={"q": "зиверт"}).json()
+        self.assertEqual(len(s["ru"]), 2, "треки без https-фрагмента отброшены")
+        self.assertEqual(self.a.post("/api/music/likes", {"key": "itunes:701"}).status_code, 200)
+        liked = self.a.get("/api/music/likes").json()["items"]
+        self.assertTrue(any(x["key"] == "itunes:701" and x["preview"] for x in liked))
+        r = self.a.c.post("/api/posts", data={"music": "itunes:702"}, headers=self.a._h())
+        self.assertEqual(r.json()["music"]["stream"], "https://audio.example/2.m4a")
 
     def test_likes_and_friends(self):
         self.assertEqual(self.b.post("/api/music/likes", {"key": "audius:T3"}).status_code, 200)
