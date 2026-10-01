@@ -118,7 +118,7 @@ def _music(raw) -> dict | None:
         t = json.loads(raw)
     except (TypeError, ValueError):
         return None
-    return t if isinstance(t, dict) and t.get("key") else None
+    return t if isinstance(t, dict) and t.get("key") and not t.get("preview") else None
 
 
 def _page(rows: list[dict], v: int) -> dict:

@@ -93,7 +93,7 @@ export function likeButton(t, cls = "") {
 
 // ---------------------------------------------------------------- управление
 export function playQueue(tracks, start = 0, context = "") {
-  const list = (tracks || []).filter((t) => t && (t.source !== "radio" || t.stream));
+  const list = (tracks || []).filter((t) => t && !t.preview && (t.source !== "radio" || t.stream));
   if (!list.length) return;
   queue = list.slice(0, 300);
   original = null;
@@ -246,7 +246,10 @@ function save() {
 function restore() {
   try {
     const s = JSON.parse(localStorage.getItem(STORE) || "null");
-    if (!s || !Array.isArray(s.queue) || !s.queue[s.index]) return;
+    if (!s || !Array.isArray(s.queue) || !s.queue[s.index] || s.queue[s.index].preview) return;
+    const keep = s.queue.filter((t) => !t.preview); // 30-секундные фрагменты больше не играем
+    s.index = keep.indexOf(s.queue[s.index]);
+    s.queue = keep;
     queue = s.queue; index = s.index; shuffle = !!s.shuffle; repeat = s.repeat || "off"; ctx = s.ctx || "";
     audio.volume = typeof s.vol === "number" ? Math.min(1, Math.max(0, s.vol)) : 1;
     const t = current();
@@ -343,7 +346,6 @@ function buildFull() {
           h("button.fp-icon.fp-repeat", { type: "button", "aria-label": "Повтор", onclick: () => cycleRepeat() }, icon("repeat"), h("small", "1"))),
         h("div.fp-extra",
           h("label.fp-volume", icon("volume", "sm"), vol),
-          h("button.fp-chip.fp-full", { type: "button", onclick: (e) => fullVersionMenu(e.currentTarget, current()) }, icon("headphones", "sm"), "Полностью"),
           h("button.fp-chip", { type: "button", onclick: () => shareTrack(current()) }, icon("share", "sm"), "В ленту"),
           h("button.fp-chip.fp-queue-btn", { type: "button", "aria-expanded": "false", onclick: () => (queueOpen ? closeQueue() : openQueue()) }, icon("list", "sm"), "Очередь"))),
       h("div.fp-scrim", { onclick: () => closeQueue() }),
@@ -501,7 +503,7 @@ function paintUi() {
     mini.dataset.key = t.key;
     mini.querySelector(".mp-art").replaceChildren(cover(t));
     mini.querySelector(".mp-title").textContent = t.title;
-    mini.querySelector(".mp-artist").textContent = t.live ? `В эфире · ${t.artist}` : t.preview ? `Фрагмент · ${t.artist}` : t.artist;
+    mini.querySelector(".mp-artist").textContent = t.live ? `В эфире · ${t.artist}` : t.artist;
     mini.querySelector(".mp-like-slot").replaceChildren(likeButton(t, "mp-btn"));
   }
   const pb = mini.querySelector(".mp-play");
@@ -513,7 +515,6 @@ function paintUi() {
   full.classList.toggle("buffering", buffering && playing);
   full.classList.toggle("live", !!t.live);
   full.classList.toggle("queue-open", queueOpen);
-  full.classList.toggle("is-preview", !!t.preview);
   full.querySelector(".fp-queue-btn").setAttribute("aria-expanded", String(queueOpen));
   full.classList.toggle("shuffle-on", shuffle);
   full.dataset.repeat = repeat;
@@ -528,7 +529,7 @@ function paintUi() {
     if (t.artwork) { bg.src = t.artwork; bg.hidden = false; } else bg.hidden = true;
     full.querySelector(".fp-disc").replaceChildren(cover(t, "fp-cover"));
     full.querySelector(".fp-title").textContent = t.title;
-    full.querySelector(".fp-artist").replaceChildren(t.artist || "", t.preview ? h("span.fp-badge", { title: "Официальный 30-секундный фрагмент" }, "30 с") : "");
+    full.querySelector(".fp-artist").textContent = t.artist || "";
     full.querySelector(".fp-like-slot").replaceChildren(likeButton(t, "fp-like"));
   }
   const list = full.querySelector(".fp-queue-list");
@@ -558,20 +559,7 @@ export async function shareTrack(t) {
   openComposerModal({ music: t });
 }
 
-// полные версии песен из чарта — в сервисах, где у них есть права
 const openUrl = (url) => window.open(url, "_blank", "noopener");
-export function fullVersionLinks(t) {
-  const q = encodeURIComponent(`${t.artist} ${t.title}`);
-  return [
-    { label: "Яндекс Музыка", icon: "external", onClick: () => openUrl(`https://music.yandex.ru/search?text=${q}`) },
-    { label: "VK Музыка", icon: "external", onClick: () => openUrl(`https://vk.com/audio?q=${q}`) },
-    t.permalink ? { label: "Apple Music", icon: "external", onClick: () => openUrl(t.permalink) } : null,
-  ];
-}
-export function fullVersionMenu(anchor, t) {
-  if (!t) return;
-  showMenu(anchor, fullVersionLinks(t), { title: "Слушать полностью" });
-}
 
 // ---------------------------------------------------------------- таймер сна
 let sleepTimer = null, sleepAt = 0;
@@ -606,10 +594,7 @@ export function trackMenu(anchor, t, { inPlayer = false } = {}) {
     !inPlayer && !t.live ? { label: "Играть следующим", icon: "queueAdd", onClick: () => playNext(t) } : null,
     { label: liked ? "Убрать из «Моей музыки»" : "В «Мою музыку»", icon: "heart", onClick: () => toggleLike(t) },
     { label: "Поделиться в ленте", icon: "share", onClick: () => shareTrack(t) },
-    t.preview ? "-" : null,
-    ...(t.preview ? fullVersionLinks(t).map((x) => x && { ...x, label: `Полностью: ${x.label}` }) : []),
-    t.artist_id ? { label: `Все песни: ${t.artist}`, icon: "user", onClick: () => { closeFull(); navigate(`/music/artist/${t.artist_id}`); } } : null,
-    !t.preview && t.permalink ? { label: t.source === "audius" ? "Открыть на Audius" : "Сайт станции", icon: "external", onClick: () => openUrl(t.permalink) } : null,
+    t.permalink ? { label: t.source === "audius" ? "Открыть на Audius" : "Сайт станции", icon: "external", onClick: () => openUrl(t.permalink) } : null,
     inPlayer ? "-" : null,
     inPlayer ? { label: sleepAt ? `Таймер сна · ${Math.max(1, Math.round((sleepAt - Date.now()) / 60000))} мин` : "Таймер сна", icon: "moon", onClick: () => setTimeout(() => sleepMenu(anchor), 50) } : null,
     inPlayer ? { label: "Раздел «Музыка»", icon: "music", onClick: () => { closeFull(); navigate("/music"); } } : null,

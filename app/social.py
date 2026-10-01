@@ -57,7 +57,7 @@ def blocked_between(a: int, b: int) -> bool:
 
 # Официальные (подтверждённые) аккаунты: их немного, держим в памяти, обновляем раз в минуту и при изменении.
 _verified: dict[int, str] = {}
-_verified_at = 0.0
+_verified_at = float("-inf")  # «давно» — первый вызов всегда читает базу (monotonic после загрузки может быть мал)
 
 
 def verified_map() -> dict[int, str]:
@@ -75,13 +75,13 @@ def verified_map() -> dict[int, str]:
 
 def reset_verified_cache() -> None:
     global _verified_at, _invisible_at
-    _verified_at = 0.0
-    _invisible_at = 0.0
+    _verified_at = float("-inf")
+    _invisible_at = float("-inf")
 
 
 # «Режим невидимки»: такие люди не показываются «в сети» и без времени последнего визита
 _invisible: set[int] = set()
-_invisible_at = 0.0
+_invisible_at = float("-inf")
 
 
 def invisible_ids() -> set[int]:
@@ -97,7 +97,7 @@ def invisible_ids() -> set[int]:
 
 
 _ai: set[int] = set()
-_ai_at = 0.0
+_ai_at = float("-inf")
 
 
 def ai_ids() -> set[int]:

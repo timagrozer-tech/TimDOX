@@ -164,7 +164,7 @@ def check(uid: int, force: bool = False) -> list[int]:
     if core.is_persona(uid):
         return []
     t = time.monotonic()
-    if not force and t - _last_check.get(uid, 0) < 15:
+    if not force and t - _last_check.get(uid, float("-inf")) < 15:
         return []
     _last_check[uid] = t
     done = {r["quest_id"] for r in db.all("SELECT quest_id FROM ai_quest_progress WHERE user_id=? AND status='done'", (uid,))}

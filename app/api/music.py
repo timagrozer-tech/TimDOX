@@ -39,7 +39,7 @@ def _load(rows) -> list[dict]:
             t = json.loads(r["data"])
         except (TypeError, ValueError):
             continue
-        if isinstance(t, dict) and t.get("key"):
+        if isinstance(t, dict) and t.get("key") and not t.get("preview"):
             out.append(t)
     return out
 
@@ -78,21 +78,19 @@ def _friends_listen(v: int, limit_n: int = 12) -> list[dict]:
 @auth()
 async def home(request: Request):
     v = request.state.user["id"]
-    trending, fresh, lists, chart, albums, stations = await asyncio.gather(
+    trending, fresh, lists, ru, stations = await asyncio.gather(
         _call(music.trending, "", "week", 12, default=[], wait=7),
         _call(music.underground, 14, default=[], wait=7),
         _call(music.playlists, 10, default=[], wait=7),
-        _call(music.ru_chart, 100, default=[], wait=9),
-        _call(music.ru_albums, 16, default=[], wait=6),
+        _call(music.ru_indie, 40, default=[], wait=9),
         _call(music.radio, "", 12, default=[], wait=6))
-    artists = await _call(music.ru_artists, 16, default=[]) if chart else []
     return JSONResponse({
-        "ru": {"chart": chart, "artists": artists, "albums": albums, "radio": stations, "legends": music.LEGENDS},
+        "ru": {"tracks": ru, "radio": stations},
         "trending": trending, "underground": fresh, "playlists": lists,
         "genres": [{"id": g, "slug": s, "name": n, "emoji": e} for g, s, n, e in music.GENRES],
         "krug_top": _krug_top(), "friends": _friends_listen(v),
         "liked": _liked_keys(v),
-        "online": bool(trending or fresh or lists or chart),
+        "online": bool(trending or fresh or lists or ru),
     })
 
 
@@ -116,33 +114,15 @@ async def search(request: Request):
     limit(request, "search_music")
     q = (request.query_params.get("q") or "").strip()[:80]
     if len(q) < 2:
-        return JSONResponse({"ru": [], "tracks": [], "stations": []})
-    ru, tracks, stations = await asyncio.gather(_call(music.ru_search, q, 25, default=[]),
-                                                _call(music.search, q, 30, default=[]),
-                                                _call(music.radio, "", 6, q, default=[]))
-    return JSONResponse({"ru": ru, "tracks": tracks, "stations": stations})
+        return JSONResponse({"tracks": [], "stations": []})
+    tracks, stations = await asyncio.gather(_call(music.search, q, 40, default=[]),
+                                            _call(music.radio, "", 6, q, default=[]))
+    return JSONResponse({"tracks": tracks, "stations": stations})
 
 
 @auth()
-async def chart(request: Request):
-    return JSONResponse({"items": await _call(music.ru_chart, 100)})
-
-
-@auth()
-async def artist(request: Request):
-    aid = (request.query_params.get("id") or "").strip()[:20]
-    name = (request.query_params.get("name") or "").strip()[:80]
-    if not aid.isdigit() and len(name) < 2:
-        raise ApiError(400, "Не указан исполнитель")
-    return JSONResponse(await _call(music.ru_artist, aid if aid.isdigit() else "", name))
-
-
-@auth()
-async def album(request: Request):
-    aid = request.path_params["id"]
-    if not aid.isdigit():
-        raise ApiError(404, "Альбом не найден")
-    return JSONResponse(await _call(music.ru_album, aid))
+async def russian(request: Request):
+    return JSONResponse({"items": await _call(music.ru_indie, 60)})
 
 
 @auth()
@@ -201,10 +181,9 @@ async def like(request: Request):
 
 async def status(request: Request):
     """Проверка источников музыки (для мониторинга): сколько треков и станций сейчас доступно."""
-    tracks, stations, chart_ru = await asyncio.gather(_call(music.trending, "", "week", 60, default=[]),
-                                                      _call(music.radio, "", 60, default=[]), _call(music.ru_chart, 100, default=[]))
-    out = {"catalog": len(tracks), "radio": len(stations), "ru_chart": len(chart_ru), "ok": bool(tracks and stations and chart_ru),
-           "ru_top": [f"{t['artist']} — {t['title']}" for t in chart_ru[:5]]}
+    tracks, stations, ru = await asyncio.gather(_call(music.trending, "", "week", 60, default=[]),
+                                                _call(music.radio, "", 60, default=[]), _call(music.ru_indie, 60, default=[]))
+    out = {"catalog": len(tracks), "radio": len(stations), "ru_tracks": len(ru), "ok": bool(tracks and stations)}
     return JSONResponse(out)
 
 
@@ -212,9 +191,7 @@ routes = [
     Route("/api/music/status", status, methods=["GET"]),
     Route("/api/music/home", home, methods=["GET"]),
     Route("/api/music/genre", genre, methods=["GET"]),
-    Route("/api/music/chart", chart, methods=["GET"]),
-    Route("/api/music/artist", artist, methods=["GET"]),
-    Route("/api/music/album/{id}", album, methods=["GET"]),
+    Route("/api/music/russian", russian, methods=["GET"]),
     Route("/api/music/search", search, methods=["GET"]),
     Route("/api/music/playlist/{id}", playlist, methods=["GET"]),
     Route("/api/music/radio", radio, methods=["GET"]),

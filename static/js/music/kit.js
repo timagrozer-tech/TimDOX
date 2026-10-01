@@ -15,12 +15,12 @@ const stateClasses = (t) => {
 export function trackRow(t, list, context = "", { rank = null } = {}) {
   const more = h("button.tr-more", { type: "button", "aria-label": "Ещё" }, icon("more"));
   more.addEventListener("click", (e) => { e.stopPropagation(); trackMenu(more, t); });
-  const row = h(`div.tr${t.preview ? ".is-preview" : ""}${stateClasses(t)}`, { dataset: { track: t.key }, role: "button", tabindex: 0, "aria-label": `${t.title} — ${t.artist}` },
+  const row = h(`div.tr${stateClasses(t)}`, { dataset: { track: t.key }, role: "button", tabindex: 0, "aria-label": `${t.title} — ${t.artist}` },
     rank != null ? h("span.tr-rank", String(rank)) : null,
     h("span.tr-cover", coverOf(t), h("span.tr-over", icon("play", "sm"), icon("pause", "sm")), eq()),
     h("span.tr-main", h("span.tr-title", t.title), h("span.tr-sub", t.live ? "в эфире · " : "", t.by ? `${t.by.name.split(" ")[0]} · ` : "", t.artist)),
     t.likes > 1 ? h("span.tr-likes", icon("heart", "sm"), String(t.likes)) : null,
-    h("span.tr-dur", t.live ? h("span.mu-live", "LIVE") : t.preview ? h("span.mu-prev", { title: `Фрагмент 30 секунд, песня целиком — ${fmtDur(t.full_duration || 0)}` }, "30 с") : fmtDur(t.duration)),
+    h("span.tr-dur", t.live ? h("span.mu-live", "LIVE") : fmtDur(t.duration)),
     likeButton(t, "tr-like"),
     more);
   const go = () => playFrom(list, t, context);
@@ -59,28 +59,6 @@ export function playlistCard(p) {
       p.artwork ? h("img", { src: p.artwork, alt: "", loading: "lazy", referrerpolicy: "no-referrer" }) : h("span.mu-cover.mu-cover-empty", icon("list"))),
     h("span.tc-title", p.title),
     h("span.tc-sub", `${p.count} ${p.count % 10 === 1 && p.count % 100 !== 11 ? "трек" : "треков"} · ${p.artist}`));
-}
-
-/** Круглая карточка артиста */
-export function artistCircle(a) {
-  const href = `/music/artist/${encodeURIComponent(a.id || a.name)}${a.id ? "" : ""}`;
-  return h("a.ac", { href, title: a.name },
-    h("span.ac-img", { style: { "--hue": String(hue(a.name)) } },
-      a.artwork ? h("img", { src: a.artwork, alt: "", loading: "lazy", referrerpolicy: "no-referrer" }) : h("b", a.name.replace(/[^\p{L}\p{N}]/gu, "").slice(0, 1).toUpperCase() || "♪")),
-    h("span.ac-name", a.name),
-    a.top ? h("span.ac-top", a.top) : null);
-}
-
-export function albumCard(a) {
-  return h("a.pc.alb", { href: `/music/album/${encodeURIComponent(a.id)}` },
-    h("span.pc-art", { style: { "--hue": String(hue(a.id)) } }, h("span.pc-vinyl"),
-      a.artwork ? h("img", { src: a.artwork, alt: "", loading: "lazy", referrerpolicy: "no-referrer" }) : h("span.mu-cover.mu-cover-empty", icon("music"))),
-    h("span.tc-title", a.title),
-    h("span.tc-sub", a.artist));
-}
-
-export function legendChip(name, i) {
-  return h("a.lg", { href: `/music/artist/${encodeURIComponent(name)}`, style: { "--gi": String(i) } }, name);
 }
 
 export function genreTile(g, i) {

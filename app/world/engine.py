@@ -24,7 +24,7 @@ def setup() -> None:
     seed.ensure()
     core.reset_cache()
     from .. import social
-    social._ai_at = 0.0  # отметка «ИИ» появится сразу, без ожидания кэша
+    social._ai_at = float("-inf")  # отметка «ИИ» появится сразу, без ожидания кэша
     quests.ensure_starter()
 
 

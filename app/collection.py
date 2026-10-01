@@ -110,7 +110,7 @@ def owned(uid: int) -> dict[str, str]:
 def check(uid: int, force: bool = False) -> list[str]:
     """Выдаёт заработанные предметы. Возвращает id новых. Без force — не чаще раза в 20 секунд."""
     now = time.monotonic()
-    if not force and now - _last_check.get(uid, 0) < 20:
+    if not force and now - _last_check.get(uid, float("-inf")) < 20:
         return []
     _last_check[uid] = now
     have = owned(uid)
