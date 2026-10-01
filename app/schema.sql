@@ -526,3 +526,36 @@ CREATE TABLE IF NOT EXISTS upload_usage (
     files   INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, day)
 );
+
+-- Безопасность: секреты приложения, двухфакторная защита, журнал входов
+CREATE TABLE IF NOT EXISTS app_secrets (name TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS user_totp (
+    user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    secret_enc TEXT NOT NULL,
+    enabled_at TEXT,
+    last_step  INTEGER
+);
+CREATE TABLE IF NOT EXISTS backup_codes (
+    user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code_hash TEXT NOT NULL,
+    used_at   TEXT,
+    PRIMARY KEY (user_id, code_hash)
+);
+CREATE TABLE IF NOT EXISTS mfa_tickets (
+    id         TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    attempts   INTEGER NOT NULL DEFAULT 0,
+    expires_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS login_events (
+    id         INTEGER PRIMARY KEY,
+    user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    ok         INTEGER NOT NULL,
+    method     TEXT NOT NULL,
+    reason     TEXT,
+    device     TEXT,
+    ip_prefix  TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_login_events_user ON login_events(user_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_login_events_time ON login_events(created_at);

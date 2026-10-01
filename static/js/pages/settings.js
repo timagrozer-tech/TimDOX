@@ -60,7 +60,7 @@ function sessionsBox() {
       box.replaceChildren(
         ...items.map((s) => h("div.setting-row.session-row",
           h("span.session-ic", icon(/iPhone|Android|iPad/.test(s.device) ? "smartphone" : "monitor")),
-          h("div.label-block", h("b", s.device), h("small", s.current ? "Это устройство" : `Вход ${new Date(s.created_at).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}`)),
+          h("div.label-block", h("b", s.device), h("small", s.current ? "Это устройство" : `Активность ${when(s.last_seen_at)}`, s.network ? ` · сеть ${s.network}` : "")),
           s.current ? h("span.status-pill.online", "сейчас") : h("button.btn.ghost.sm", { type: "button", onclick: async () => {
             try { await api.del(`/api/me/sessions/${s.id}`); toast("Сеанс завершён", { icon: "check" }); load(); } catch (e) { toastError(e); }
           } }, "Завершить"))),
@@ -72,6 +72,133 @@ function sessionsBox() {
   };
   load();
   return box;
+}
+
+const when = (iso) => new Date(iso).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+
+/** Окно с резервными кодами: показываются один раз, их нужно сохранить */
+function showBackupCodes(codes) {
+  const text = codes.join("\n");
+  const copy = h("button.btn.soft", { type: "button", onclick: async () => {
+    try { await navigator.clipboard.writeText(text); toast("Коды скопированы", { icon: "check" }); } catch { toast("Скопируйте коды вручную", { error: true }); }
+  } }, icon("copy", "sm"), "Скопировать");
+  const save = h("a.btn.soft", { href: URL.createObjectURL(new Blob([`Резервные коды Круга (каждый работает один раз):\n\n${text}\n`], { type: "text/plain" })),
+    download: "krug-backup-codes.txt" }, icon("download", "sm"), "Скачать");
+  const m = modal({
+    title: "Резервные коды", narrow: true, sheet: false,
+    body: h("div.stack",
+      h("p.muted", { style: { margin: 0 } }, "Если телефон потеряется, войти можно будет одним из этих кодов. Каждый код срабатывает один раз. Сохраните их в надёжном месте — больше мы их не покажем."),
+      h("div.tfa-codes", codes.map((c) => h("code", c))),
+      h("div.row", copy, save)),
+    footer: [h("button.btn.primary", { type: "button", onclick: () => m.close() }, "Я сохранил(а) коды")],
+  });
+}
+
+/** Двухфакторная защита: подключение приложения-аутентификатора, резервные коды, отключение */
+function twoFactorBox() {
+  const box = h("div.stack.tfa-box", h("div.spinner"));
+  const askPassword = (title, text, withCode) => new Promise((resolve) => {
+    const pw = h("input.input", { type: "password", autocomplete: "current-password", placeholder: "Пароль" });
+    const code = withCode ? h("input.input", { inputmode: "numeric", autocomplete: "one-time-code", placeholder: "Код из приложения или резервный" }) : null;
+    const go = h("button.btn.primary", { type: "button" }, "Продолжить");
+    let done = false;
+    const m = modal({ title, narrow: true, sheet: false, onClose: () => { if (!done) resolve(null); },
+      body: h("div.stack", h("p.muted", { style: { margin: 0 } }, text), h("div.field", h("label", "Пароль"), pw), code ? h("div.field", h("label", "Код"), code) : null),
+      footer: [h("button.btn.ghost", { type: "button", onclick: () => m.close() }, "Отмена"), go] });
+    go.addEventListener("click", () => { done = true; m.close(); resolve({ password: pw.value, code: code?.value }); });
+    setTimeout(() => pw.focus(), 60);
+  });
+
+  const setupFlow = async () => {
+    const auth = await askPassword("Включить двухфакторную защиту", "Подтвердите, что это вы.", false);
+    if (!auth) return;
+    let s;
+    try { s = await api.post("/api/security/2fa/setup", { password: auth.password }); } catch (e) { return toastError(e); }
+    const code = h("input.input.tfa-code", { inputmode: "numeric", autocomplete: "one-time-code", maxlength: 6, placeholder: "000000", "aria-label": "Код из приложения" });
+    const err = h("div.field-error", { role: "alert" });
+    const go = h("button.btn.primary", { type: "button" }, "Включить");
+    const m = modal({
+      title: "Подключите приложение", narrow: true, sheet: false,
+      body: h("div.stack.tfa-setup",
+        h("ol.tfa-steps",
+          h("li", "Установите приложение-аутентификатор: Яндекс Ключ, Google Authenticator, Microsoft Authenticator или любое другое."),
+          h("li", "Отсканируйте QR-код или, на телефоне, нажмите «Открыть в приложении»."),
+          h("li", "Введите 6 цифр, которые покажет приложение.")),
+        h("div.tfa-qr", h("img", { src: s.qr, alt: "QR-код для приложения-аутентификатора", width: 200, height: 200 })),
+        h("a.btn.soft.sm.tfa-open", { href: s.url }, icon("smartphone", "sm"), "Открыть в приложении"),
+        h("details.tfa-manual", h("summary", "Ввести ключ вручную"), h("code.tfa-secret", s.secret)),
+        h("div.field", code, err)),
+      footer: [h("button.btn.ghost", { type: "button", onclick: () => m.close() }, "Отмена"), go],
+    });
+    const submit = () => busy(go, async () => {
+      err.textContent = "";
+      try {
+        const r = await api.post("/api/security/2fa/enable", { code: code.value });
+        m.close();
+        toast("Двухфакторная защита включена", { icon: "shield" });
+        showBackupCodes(r.backup_codes);
+        load();
+      } catch (e) { err.textContent = e.message; code.select(); }
+    });
+    go.addEventListener("click", submit);
+    code.addEventListener("input", () => { if (/^\d{6}$/.test(code.value)) submit(); });
+    setTimeout(() => code.focus(), 80);
+  };
+
+  const load = async () => {
+    try {
+      const st = await api.get("/api/security/2fa");
+      if (!st.enabled) {
+        box.replaceChildren(
+          h("div.tfa-state.off", h("span.tfa-ic", icon("shield")), h("div",
+            h("b", "Выключена"),
+            h("small", "Даже если пароль узнают, без кода с вашего телефона в аккаунт не войти."))),
+          h("div.row", h("button.btn.primary", { type: "button", onclick: setupFlow }, icon("shield", "sm"), "Включить")));
+        return;
+      }
+      box.replaceChildren(
+        h("div.tfa-state.on", h("span.tfa-ic", icon("check")), h("div",
+          h("b", "Включена"),
+          h("small", `Вход требует код из приложения. Резервных кодов осталось: ${st.backup_left}${st.backup_left <= 3 ? " — пора создать новые" : ""}.`))),
+        h("div.row", { style: { flexWrap: "wrap" } },
+          h("button.btn.soft", { type: "button", onclick: async () => {
+            const c = await promptDialog({ title: "Новые резервные коды — старые перестанут работать", label: "Код из приложения", placeholder: "000000", confirm: "Создать" });
+            if (!c) return;
+            try { const r = await api.post("/api/security/2fa/backup", { code: c }); showBackupCodes(r.backup_codes); load(); } catch (e) { toastError(e); }
+          } }, icon("key", "sm"), "Новые резервные коды"),
+          h("div.spacer"),
+          h("button.btn.ghost", { type: "button", onclick: async () => {
+            const a = await askPassword("Выключить двухфакторную защиту", "Аккаунт снова будет защищён только паролем.", true);
+            if (!a) return;
+            try { await api.post("/api/security/2fa/disable", a); toast("Двухфакторная защита выключена"); load(); } catch (e) { toastError(e); }
+          } }, "Выключить")));
+    } catch (e) { box.replaceChildren(h("p.muted", e.message)); }
+  };
+  load();
+  return box;
+}
+
+/** Журнал входов за 90 дней: удачные и неудачные попытки */
+function loginsBox() {
+  const list = h("div.stack.logins");
+  const more = h("button.btn.ghost.sm", { type: "button", hidden: true }, "Показать ещё");
+  let before = null;
+  const load = async () => {
+    try {
+      const d = await api.get("/api/security/logins", before ? { before } : undefined);
+      list.append(...d.items.map((e) => h(`div.setting-row.login-row${e.ok ? "" : ".fail"}`,
+        h("span.session-ic", icon(e.ok ? "check" : "x", "sm")),
+        h("div.label-block",
+          h("b", e.ok ? (e.method === "регистрация" ? "Регистрация" : "Вход") : `Неудачная попытка: ${e.reason || "ошибка"}`),
+          h("small", `${when(e.created_at)} · ${e.device || "устройство"}${e.network ? " · сеть " + e.network : ""}${e.ok ? " · " + e.method : ""}`)))));
+      if (!list.children.length) list.append(h("p.muted", "Пока записей нет."));
+      before = d.items.at(-1)?.id;
+      more.hidden = !d.more;
+    } catch (e) { list.replaceChildren(h("p.muted", e.message)); }
+  };
+  more.addEventListener("click", () => busy(more, load));
+  load();
+  return h("div.stack", list, more);
 }
 
 function settingRow(title, hint, control) {
@@ -322,9 +449,11 @@ export async function settingsPage({ query = {} } = {}) {
         settingRow("Режим невидимки", "Не показываться в «Гостях»", invisible)),
       section("Круги", "Списки друзей, для которых можно публиковать отдельно — например, только для близких.", circlesBox)]],
     ["security", "Защита", "shield", () => [
+      section("Двухфакторная защита", "Помимо пароля при входе нужен код из приложения на вашем телефоне.", twoFactorBox()),
       section("Почта для входа", null, emailBox),
       section("Пароль", null, h("details.set-more", h("summary", icon("lock", "sm"), "Сменить пароль", icon("down", "sm")), pwForm)),
-      section("Где выполнен вход", "Если видите незнакомое устройство — завершите сеанс и смените пароль.", sessionsBox())]],
+      section("Где выполнен вход", "Если видите незнакомое устройство — завершите сеанс и смените пароль.", sessionsBox()),
+      section("Журнал входов", "Все входы и неудачные попытки за 90 дней. Мы показываем сеть, а не точный адрес.", loginsBox())]],
     ["more", "Ещё", "more", () => [
       section("Мои данные", "Копия всех ваших данных или полное удаление аккаунта.",
         h("div.row", { style: { flexWrap: "wrap" } },

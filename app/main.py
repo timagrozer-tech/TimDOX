@@ -267,6 +267,8 @@ async def housekeeping():
             db.run("DELETE FROM profile_visits WHERE visited_at < ?", (db.future(days=-90),))
             db.run("DELETE FROM email_codes WHERE expires_at < ?", (db.now(),))
             db.run("DELETE FROM upload_usage WHERE day < ?", (db.future(days=-3)[:10],))
+            db.run("DELETE FROM login_events WHERE created_at < ?", (db.future(days=-90),))
+            db.run("DELETE FROM mfa_tickets WHERE expires_at < ?", (db.now(),))
             if removed:
                 log.info("Удалено истёкших историй: %s", removed)
         except Exception:

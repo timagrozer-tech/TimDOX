@@ -2599,3 +2599,31 @@ body.fp-open .mp, body.reels-mode .mp { display: none; }
 .mu-cover-head .btn.soft { background: rgba(255, 255, 255, .2); color: #fff; }
 .mu-cover-head .btn.soft:hover { background: rgba(255, 255, 255, .3); }
 @media (max-width: 719px) { .mu-tabs a { padding: 8px 12px; font-size: 13.5px; gap: 6px; } .mu-tabs { gap: 6px; } }
+
+/* ---------------------------------------------------------------- Защита: 2FA, журнал входов */
+.hp-field { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.tfa-shield { width: 56px; height: 56px; margin: 4px auto 0; border-radius: 18px; display: grid; place-items: center;
+  color: var(--accent, #6d5efc); background: color-mix(in srgb, var(--accent, #6d5efc) 14%, transparent); }
+.tfa-shield svg { width: 28px; height: 28px; }
+.tfa-code { font-size: 28px; letter-spacing: .35em; text-align: center; font-variant-numeric: tabular-nums; padding: 14px 10px; }
+.tfa-state { display: flex; gap: 14px; align-items: center; padding: 12px 14px; border-radius: 16px;
+  background: color-mix(in srgb, var(--text, #111) 4%, transparent); }
+.tfa-state.on { background: color-mix(in srgb, #22c55e 12%, transparent); }
+.tfa-state b { display: block; }
+.tfa-state small { color: var(--muted, #6b7280); }
+.tfa-ic { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--card, #fff); }
+.tfa-state.on .tfa-ic { color: #16a34a; }
+.tfa-steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--muted, #6b7280); font-size: 14px; }
+.tfa-qr { display: grid; place-items: center; padding: 12px; border-radius: 18px; background: #fff; width: max-content; margin: 0 auto;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 8px 24px rgb(0 0 0 / .08); }
+.tfa-qr img { display: block; image-rendering: pixelated; }
+.tfa-open { align-self: center; }
+@media (hover: hover) and (pointer: fine) { .tfa-open { display: none; } }
+.tfa-manual summary { cursor: pointer; color: var(--muted, #6b7280); font-size: 14px; }
+.tfa-secret { display: block; margin-top: 8px; padding: 10px 12px; border-radius: 12px; font-size: 15px; letter-spacing: .08em;
+  background: color-mix(in srgb, var(--text, #111) 6%, transparent); user-select: all; word-break: break-all; }
+.tfa-codes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.tfa-codes code { padding: 10px; border-radius: 10px; text-align: center; font-size: 15px; letter-spacing: .06em;
+  background: color-mix(in srgb, var(--text, #111) 6%, transparent); user-select: all; }
+.login-row.fail .session-ic { color: #dc2626; background: color-mix(in srgb, #dc2626 12%, transparent); }
+.login-row .session-ic svg { width: 16px; height: 16px; }

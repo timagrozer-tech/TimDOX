@@ -68,7 +68,7 @@ def load_session(request: Request) -> None:
     if not token:
         return
     row = db.one(
-        """SELECT s.id AS sid, s.csrf_token, s.expires_at, u.id, u.email, u.email_verified_at,
+        """SELECT s.id AS sid, s.csrf_token, s.expires_at, s.last_seen_at AS session_seen, u.id, u.email, u.email_verified_at,
                   u.is_admin, u.is_banned, p.username, p.name, p.avatar, p.theme, p.default_visibility, p.appearance, p.background
            FROM sessions s JOIN users u ON u.id = s.user_id JOIN profiles p ON p.user_id = u.id
            WHERE s.id = ?""",
@@ -78,6 +78,18 @@ def load_session(request: Request) -> None:
         return
     request.state.session = {"id": row["sid"], "csrf": row["csrf_token"]}
     request.state.user = row
+    # «последняя активность» устройства для списка сеансов — не чаще раза в 5 минут, чтобы не писать в базу на каждый запрос
+    if not row["session_seen"] or row["session_seen"] < db.future(minutes=-5):
+        db.run("UPDATE sessions SET last_seen_at=?, ip_prefix=? WHERE id=?", (db.now(), ip_prefix(client_ip(request)), row["sid"]))
+
+
+def ip_prefix(ip: str) -> str:
+    """Сеть, а не точный адрес: IPv4 — /24 (x.x.x.*), IPv6 — /48. Этого хватает, чтобы узнать «своё» место входа."""
+    if ":" in ip:
+        parts = [p for p in ip.split(":") if p][:3]
+        return ":".join(parts) + "::/48" if parts else ip
+    parts = ip.split(".")
+    return ".".join(parts[:3]) + ".*" if len(parts) == 4 else ip
 
 
 def auth(require_verified: bool = False):

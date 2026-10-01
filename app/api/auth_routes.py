@@ -1,4 +1,6 @@
 """Регистрация, вход, выход, подтверждение почты, восстановление и смена пароля."""
+import asyncio
+import base64
 import json
 import re
 import secrets
@@ -7,10 +9,10 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from .. import config, db, email_codes, mailer, social
-from ..security import (LIMITS, USERNAME_RE, hash_password, new_token, rate_limiter, token_hash,
+from .. import config, db, email_codes, mailer, qr, social, twofa
+from ..security import (DISPOSABLE_DOMAINS, LIMITS, USERNAME_RE, hash_password, new_token, rate_limiter, token_hash,
                         validate_password, verify_password)
-from ..web import ApiError, auth, body, limit, ok
+from ..web import ApiError, auth, body, client_ip, ip_prefix, limit, ok
 
 
 def parse_appearance(value):
@@ -43,11 +45,43 @@ def me_payload(request: Request) -> dict:
 
 def _start_session(request: Request, response: JSONResponse, user_id: int) -> None:
     token = new_token()
-    db.run("INSERT INTO sessions (id, user_id, csrf_token, user_agent, expires_at) VALUES (?,?,?,?,?)",
+    db.run("""INSERT INTO sessions (id, user_id, csrf_token, user_agent, expires_at, ip_prefix, last_seen_at)
+              VALUES (?,?,?,?,?,?,?)""",
            (token_hash(token), user_id, secrets.token_urlsafe(24),
-            request.headers.get("user-agent", "")[:200], db.future(days=config.SESSION_DAYS)))
+            request.headers.get("user-agent", "")[:200], db.future(days=config.SESSION_DAYS),
+            ip_prefix(client_ip(request)), db.now()))
     response.set_cookie(config.SESSION_COOKIE, token, max_age=config.SESSION_DAYS * 86400,
                         httponly=True, samesite="lax", secure=config.COOKIE_SECURE, path="/")
+
+
+def log_login(request: Request, user_id: int | None, ok_: bool, method: str, reason: str | None = None) -> None:
+    """Запись в журнал входов: успешные и неудачные попытки, устройство и сеть (без точного IP)."""
+    db.run("INSERT INTO login_events (user_id, ok, method, reason, device, ip_prefix) VALUES (?,?,?,?,?,?)",
+           (user_id, 1 if ok_ else 0, method, reason, _device(request.headers.get("user-agent", "")),
+            ip_prefix(client_ip(request))))
+
+
+def _is_new_place(request: Request, user_id: int) -> bool:
+    """Первый вход с этого устройства из этой сети (а сами входы были и раньше)."""
+    device, net = _device(request.headers.get("user-agent", "")), ip_prefix(client_ip(request))
+    seen = db.value("SELECT count(*) FROM login_events WHERE user_id=? AND ok=1", (user_id,)) or 0
+    same = db.value("SELECT 1 FROM login_events WHERE user_id=? AND ok=1 AND device=? AND ip_prefix=?", (user_id, device, net))
+    return seen > 0 and not same
+
+
+async def _finish_login(request: Request, user_id: int, method: str) -> JSONResponse:
+    new_place = _is_new_place(request, user_id)
+    log_login(request, user_id, True, method)
+    resp = JSONResponse({"ok": True})
+    _start_session(request, resp, user_id)
+    if new_place and mailer.configured():
+        email = db.value("SELECT email FROM users WHERE id=?", (user_id,))
+        device = _device(request.headers.get("user-agent", ""))
+        text = (f"В ваш аккаунт выполнен вход: {device}, сеть {ip_prefix(client_ip(request))}. "
+                "Если это были вы — ничего делать не нужно. Если нет — откройте «Настройки → Защита», "
+                "завершите незнакомый сеанс и смените пароль.")
+        asyncio.create_task(mailer.send(email, f"Новый вход в аккаунт — {config.APP_NAME}", text, f"{config.APP_URL}/settings?tab=security"))
+    return resp
 
 
 async def _send_token_email(user_id: int, email: str, kind: str) -> bool:
@@ -78,7 +112,25 @@ def _use_token(token: str, kind: str) -> int:
 async def register(request: Request):
     limit(request, "auth")
     data = await body(request)
+    # антибот: невидимое поле-ловушка заполняют только скрипты; живой человек не заполняет форму быстрее 1.5 с
+    if str(data.get("website") or "").strip():
+        raise ApiError(400, "Не удалось зарегистрироваться. Обновите страницу и попробуйте ещё раз.")
+    try:
+        fill_ms = int(data.get("t")) if data.get("t") is not None else None
+    except (TypeError, ValueError):
+        fill_ms = None
+    if fill_ms is not None and fill_ms < 1500:
+        raise ApiError(429, "Слишком быстро. Подождите пару секунд и отправьте форму ещё раз.")
+    # массовые регистрации: считаем только успешные, но проверяем заранее
+    ip = client_ip(request)
+    for bucket in ("register", "register_day"):
+        n_, w_ = LIMITS[bucket]
+        if not rate_limiter.check(f"{bucket}:{ip}", n_, w_):
+            raise ApiError(429, "С этой сети недавно создали слишком много аккаунтов. Попробуйте позже.")
     email = str(data.get("email", "")).strip().lower()
+    if email.rsplit("@", 1)[-1] in DISPOSABLE_DOMAINS:
+        return JSONResponse({"error": "Проверьте поля формы",
+                             "fields": {"email": "Одноразовые почтовые ящики не подходят — укажите свою почту"}}, status_code=422)
     password = str(data.get("password", ""))
     name = re.sub(r"\s+", " ", str(data.get("name", ""))).strip()
     username = str(data.get("username", "")).strip().lstrip("@")
@@ -105,6 +157,9 @@ async def register(request: Request):
                         (email, hash_password(password), db.now()))
         uid = cur.lastrowid
         c.execute("INSERT INTO profiles (user_id, username, name) VALUES (?,?,?)", (uid, username, name))
+    for bucket in ("register", "register_day"):
+        rate_limiter.hit(f"{bucket}:{ip}", *LIMITS[bucket])
+    log_login(request, uid, True, "register")
     await _send_token_email(uid, email, "verify")
     resp = JSONResponse({"ok": True}, status_code=201)
     _start_session(request, resp, uid)
@@ -124,12 +179,40 @@ async def login(request: Request):
                     WHERE u.email=? OR p.username=?""", (login_.lower(), login_))
     if not row or not verify_password(password, row["password_hash"]):
         rate_limiter.hit(acct_key, n, window)
+        if row:
+            log_login(request, row["id"], False, "password", "bad_password")
         raise ApiError(400, "Неверный e-mail или пароль")
     if row["is_banned"]:
+        log_login(request, row["id"], False, "password", "banned")
         raise ApiError(403, "Аккаунт заблокирован администрацией")
-    resp = JSONResponse({"ok": True})
-    _start_session(request, resp, row["id"])
-    return resp
+    if twofa.enabled(row["id"]):
+        # пароль верный, но сеанс выдаётся только после кода из приложения: даём билет на 5 минут
+        ticket = new_token()
+        db.run("INSERT INTO mfa_tickets (id, user_id, expires_at) VALUES (?,?,?)",
+               (token_hash(ticket), row["id"], db.future(minutes=5)))
+        return JSONResponse({"mfa_required": True, "ticket": ticket})
+    return await _finish_login(request, row["id"], "password")
+
+
+async def login_2fa(request: Request):
+    """Второй шаг входа: билет из первого шага + код из приложения или резервный код."""
+    limit(request, "auth", "2fa")
+    data = await body(request)
+    tid = token_hash(str(data.get("ticket", "")))
+    t = db.one("SELECT * FROM mfa_tickets WHERE id=?", (tid,))
+    if not t or t["expires_at"] < db.now() or t["attempts"] >= 5:
+        if t:
+            db.run("DELETE FROM mfa_tickets WHERE id=?", (tid,))
+        raise ApiError(400, "Время на ввод кода истекло — войдите ещё раз", "mfa_expired")
+    method = twofa.check(t["user_id"], str(data.get("code", "")))
+    if not method:
+        db.run("UPDATE mfa_tickets SET attempts=attempts+1 WHERE id=?", (tid,))
+        log_login(request, t["user_id"], False, "totp", "bad_code")
+        raise ApiError(400, "Неверный код. Проверьте время на телефоне или введите резервный код.")
+    db.run("DELETE FROM mfa_tickets WHERE id=?", (tid,))
+    if db.value("SELECT is_banned FROM users WHERE id=?", (t["user_id"],)):
+        raise ApiError(403, "Аккаунт заблокирован администрацией")
+    return await _finish_login(request, t["user_id"], method)
 
 
 async def logout(request: Request):
@@ -203,6 +286,10 @@ async def reset(request: Request):
     db.run("UPDATE users SET password_hash=?, email_verified_at=coalesce(email_verified_at, ?) WHERE id=?",
            (hash_password(password), db.now(), uid))
     db.run("DELETE FROM sessions WHERE user_id=?", (uid,))
+    log_login(request, uid, True, "reset")
+    if twofa.enabled(uid):
+        # письмо со ссылкой не должно обходить вторую ступень защиты: дальше обычный вход с кодом
+        return JSONResponse({"ok": True, "need_login": True})
     resp = JSONResponse({"ok": True})
     _start_session(request, resp, uid)
     return resp
@@ -239,10 +326,103 @@ def _device(ua: str) -> str:
 async def sessions_list(request: Request):
     u = request.state.user
     current = request.state.session["id"]
-    rows = db.all("SELECT id, user_agent, created_at FROM sessions WHERE user_id=? AND expires_at>? ORDER BY created_at DESC",
-                  (u["id"], db.now()))
+    rows = db.all("""SELECT id, user_agent, created_at, last_seen_at, ip_prefix FROM sessions WHERE user_id=? AND expires_at>?
+                     ORDER BY coalesce(last_seen_at, created_at) DESC""", (u["id"], db.now()))
     return JSONResponse({"items": [{"id": r["id"][:16], "device": _device(r["user_agent"]), "created_at": r["created_at"],
+                                    "last_seen_at": r["last_seen_at"] or r["created_at"], "network": r["ip_prefix"],
                                     "current": r["id"] == current} for r in rows]})
+
+
+# ---------------------------------------------------------------- журнал входов и 2FA
+REASONS = {"bad_password": "неверный пароль", "bad_code": "неверный код 2FA", "banned": "аккаунт заблокирован"}
+METHODS = {"password": "пароль", "totp": "пароль + код из приложения", "backup": "пароль + резервный код",
+           "reset": "восстановление пароля", "register": "регистрация"}
+
+
+@auth()
+async def logins(request: Request):
+    v = request.state.user["id"]
+    before = request.query_params.get("before")
+    params = [v] + ([int(before)] if before and before.isdigit() else [])
+    rows = db.all(f"""SELECT id, ok, method, reason, device, ip_prefix, created_at FROM login_events
+                      WHERE user_id=? {'AND id < ?' if len(params) > 1 else ''} ORDER BY id DESC LIMIT 30""", tuple(params))
+    return JSONResponse({"items": [{"id": r["id"], "ok": bool(r["ok"]), "method": METHODS.get(r["method"], r["method"]),
+                                    "reason": REASONS.get(r["reason"] or "", r["reason"]), "device": r["device"],
+                                    "network": r["ip_prefix"], "created_at": r["created_at"]} for r in rows],
+                         "more": len(rows) == 30})
+
+
+def _require_password(u, data) -> None:
+    stored = db.value("SELECT password_hash FROM users WHERE id=?", (u["id"],))
+    if not verify_password(str(data.get("password", "")), stored):
+        raise ApiError(400, "Пароль указан неверно", "bad_password")
+
+
+@auth()
+async def twofa_status(request: Request):
+    v = request.state.user["id"]
+    on = twofa.enabled(v)
+    return JSONResponse({"enabled": on, "backup_left": twofa.backup_left(v) if on else 0})
+
+
+@auth()
+async def twofa_setup(request: Request):
+    """Новый секрет (пока не включён): QR-код для приложения и тот же ключ текстом для ручного ввода."""
+    limit(request, "auth", "2fa-setup")
+    u = request.state.user
+    data = await body(request)
+    _require_password(u, data)
+    if twofa.enabled(u["id"]):
+        raise ApiError(400, "Двухфакторная защита уже включена")
+    secret = twofa.new_secret()
+    enc = twofa.encrypt(secret)
+    if db.value("SELECT 1 FROM user_totp WHERE user_id=?", (u["id"],)):
+        db.run("UPDATE user_totp SET secret_enc=?, enabled_at=NULL, last_step=NULL WHERE user_id=?", (enc, u["id"]))
+    else:
+        db.run("INSERT INTO user_totp (user_id, secret_enc) VALUES (?,?)", (u["id"], enc))
+    url = twofa.otpauth_url(secret, u["username"])
+    svg = qr.svg(url)
+    return JSONResponse({"secret": " ".join(secret[i:i + 4] for i in range(0, len(secret), 4)), "url": url,
+                         "qr": "data:image/svg+xml;base64," + base64.b64encode(svg.encode()).decode()})
+
+
+@auth()
+async def twofa_enable(request: Request):
+    limit(request, "auth", "2fa-enable")
+    u = request.state.user
+    data = await body(request)
+    row = db.one("SELECT secret_enc, enabled_at FROM user_totp WHERE user_id=?", (u["id"],))
+    if not row or row["enabled_at"]:
+        raise ApiError(400, "Сначала получите новый ключ")
+    step = twofa.verify(twofa.decrypt(row["secret_enc"]), str(data.get("code", "")), None)
+    if step is None:
+        raise ApiError(400, "Код не подошёл. Проверьте, что время на телефоне установлено автоматически.")
+    db.run("UPDATE user_totp SET enabled_at=?, last_step=? WHERE user_id=?", (db.now(), step, u["id"]))
+    codes = twofa.new_backup_codes(u["id"])
+    return JSONResponse({"enabled": True, "backup_codes": codes})
+
+
+@auth()
+async def twofa_disable(request: Request):
+    limit(request, "auth", "2fa-disable")
+    u = request.state.user
+    data = await body(request)
+    _require_password(u, data)
+    if not twofa.check(u["id"], str(data.get("code", ""))):
+        raise ApiError(400, "Неверный код из приложения или резервный код")
+    db.run("DELETE FROM user_totp WHERE user_id=?", (u["id"],))
+    db.run("DELETE FROM backup_codes WHERE user_id=?", (u["id"],))
+    return JSONResponse({"enabled": False})
+
+
+@auth()
+async def twofa_backup(request: Request):
+    limit(request, "auth", "2fa-backup")
+    u = request.state.user
+    data = await body(request)
+    if not twofa.check(u["id"], str(data.get("code", ""))):
+        raise ApiError(400, "Неверный код из приложения")
+    return JSONResponse({"backup_codes": twofa.new_backup_codes(u["id"])})
 
 
 @auth()
@@ -262,6 +442,13 @@ async def sessions_end(request: Request):
     return ok()
 
 routes = [
+    Route("/api/auth/2fa", login_2fa, methods=["POST"]),
+    Route("/api/security/logins", logins, methods=["GET"]),
+    Route("/api/security/2fa", twofa_status, methods=["GET"]),
+    Route("/api/security/2fa/setup", twofa_setup, methods=["POST"]),
+    Route("/api/security/2fa/enable", twofa_enable, methods=["POST"]),
+    Route("/api/security/2fa/disable", twofa_disable, methods=["POST"]),
+    Route("/api/security/2fa/backup", twofa_backup, methods=["POST"]),
     Route("/api/me/sessions", sessions_list, methods=["GET"]),
     Route("/api/me/sessions", sessions_end, methods=["DELETE"]),
     Route("/api/me/sessions/{sid}", sessions_end, methods=["DELETE"]),

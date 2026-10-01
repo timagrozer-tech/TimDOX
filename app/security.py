@@ -1,6 +1,7 @@
 """Пароли, токены, ограничение частоты запросов, фильтр запрещённых слов."""
 import hashlib
 import hmac
+import os
 import re
 import secrets
 import time
@@ -92,7 +93,20 @@ LIMITS = {
     "stats": (30, 60),         # личная статистика (тяжёлые выборки)
     "search_music": (60, 60),  # поиск музыки (внешний сервис)
     "report": (20, 3600),      # жалобы: не больше 20 в час
+    "register": (int(os.environ.get("REGISTER_PER_HOUR", "6")), 3600),      # новых аккаунтов с одного IP
+    "register_day": (int(os.environ.get("REGISTER_PER_DAY", "20")), 86400),
+    "new_dialogs": (int(os.environ.get("NEW_DIALOGS_NEW_ACCOUNT", "20")), 86400),  # новые переписки у аккаунтов младше суток
     "default": (300, 60),
+}
+
+# Одноразовые почтовые ящики: на них регистрируют фермы фейков
+DISPOSABLE_DOMAINS = {
+    "mailinator.com", "10minutemail.com", "10minutemail.net", "guerrillamail.com", "guerrillamail.net", "sharklasers.com",
+    "temp-mail.org", "tempmail.com", "tempmail.dev", "temp-mail.io", "yopmail.com", "yopmail.net", "trashmail.com",
+    "getnada.com", "nada.email", "dispostable.com", "maildrop.cc", "mailnesia.com", "mintemail.com", "fakeinbox.com",
+    "throwawaymail.com", "emailondeck.com", "mohmal.com", "tempail.com", "dropmail.me", "1secmail.com", "1secmail.net",
+    "mail.tm", "spamgourmet.com", "mytemp.email", "tempr.email", "discard.email", "inboxkitten.com", "burnermail.io",
+    "crazymailing.com", "emailfake.com", "generator.email", "minuteinbox.com", "tmpmail.org", "tmpmail.net",
 }
 
 # ---------- Фильтр запрещённых слов ----------

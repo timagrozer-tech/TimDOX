@@ -9,7 +9,7 @@ from starlette.routing import Route
 
 from .. import config, db, media, social
 from ..realtime import hub
-from ..security import censor, clean_text
+from ..security import LIMITS, censor, clean_text, rate_limiter
 from ..web import ApiError, auth, body, int_param, limit, ok, path_int
 
 PAGE = 40
@@ -188,6 +188,12 @@ def direct_conversation(v: int, other: int) -> int:
     allowed, reason = _can_message(v, other)
     if not allowed:
         raise ApiError(403, reason)
+    # антиспам: аккаунт младше суток может начать ограниченное число переписок с теми, кто ему не друг
+    if other not in set(social.friend_ids(v)) and \
+            (db.value("SELECT created_at FROM users WHERE id=?", (v,)) or "") > db.future(days=-1):
+        n, window = LIMITS["new_dialogs"]
+        if not rate_limiter.hit(f"new_dialogs:{v}", n, window):
+            raise ApiError(429, "Новые аккаунты в первые сутки могут начать ограниченное число переписок. Попробуйте завтра.")
     with db.tx() as c:
         conv = c.execute("INSERT INTO conversations (direct_key) VALUES (?)", (key,)).lastrowid
         c.execute("INSERT INTO conversation_members (conversation_id, user_id) VALUES (?,?),(?,?)", (conv, v, conv, other))

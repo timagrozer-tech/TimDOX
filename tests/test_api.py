@@ -10,6 +10,9 @@ os.environ["DB_PATH"] = os.path.join(_tmp, "test.db")
 os.environ["UPLOAD_DIR"] = os.path.join(_tmp, "uploads")
 os.environ["DATA_DIR"] = _tmp
 os.environ["SMTP_HOST"] = ""
+os.environ.setdefault("REGISTER_PER_HOUR", "100000")  # в тестах все аккаунты создаются с одного адреса
+os.environ.setdefault("REGISTER_PER_DAY", "100000")
+os.environ.setdefault("NEW_DIALOGS_NEW_ACCOUNT", "100000")
 
 logging.disable(logging.WARNING)
 from PIL import Image  # noqa: E402

@@ -97,13 +97,60 @@ export async function loginPage({ query }) {
     e.preventDefault();
     busy(submit, async () => {
       try {
-        await api.post("/api/auth/login", { email: $(form, "email").value, password: $(form, "password").value });
+        const r = await api.post("/api/auth/login", { email: $(form, "email").value, password: $(form, "password").value });
+        if (r?.mfa_required) { form.replaceWith(codeStep(r.ticket, query.next)); return; }
         await afterLogin(query.next);
       } catch (err) { showErrors(form, err); }
     });
   });
   setTimeout(() => $(form, "email").focus(), 50);
   return authLayout(form);
+}
+
+/** Второй шаг входа: код из приложения-аутентификатора или резервный код */
+function codeStep(ticket, next) {
+  const submit = h("button.btn.primary.lg.block", { type: "submit" }, "Подтвердить");
+  let backup = false;
+  const input = () => $(form, "code");
+  const switcher = h("button.btn.ghost.sm", { type: "button" }, "Нет доступа к приложению? Ввести резервный код");
+  const form = h("form.auth-form", { novalidate: true },
+    logo(),
+    h("div.tfa-shield", { "aria-hidden": "true" }, icon("shield")),
+    h("h1", "Код подтверждения"),
+    h("p.sub.tfa-sub", "Откройте приложение-аутентификатор и введите 6 цифр для Круга."),
+    h("div.form-error.hidden", { role: "alert" }),
+    h("div.field", { dataset: { field: "code" } },
+      h("input.input.tfa-code", { name: "code", inputmode: "numeric", autocomplete: "one-time-code", maxlength: 6, placeholder: "000000",
+        "aria-label": "Код подтверждения", pattern: "[0-9]*" }),
+      h("div.field-error", { role: "alert" })),
+    submit, switcher,
+    h("p.auth-switch", h("a", { href: "/login" }, "Войти в другой аккаунт")));
+  switcher.addEventListener("click", () => {
+    backup = !backup;
+    const inp = input();
+    inp.value = "";
+    inp.maxLength = backup ? 9 : 6;
+    inp.inputMode = backup ? "text" : "numeric";
+    inp.placeholder = backup ? "XXXX-XXXX" : "000000";
+    form.querySelector(".tfa-sub").textContent = backup ? "Введите один из резервных кодов, которые вы сохранили при включении защиты. Каждый код работает один раз." : "Откройте приложение-аутентификатор и введите 6 цифр для Круга.";
+    switcher.textContent = backup ? "Ввести код из приложения" : "Нет доступа к приложению? Ввести резервный код";
+    inp.focus();
+  });
+  const go = () => busy(submit, async () => {
+    try {
+      await api.post("/api/auth/2fa", { ticket, code: input().value });
+      await afterLogin(next);
+    } catch (err) {
+      if (err.code === "mfa_expired") { toast(err.message, { icon: "alert" }); navigate("/login", { replace: true }); return; }
+      showErrors(form, err);
+      input().select();
+    }
+  });
+  form.addEventListener("submit", (e) => { e.preventDefault(); go(); });
+  // шесть цифр введены — отправляем сразу, без нажатия кнопки
+  form.addEventListener("input", () => { if (!backup && /^\d{6}$/.test(input().value)) go(); });
+  setTimeout(() => input().focus(), 50);
+  return form;
 }
 
 export async function registerPage({ query }) {
@@ -124,8 +171,11 @@ export async function registerPage({ query }) {
     field({ label: "E-mail", name: "email", type: "email", autocomplete: "email", placeholder: "you@example.com" }),
     field({ label: "Пароль", name: "password", type: "password", autocomplete: "new-password", hint: "Не короче 8 символов, буквы и цифры" }),
     consent,
+    // ловушка для ботов: поле невидимо для людей и скринридеров, его заполняют только скрипты
+    h("div.hp-field", { "aria-hidden": "true" }, h("input", { name: "website", tabindex: -1, autocomplete: "off" })),
     submit,
     h("p.auth-switch", "Уже есть аккаунт? ", h("a", { href: "/login" }, "Войти")));
+  const shownAt = performance.now();
 
   // подсказка логина из имени
   const translit = { а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya" };
@@ -144,6 +194,7 @@ export async function registerPage({ query }) {
         await api.post("/api/auth/register", {
           name: $(form, "name").value, username: $(form, "username").value, email: $(form, "email").value,
           password: $(form, "password").value, consent: $(form, "consent").checked,
+          website: $(form, "website").value, t: Math.round(performance.now() - shownAt),
         });
         toast("Аккаунт создан! Мы отправили письмо для подтверждения e-mail.", { icon: "mail", duration: 6000 });
         await afterLogin(query.next || "/?welcome=1");
@@ -193,8 +244,9 @@ export async function resetPage({ query }) {
     e.preventDefault();
     busy(submit, async () => {
       try {
-        await api.post("/api/auth/reset", { token: query.token || "", password: $(form, "password").value });
+        const r = await api.post("/api/auth/reset", { token: query.token || "", password: $(form, "password").value });
         toast("Пароль изменён", { icon: "check" });
+        if (r?.need_login) { toast("Включена двухфакторная защита — войдите с новым паролем и кодом", { icon: "shield", duration: 6000 }); navigate("/login", { replace: true }); return; }
         await afterLogin("/");
       } catch (err) { showErrors(form, err); }
     });
