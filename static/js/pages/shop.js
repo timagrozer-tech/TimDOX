@@ -82,5 +82,6 @@ export async function shopPage({ query = {} } = {}) {
     h("div.page-head.shop-head", h("h1", "Магазин"), bal),
     h("p.field-hint.shop-note", "Только оформление: покупки не дают охвата, рейтинга или репутации. Все монеты за покупки сгорают — так экономика остаётся честной."),
     tabs, body,
-    h("a.shop-earn", { href: "/wallet" }, icon("coin", "sm"), "Как заработать монеты"));
+    h("div.row.shop-links", h("a.shop-earn", { href: "/market" }, icon("repeat", "sm"), "Рынок: купить у людей или продать своё"),
+      h("a.shop-earn", { href: "/wallet" }, icon("coin", "sm"), "Как заработать монеты")));
 }

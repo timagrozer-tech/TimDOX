@@ -3704,3 +3704,10 @@ html.cst-open, html.cst-open body { overflow: hidden; }
 .avatar[data-frame="shop_frame_cosmos"]::before, .frame-dot[data-frame="shop_frame_cosmos"] { background: radial-gradient(circle at 30% 30%, #fff 0 2%, transparent 3%), radial-gradient(circle at 70% 60%, #fff 0 1.5%, transparent 2.5%), conic-gradient(#1e1b4b, #7c3aed, #db2777, #1e3a8a, #1e1b4b); animation: frame-spin 7s linear infinite; }
 .shop-preview .avatar { background: var(--surface-2); }
 .shop-preview .avatar[data-frame]::before { inset: -6px; }
+.market-filters { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.market-filters:empty { display: none; }
+.market-seller { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); text-decoration: none !important; }
+.market-deal { font-size: 11px; font-weight: 800; color: #16a34a; background: rgb(22 163 74 / .12); padding: 2px 8px; border-radius: 999px; }
+.shop-links { justify-content: center; gap: var(--s4); flex-wrap: wrap; }
+.shop-preview .avatar { background: var(--surface) !important; }
+:root[data-glass="liquid"] .segmented [aria-pressed="true"] { color: var(--text); }

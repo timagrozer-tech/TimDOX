@@ -783,3 +783,17 @@ CREATE TABLE IF NOT EXISTS gifts (
     created_at TEXT NOT NULL DEFAULT krug_now()
 );
 CREATE INDEX IF NOT EXISTS idx_gifts_to ON gifts(to_id, id);
+
+-- Рынок (Э3)
+CREATE TABLE IF NOT EXISTS market_listings (
+    id         BIGSERIAL PRIMARY KEY,
+    seller_id  BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    item_id    TEXT NOT NULL,
+    price      INTEGER NOT NULL,
+    status     TEXT NOT NULL DEFAULT 'active',
+    buyer_id   BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT krug_now(),
+    closed_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_market_active ON market_listings(status, id);
+CREATE INDEX IF NOT EXISTS idx_market_item ON market_listings(item_id, status, closed_at);
