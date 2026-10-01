@@ -12,6 +12,7 @@ KIND_TITLES = {
     "quest": "Задание дня", "quest_all": "Все задания дня", "weekly": "Задание недели", "clawback": "Отмена награды",
     "treasury": "Казна города", "visit_guest": "Визит в город друга", "visit_host": "Гости в вашем городе",
     "build": "Стройка", "upgrade": "Улучшение здания",
+    "support": "Поддержка автора", "transfer": "Перевод", "ai_stipend": "Стипендия Мира",
 }
 
 
@@ -83,6 +84,44 @@ async def weekly_claim(request: Request):
 
 
 @auth()
+async def transfer(request: Request):
+    """Перевод другу: 5% сгорает, суточный лимит по доверию, больше 1 000 KC — с кодом 2FA."""
+    v = request.state.user["id"]
+    limit(request, "write")
+    d = await body(request)
+    to = economy.db.value("SELECT user_id FROM profiles WHERE username=?", (str(d.get("to") or "").lstrip("@"),))
+    if not to:
+        raise ApiError(404, "Получатель не найден")
+    try:
+        amount = int(d.get("amount") or 0)
+    except (TypeError, ValueError):
+        raise ApiError(400, "Некорректная сумма")
+    cap = economy.transfer_limit(v)
+    if cap == 0:
+        raise ApiError(403, "Переводы открываются через 14 дней после регистрации")
+    from ..social import friend_ids
+    if to not in set(friend_ids(v)):
+        raise ApiError(403, "Переводить можно только друзьям")
+    if economy.linked(v, to):
+        raise ApiError(403, "Нельзя переводить своим же аккаунтам — вы входите в них с одного устройства")
+    sent = economy._count(v, economy.today(), "_sent:transfer")["amount"]
+    if amount < 10 or sent + amount > cap:
+        raise ApiError(400, f"От 10 KC; сегодня можно перевести ещё {max(0, cap - sent)} KC")
+    if amount > 1000:
+        from .. import twofa
+        if not twofa.check(v, str(d.get("code") or "")):
+            raise ApiError(400, "Для перевода больше 1 000 KC нужен код из приложения 2FA")
+    note = str(d.get("note") or "")[:120]
+    try:
+        res = economy.transfer(v, to, amount, "transfer", economy.TRANSFER_FEE, ref=f"to{to}", meta={"note": note} if note else None)
+    except economy.EconError as e:
+        raise ApiError(400, str(e))
+    from .. import social
+    social.notify(to, v, "transfer", extra={"amount": res["net"], "note": note})
+    return JSONResponse({**res, **_summary(v)})
+
+
+@auth()
 async def econ_admin(request: Request):
     if not request.state.user["is_admin"]:
         raise ApiError(404, "Не найдено")
@@ -93,6 +132,7 @@ routes = [
     Route("/api/wallet", wallet, methods=["GET"]),
     Route("/api/wallet/checkin", checkin, methods=["POST"]),
     Route("/api/wallet/history", history, methods=["GET"]),
+    Route("/api/wallet/transfer", transfer, methods=["POST"]),
     Route("/api/quests/weekly/claim", weekly_claim, methods=["POST"]),
     Route("/api/quests/{slot:int}/claim", quest_claim, methods=["POST"]),
     Route("/api/quests/{slot:int}/swap", quest_swap, methods=["POST"]),

@@ -70,6 +70,7 @@ def hydrate(rows: list[dict], v: int, depth: int = 0) -> list[dict]:
                 AND status='member' AND community_id IN ({db.placeholders(comm_ids)})""", (v, *comm_ids))}
 
     poll_by = polls.views(ids, v)
+    support_by = economy.supports_for(ids, v)
 
     quotes = {}
     if depth == 0:
@@ -102,6 +103,7 @@ def hydrate(rows: list[dict], v: int, depth: int = 0) -> list[dict]:
             "can_moderate": r.get("community_id") in can_mod,
             "poll": poll_by.get(r["id"]),
             "music": _music(r.get("music")),
+            "support": support_by.get(r["id"]),
         }
         if r["quote_of"] and depth == 0:
             item["quote"] = quotes.get(r["quote_of"]) or {"unavailable": True}
@@ -513,6 +515,24 @@ async def react(request: Request):
 
 
 @auth()
+async def support(request: Request):
+    """Поддержать автора записи монетами."""
+    limit(request, "write")
+    v = request.state.user["id"]
+    post = get_visible_post(path_int(request), v)
+    if post["is_repost"]:
+        raise ApiError(400, "Поддержите исходную запись")
+    data = await body(request)
+    try:
+        amount = int(data.get("amount") or 0)
+        res = economy.support_post(v, post, amount)
+    except (TypeError, ValueError) as e:
+        raise ApiError(400, str(e) or "Некорректная сумма")
+    return JSONResponse({**res, "support": economy.supports_for([post["id"]], v).get(post["id"]),
+                         "kc": economy.balances(v)["KC"]})
+
+
+@auth()
 async def unreact(request: Request):
     v = request.state.user["id"]
     post = get_visible_post(path_int(request), v)
@@ -726,6 +746,7 @@ routes = [
     Route("/api/posts/{id:int}", delete_post, methods=["DELETE"]),
     Route("/api/posts/{id:int}/react", react, methods=["POST"]),
     Route("/api/posts/{id:int}/react", unreact, methods=["DELETE"]),
+    Route("/api/posts/{id:int}/support", support, methods=["POST"]),
     Route("/api/posts/{id:int}/reactions", reactions_list, methods=["GET"]),
     Route("/api/posts/{id:int}/repost", repost, methods=["POST"]),
     Route("/api/posts/{id:int}/repost", unrepost, methods=["DELETE"]),

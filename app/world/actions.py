@@ -46,6 +46,19 @@ def react(persona_id: int, post_id: int, rtype: str = "like") -> None:
         social.notify(author, persona_id, "reaction", post_id=post_id, extra={"reaction": rtype})
 
 
+def support(persona_id: int, post_id: int, amount: int) -> bool:
+    """Персонаж поддерживает автора монетами из своей недельной стипендии (и того, что поддержали его самого)."""
+    from .. import economy
+    post = db.one("SELECT id, author_id, is_repost FROM posts WHERE id=?", (post_id,))
+    if not post or post["is_repost"]:
+        return False
+    try:
+        economy.support_post(persona_id, post, amount, ai=True)
+        return True
+    except ValueError:
+        return False  # не хватило монет или лимит дня — просто пропускаем
+
+
 def dm(persona_id: int, user_id: int, text: str) -> bool:
     from ..api.messages import deliver_message, direct_conversation
     from ..web import ApiError
@@ -100,6 +113,8 @@ def run_job(job: dict) -> None:
         comment(pid, p["post_id"], p["text"], at)
     elif kind == "react":
         react(pid, p["post_id"], p.get("type", "like"))
+    elif kind == "support":
+        support(pid, p["post_id"], int(p.get("amount") or 10))
     elif kind == "dm":
         dm(pid, p["user_id"], p["text"])
     elif kind == "accept_friend":

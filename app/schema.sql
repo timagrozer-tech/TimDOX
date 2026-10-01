@@ -705,3 +705,20 @@ CREATE TABLE IF NOT EXISTS city_visits (
     UNIQUE (host_id, guest_id, day)
 );
 CREATE INDEX IF NOT EXISTS idx_city_visits_host ON city_visits(host_id, created_at);
+
+-- Поддержка авторов (Э2)
+CREATE TABLE IF NOT EXISTS post_supports (
+    id         INTEGER PRIMARY KEY,
+    post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount     INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_post_supports ON post_supports(post_id);
+
+CREATE TABLE IF NOT EXISTS account_links (
+    a          INTEGER NOT NULL,
+    b          INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (a, b)
+);

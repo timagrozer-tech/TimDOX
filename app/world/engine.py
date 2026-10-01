@@ -69,6 +69,9 @@ def social_tick() -> None:
         if not p:
             continue
         core.schedule(p["user_id"], "react", {"post_id": r["id"], "type": random.choice(["like", "like", "love", "wow"])}, core.soon(1, 8))
+        # иногда персонаж поддерживает автора монетами — чаще, если запись по его теме
+        if random.random() < (.35 if fans else .12):
+            core.schedule(p["user_id"], "support", {"post_id": r["id"], "amount": random.choice([10, 10, 10, 50, 50, 100])}, core.soon(5, 45))
         if fans or random.random() < .4:
             core.schedule(p["user_id"], "comment", {"post_id": r["id"], "text": random.choice(texts.REPLIES.get(slug, texts.BANTER))},
                           core.soon(3, 25))
@@ -79,6 +82,10 @@ def social_tick() -> None:
 def calendar() -> None:
     d = core.now_msk()
     wk = core.week_key(d)
+    if core.once(f"stipend:{wk}"):
+        from .. import economy
+        for p in core.personas().values():
+            economy.ai_stipend(p["user_id"])
     if core.once(f"week-start:{wk}"):
         gen.weekly_start()
     if d.weekday() == 6 and d.hour >= 18 and core.once(f"week-results:{wk}"):

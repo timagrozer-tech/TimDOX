@@ -30,6 +30,8 @@ export function notifText(n, many = false) {
     case "event_going": return `пойдёт на ваше мероприятие «${n.extra?.title || ""}»`;
     case "reel_like": return "оценил(а) ваш клип ❤️";
     case "reel_comment": return `прокомментировал(а) ваш клип: «${n.extra?.text || ""}»`;
+    case "support": return `поддержал(а) вашу запись: +${n.extra?.amount || ""} KC 🪙`;
+    case "transfer": return `перевёл(а) вам ${n.extra?.amount || ""} KC${n.extra?.note ? ` — «${n.extra.note}»` : ""} 🪙`;
     case "item": return `Новый предмет в коллекции: «${n.extra?.name || ""}» ✨`;
     case "invite_joined": return "присоединился(-ась) к Кругу по вашему приглашению 🎉";
     case "invite_qualified": return `стал(а) активным участником — приглашение засчитано (всего: ${n.extra?.count || 1})`;
@@ -40,6 +42,7 @@ export function notifText(n, many = false) {
 
 export function notifLink(n) {
   if (n.type.startsWith("reel_")) return `/reels/${n.extra?.reel_id}`;
+  if (n.type === "transfer") return "/wallet";
   if (n.type === "item") return `/collection?slot=${n.extra?.slot || "frame"}`;
   if (n.type === "community_request") return `/c/${n.extra?.slug}?tab=members`;
   if (n.type === "community_approved") return `/c/${n.extra?.slug}`;

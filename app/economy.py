@@ -320,10 +320,11 @@ def history(uid: int, before: int | None = None, n: int = 30) -> list[dict]:
 
 def audit() -> dict:
     """Сверка: сумма всех проводок по каждой валюте = 0, балансы = сумме проводок."""
-    sums = {r["currency"]: r["s"] for r in db.all("SELECT currency, sum(delta) AS s FROM ledger_entries GROUP BY currency")}
+    sums = {r["currency"]: int(r["s"] or 0) for r in db.all("SELECT currency, sum(delta) AS s FROM ledger_entries GROUP BY currency")}
     bad = db.all("""SELECT w.account, w.currency, w.balance, coalesce(x.s, 0) AS s FROM wallets w
                     LEFT JOIN (SELECT account, currency, sum(delta) AS s FROM ledger_entries GROUP BY account, currency) x
                     ON x.account = w.account AND x.currency = w.currency WHERE w.balance <> coalesce(x.s, 0) LIMIT 20""")
+    bad = [{k: (int(v) if k in ("s", "balance", "account") else v) for k, v in r.items()} for r in bad]
     return {"sums": sums, "mismatch": bad, "ok": all(v == 0 for v in sums.values()) and not bad}
 
 
@@ -336,6 +337,7 @@ def stats() -> dict:
     burned = db.value("""SELECT coalesce(sum(e.delta),0) FROM ledger_entries e JOIN ledger_tx t ON t.id=e.tx_id
                          WHERE e.account=? AND e.currency='KC' AND t.created_at >= ?""", (BURN, since)) or 0
     holders = db.value("SELECT count(*) FROM wallets WHERE account > 0 AND currency='KC' AND balance > 0") or 0
+    supply, minted, burned, holders = int(supply), int(minted), int(burned), int(holders)
     return {"supply": supply, "minted_30d": minted, "burned_30d": burned, "holders": holders,
             "burn_ratio": round(burned / minted, 2) if minted else None}
 
@@ -414,3 +416,111 @@ def earn_amount(uid: int, source: str, amount: int, cap: int, ref: str = "") -> 
     _bump(uid, day, source, 1, kc)
     _bump(uid, day, "_activity", 0, kc)
     return kc
+
+
+# ---------------------------------------------------------------- люди: поддержка авторов и переводы
+SUPPORT_AMOUNTS = (10, 50, 100, 500)
+SUPPORT_FEE = 0.10
+TRANSFER_FEE = 0.05
+RECEIVE_DAY_CAP = 10000
+
+
+class EconError(ValueError):
+    pass
+
+
+def _age_days(uid: int) -> float:
+    created = db.value("SELECT created_at FROM users WHERE id=?", (uid,)) or db.now()
+    t = datetime.strptime(created[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - t).total_seconds() / 86400
+
+
+def linked(a: int, b: int) -> bool:
+    """Связанные аккаунты: входили из одной сети за последние 30 дней. Им нельзя поддерживать и переводить друг другу."""
+    x, y = sorted((a, b))
+    if db.value("SELECT 1 FROM account_links WHERE a=? AND b=?", (x, y)):
+        return True
+    # тот же браузер на том же устройстве: совпадают сеть и строка браузера
+    since = db.future(days=-30)
+    return bool(db.value("""SELECT 1 FROM sessions s1 JOIN sessions s2 ON s1.ip_prefix = s2.ip_prefix AND s1.user_agent = s2.user_agent
+                            WHERE s1.user_id=? AND s2.user_id=? AND s1.ip_prefix IS NOT NULL AND s1.ip_prefix <> ''
+                            AND s1.user_agent <> '' AND s1.created_at >= ? AND s2.created_at >= ? LIMIT 1""", (a, b, since, since)))
+
+
+def _received_today(uid: int) -> int:
+    return _count(uid, today(), "_received")["amount"]
+
+
+def transfer(sender: int, recipient: int, amount: int, kind: str, fee_pct: float, ref: str = "", meta: dict | None = None) -> dict:
+    """Перевод между людьми: комиссия сгорает, получатель получает остальное."""
+    if sender == recipient:
+        raise EconError("Себе перевести нельзя")
+    if amount <= 0:
+        raise EconError("Некорректная сумма")
+    if _received_today(recipient) + amount > RECEIVE_DAY_CAP:
+        raise EconError("Получатель сегодня уже получил максимум — попробуйте завтра")
+    fee = max(1, round(amount * fee_pct)) if fee_pct else 0
+    moves = [(sender, "KC", -amount), (recipient, "KC", amount - fee)]
+    if fee:
+        moves.append((BURN, "KC", fee))
+    try:
+        with db.tx() as c:
+            tx = _post(c, kind, moves, ref, meta=meta)
+    except ValueError:
+        raise EconError("Не хватает монет")
+    _bump(sender, today(), "_sent:" + kind, 1, amount)
+    _bump(recipient, today(), "_received", 1, amount - fee)
+    return {"tx": tx, "amount": amount, "fee": fee, "net": amount - fee}
+
+
+def support_limit(uid: int, ai: bool = False) -> int:
+    if ai:
+        return 300
+    return 200 if _age_days(uid) < 14 else 1000
+
+
+def support_post(uid: int, post: dict, amount: int, ai: bool = False) -> dict:
+    """«Поддержать автора»: 10/50/100/500 KC, 10% сгорает. Лимит отправителя в сутки, без связанных аккаунтов."""
+    if amount not in SUPPORT_AMOUNTS:
+        raise EconError("Выберите 10, 50, 100 или 500 KC")
+    author = post["author_id"]
+    if author == uid:
+        raise EconError("Свою запись поддержать нельзя")
+    if not ai and linked(uid, author):
+        raise EconError("Нельзя поддерживать свои же аккаунты — вы входите в них с одного устройства")
+    sent = _count(uid, today(), "_sent:support")["amount"]
+    cap = support_limit(uid, ai)
+    if sent + amount > cap:
+        raise EconError(f"Сегодня можно отправить ещё {max(0, cap - sent)} KC поддержки")
+    res = transfer(uid, author, amount, "support", SUPPORT_FEE, ref=f"post{post['id']}", meta={"post": post["id"]})
+    db.run("INSERT INTO post_supports (post_id, user_id, amount) VALUES (?,?,?)", (post["id"], uid, amount))
+    from . import social
+    social.notify(author, uid, "support", post_id=post["id"], extra={"amount": res["net"]})
+    track(uid, "support")
+    return res
+
+
+def transfer_limit(uid: int) -> int:
+    age = _age_days(uid)
+    if age < 14:
+        return 0
+    from . import twofa
+    return 5000 if (age >= 30 and twofa.enabled(uid)) else 1000
+
+
+def supports_for(post_ids: list[int], viewer: int) -> dict[int, dict]:
+    if not post_ids:
+        return {}
+    ph = db.placeholders(post_ids)
+    rows = db.all(f"""SELECT post_id, count(DISTINCT user_id) AS people, sum(amount) AS total,
+                      max(CASE WHEN user_id=? THEN 1 ELSE 0 END) AS mine
+                      FROM post_supports WHERE post_id IN ({ph}) GROUP BY post_id""", (viewer, *post_ids))
+    return {r["post_id"]: {"people": int(r["people"]), "total": int(r["total"] or 0), "mine": bool(r["mine"])} for r in rows}
+
+
+# ---------------------------------------------------------------- ИИ-персонажи как участники экономики
+AI_STIPEND = 300  # KC в неделю на персонажа — из выпуска, этим ограничен весь «ИИ-оборот»
+
+
+def ai_stipend(persona_id: int) -> None:
+    mint(persona_id, AI_STIPEND, kind="ai_stipend", idem=f"ai_stipend:{persona_id}:{week_key()}")

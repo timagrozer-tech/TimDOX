@@ -239,7 +239,28 @@ export function postCard(input, opts = {}) {
         } catch (e) { toastError(e); }
       },
     }, icon("bookmark"));
-    return h("div.post-actions", wrap, commentBtn, repostBtn, whoBtn, h("div.spacer"), bmBtn);
+    // поддержка автора монетами: 10/50/100/500 KC, 10% сгорает
+    const sup = p.support;
+    const supLabel = sup ? `${sup.total.toLocaleString("ru-RU")}` : null;
+    const supportBtn = p.is_repost ? null : p.is_mine
+      ? (sup ? h("span.action.support-own", { title: `Вас поддержали: ${sup.people} чел.` }, icon("coin"), h("span.count", supLabel)) : null)
+      : h(`button.action.support-btn${sup?.mine ? ".supported" : ""}`, { type: "button", "aria-haspopup": "menu", title: "Поддержать автора монетами",
+        "aria-label": `Поддержать автора${sup ? ` · ${supLabel} KC` : ""}` }, icon("coin"), sup ? h("span.count", supLabel) : null);
+    supportBtn?.addEventListener?.("click", () => {
+      if (!(supportBtn instanceof HTMLButtonElement)) return;
+      const give = async (amount) => {
+        try {
+          const r = await api.post(`/api/posts/${p.id}/support`, { amount });
+          update({ ...p, support: r.support });
+          toast(`Автор получит ${r.net} KC — спасибо! 🪙`, { icon: "coin" });
+          burst?.(supportBtn, ["🪙", "✨", "🪙"]);
+          document.dispatchEvent(new CustomEvent("wallet:changed"));
+        } catch (e) { toastError(e); }
+      };
+      showMenu(supportBtn, [10, 50, 100, 500].map((n) => ({ label: `${n} KC`, hint: `автору придёт ${n - Math.max(1, Math.round(n * 0.1))}`, icon: "coin", onClick: () => give(n) })),
+        { title: `Поддержать автора · ${p.author?.name?.split(" ")[0] || ""}` });
+    });
+    return h("div.post-actions", wrap, commentBtn, repostBtn, supportBtn, whoBtn, h("div.spacer"), bmBtn);
   }
 
   async function setReaction(p, type, anchor) {

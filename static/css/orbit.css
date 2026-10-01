@@ -3667,3 +3667,7 @@ html.cst-open, html.cst-open body { overflow: hidden; }
 .city-daynight { position: absolute; top: var(--s2); right: var(--s2); width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgb(255 255 255 / .3);
   background: rgb(255 255 255 / .25); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); cursor: pointer; font-size: 16px; }
 .editing .ct.can { stroke: rgb(255 255 255 / .9); stroke-width: 1.2; }
+.support-btn.supported, .support-btn:hover { color: #d97706; }
+.support-btn.supported .icon { filter: drop-shadow(0 0 6px rgb(245 158 11 / .6)); }
+.support-own { color: #d97706; cursor: default; }
+.wl-actions { display: flex; flex-wrap: wrap; gap: var(--s2); }

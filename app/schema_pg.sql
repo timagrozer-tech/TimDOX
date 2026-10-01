@@ -747,3 +747,20 @@ CREATE TABLE IF NOT EXISTS city_visits (
     UNIQUE (host_id, guest_id, day)
 );
 CREATE INDEX IF NOT EXISTS idx_city_visits_host ON city_visits(host_id, created_at);
+
+-- Поддержка авторов (Э2)
+CREATE TABLE IF NOT EXISTS post_supports (
+    id         BIGSERIAL PRIMARY KEY,
+    post_id    BIGINT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount     INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE INDEX IF NOT EXISTS idx_post_supports ON post_supports(post_id);
+
+CREATE TABLE IF NOT EXISTS account_links (
+    a          BIGINT NOT NULL,
+    b          BIGINT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT krug_now(),
+    PRIMARY KEY (a, b)
+);

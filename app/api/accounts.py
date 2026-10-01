@@ -62,6 +62,12 @@ def stash_current(request: Request, resp, new_user_id: int) -> None:
     if len(keep) >= MAX_ACCOUNTS:
         raise ApiError(400, f"На одном устройстве можно держать до {MAX_ACCOUNTS} аккаунтов — выйдите из одного из них")
     write_tokens(resp, keep)
+    # аккаунты одного устройства связаны: им нельзя переводить монеты и поддерживать друг друга
+    for t in keep:
+        u = _session_user(t)
+        if u and u["id"] != new_user_id:
+            a, b = sorted((u["id"], new_user_id))
+            db.run("INSERT INTO account_links (a, b) VALUES (?,?) ON CONFLICT (a, b) DO NOTHING", (a, b))
 
 
 @auth()

@@ -1,7 +1,7 @@
 // Кошелёк: монеты, кристаллы, уровень города, задания дня и недели, история.
 import { api, state } from "../api.js";
 import { h, icon, timeAgo } from "../dom.js";
-import { setTitle, toast, toastError, busy } from "../ui.js";
+import { setTitle, toast, toastError, busy, modal } from "../ui.js";
 
 const fmt = (n) => Number(n || 0).toLocaleString("ru-RU");
 
@@ -33,6 +33,31 @@ export async function walletPage() {
   const hist = h("div.wl-hist");
   const more = h("button.btn.ghost.sm", { type: "button", hidden: true }, "Показать ещё");
 
+  async function openTransfer() {
+    let friends = [];
+    try { friends = (await api.get(`/api/users/${state.me.username}/friends`)).items || []; } catch { /* без подсказок */ }
+    const to = h("input.input", { list: "tr-friends", placeholder: "@логин друга", autocomplete: "off" });
+    const amount = h("input.input", { type: "number", min: 10, step: 10, placeholder: "Сколько KC" });
+    const note = h("input.input", { maxlength: 120, placeholder: "Сообщение (необязательно)" });
+    const code = h("input.input", { inputmode: "numeric", placeholder: "Код 2FA — для суммы больше 1 000", autocomplete: "one-time-code" });
+    const calc = h("small.muted", "Комиссия 5% сгорает");
+    amount.addEventListener("input", () => { const n = +amount.value || 0; calc.textContent = n ? `Друг получит ${n - Math.max(1, Math.round(n * 0.05))} KC · комиссия 5% сгорает` : "Комиссия 5% сгорает"; });
+    const go = h("button.btn.primary", { type: "button" }, "Перевести");
+    const m = modal({ title: "Перевод другу", narrow: true, body: h("div.stack",
+      h("datalist", { id: "tr-friends" }, friends.map((f) => h("option", { value: f.username }, f.name))),
+      h("div.field", h("label", "Кому"), to), h("div.field", h("label", "Сумма"), amount, calc), h("div.field", h("label", "Сообщение"), note), code,
+      h("p.field-hint", "Переводы — только друзьям, через 14 дней после регистрации. До 1 000 KC в день, с 2FA и стажем от 30 дней — до 5 000. Администрация Круга никогда не просит перевести монеты.")),
+      footer: [h("button.btn.ghost", { type: "button", onclick: () => m.close() }, "Отмена"), go] });
+    go.addEventListener("click", () => busy(go, async () => {
+      try {
+        const r = await api.post("/api/wallet/transfer", { to: to.value.trim().replace(/^@/, ""), amount: +amount.value || 0, note: note.value, code: code.value });
+        m.close();
+        toast(`Переведено: ${r.net} KC`, { icon: "coin" });
+        document.dispatchEvent(new CustomEvent("wallet:changed"));
+      } catch (e) { toastError(e); }
+    }));
+  }
+
   const paintTop = () => {
     const L = w.level;
     const pct = L.max ? 100 : Math.round(((L.xp - L.from) / Math.max(1, L.to - L.from)) * 100);
@@ -43,6 +68,8 @@ export async function walletPage() {
       h("div.wl-level",
         h("div.wl-level-row", h("b", `Уровень ${L.level}`), h("small", L.max ? "Максимум" : `${fmt(L.xp)} / ${fmt(L.to)} опыта`)),
         h("div.wl-bar", h("span", { style: { width: `${pct}%` } }))),
+      h("div.wl-actions", h("button.btn.soft.sm", { type: "button", onclick: openTransfer }, icon("send", "sm"), "Перевести другу"),
+        h("a.btn.ghost.sm", { href: `/u/${state.me.username}?tab=city` }, icon("city", "sm"), "Мой город")),
       h("div.wl-streak", icon("star", "sm"), w.streak ? `Серия входов: ${w.streak} ${w.streak % 10 === 1 && w.streak % 100 !== 11 ? "день" : [2, 3, 4].includes(w.streak % 10) && ![12, 13, 14].includes(w.streak % 100) ? "дня" : "дней"} · на 7-й день +40 KC` : "Заходите каждый день — на 7-й день серии +40 KC"));
   };
 
@@ -113,7 +140,8 @@ export async function walletPage() {
         h("li", h("b", "+15"), " за запись от 40 символов или с фото — до 3 в день"),
         h("li", h("b", "+3"), " за комментарий к чужой записи — до 10 в день"),
         h("li", h("b", "+1"), " за каждого, кто отреагировал на ваши записи"),
-        h("li", h("b", "+2"), " за каждого, кто их прокомментировал")),
+        h("li", h("b", "+2"), " за каждого, кто их прокомментировал"),
+        h("li", h("b", "🪙"), " читатели — и ИИ-персонажи Круга — могут поддержать ваши записи монетами")),
       h("p.field-hint", "За активность — не больше 200 KC в день, плюс задания. Монеты нельзя купить или вывести: это очки для города и оформления.")),
     h("section.card.wl-card", h("div.wl-head", h("h2", "История")), hist, more));
 }
