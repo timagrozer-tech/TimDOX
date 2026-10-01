@@ -2,13 +2,38 @@
 import io
 import secrets
 from collections import OrderedDict
+from contextvars import ContextVar
 from datetime import datetime
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 from starlette.concurrency import run_in_threadpool
 
-from . import config
+from . import config, db
 from .web import ApiError
+
+# Кто сейчас загружает файл: заполняется для каждого запроса в SecurityMiddleware.
+# Так квоту не нужно передавать через все вызовы save_upload/save_media.
+current_user: ContextVar[dict | None] = ContextVar("krug_media_user", default=None)
+
+
+def charge_upload(nbytes: int) -> None:
+    """Учитывает загрузку в дневной квоте пользователя; при превышении — 429 до следующих суток (UTC)."""
+    u = current_user.get()
+    if not u:
+        return
+    verified = bool(u.get("email_verified_at"))
+    cap_mb = config.UPLOAD_DAY_MB if verified else config.UPLOAD_DAY_MB_UNVERIFIED
+    cap_files = config.UPLOAD_DAY_FILES if verified else config.UPLOAD_DAY_FILES_UNVERIFIED
+    day = db.now()[:10]
+    row = db.one("SELECT bytes, files FROM upload_usage WHERE user_id=? AND day=?", (u["id"], day))
+    used_b, used_f = (row["bytes"], row["files"]) if row else (0, 0)
+    if used_f + 1 > cap_files or used_b + nbytes > cap_mb * 1024 * 1024:
+        hint = "" if verified else " Подтвердите e-mail в настройках — лимит станет больше."
+        raise ApiError(429, f"На сегодня лимит загрузок исчерпан.{hint}", "upload_quota")
+    if row:
+        db.run("UPDATE upload_usage SET bytes=bytes+?, files=files+1 WHERE user_id=? AND day=?", (nbytes, u["id"], day))
+    else:
+        db.run("INSERT OR IGNORE INTO upload_usage (user_id, day, bytes, files) VALUES (?,?,?,1)", (u["id"], day, nbytes))
 
 Image.MAX_IMAGE_PIXELS = 40_000_000  # защита от «бомб» распаковки
 MAX_PIXELS = 40_000_000  # больше — отказ сразу (иначе картинка займёт в памяти сотни мегабайт)
@@ -218,6 +243,7 @@ async def save_media(upload, kind: str) -> dict:
     allowed = VIDEO_EXT if kind == "video" else AUDIO_EXT | {"mp4", "webm"}
     if ext not in allowed:
         raise ApiError(400, "Видео: MP4, WebM или MOV" if kind == "video" else "Музыка: MP3, M4A, OGG, WAV или FLAC")
+    charge_upload(len(data))
     if kind == "audio" and ext == "mp4":
         ext = "m4a"
     if kind == "audio" and ext == "webm":  # голосовые из браузера (Opus в WebM)
@@ -240,6 +266,7 @@ async def save_upload(upload, kind: str) -> dict:
         raise ApiError(413, f"Файл больше {config.MAX_UPLOAD_MB} МБ")
     if not data:
         raise ApiError(400, "Пустой файл")
+    charge_upload(len(data))
     result = await run_in_threadpool(_process, data, kind)  # тяжёлая обработка — в отдельном потоке
     if config.MEDIA_STORAGE == "supabase":
         return await run_in_threadpool(_store, result)
@@ -319,6 +346,7 @@ async def save_sticker(upload) -> dict:
         raise ApiError(413, "Стикер больше 5 МБ")
     if not data:
         raise ApiError(400, "Пустой файл")
+    charge_upload(len(data))
     result = await run_in_threadpool(_process_sticker, data)
     if config.MEDIA_STORAGE == "supabase":
         return await run_in_threadpool(_store, result)

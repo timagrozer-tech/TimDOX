@@ -34,9 +34,21 @@ async def body(request: Request) -> dict:
 
 
 def client_ip(request: Request) -> str:
-    fwd = request.headers.get("x-forwarded-for")
-    if fwd:
-        return fwd.split(",")[0].strip()
+    """Настоящий адрес посетителя. Первый адрес в X-Forwarded-For присылает сам клиент и может его подделать,
+    поэтому ему не доверяем: на Render адрес берётся из заголовков Cloudflare, которые тот перезаписывает
+    на каждом запросе, а в остальных случаях — из последних TRUSTED_PROXY_HOPS адресов цепочки."""
+    h = request.headers
+    if config.ON_RENDER:
+        ip = (h.get("cf-connecting-ip") or h.get("true-client-ip") or "").strip()
+        if ip:
+            return ip
+        chain = [p.strip() for p in (h.get("x-forwarded-for") or "").split(",") if p.strip()]
+        if len(chain) >= 3:  # клиент, узел Cloudflare, внутренний адрес Render
+            return chain[-3]
+    elif config.TRUSTED_PROXY_HOPS:
+        chain = [p.strip() for p in (h.get("x-forwarded-for") or "").split(",") if p.strip()]
+        if len(chain) >= config.TRUSTED_PROXY_HOPS:
+            return chain[-config.TRUSTED_PROXY_HOPS]
     return request.client.host if request.client else "unknown"
 
 

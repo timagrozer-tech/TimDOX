@@ -552,3 +552,12 @@ CREATE TABLE IF NOT EXISTS music_likes (
 );
 CREATE INDEX IF NOT EXISTS idx_music_likes_key ON music_likes(track_key, created_at);
 CREATE INDEX IF NOT EXISTS idx_music_likes_time ON music_likes(created_at);
+
+-- Дневные квоты загрузок (сутки по UTC)
+CREATE TABLE IF NOT EXISTS upload_usage (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day     TEXT NOT NULL,
+    bytes   BIGINT NOT NULL DEFAULT 0,
+    files   INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, day)
+);

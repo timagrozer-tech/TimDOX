@@ -80,6 +80,19 @@ SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
 SUPABASE_BUCKET = os.environ.get("SUPABASE_BUCKET", "krug-media")
 if MEDIA_STORAGE == "supabase" and not (SUPABASE_URL and SUPABASE_SERVICE_KEY):
     MEDIA_STORAGE = "db"
+# Дневные квоты загрузок на человека: защищают хранилище от заливки мусора с одного аккаунта.
+# Без подтверждённой почты квота меньше — фермам одноразовых аккаунтов это невыгодно.
+UPLOAD_DAY_MB = int(os.environ.get("UPLOAD_DAY_MB", "400"))
+UPLOAD_DAY_FILES = int(os.environ.get("UPLOAD_DAY_FILES", "300"))
+UPLOAD_DAY_MB_UNVERIFIED = int(os.environ.get("UPLOAD_DAY_MB_UNVERIFIED", "40"))
+UPLOAD_DAY_FILES_UNVERIFIED = int(os.environ.get("UPLOAD_DAY_FILES_UNVERIFIED", "30"))
+MAX_JSON_KB = int(os.environ.get("MAX_JSON_KB", "512"))
+
+# Откуда брать настоящий IP посетителя. На Render — из заголовков Cloudflare;
+# за другим обратным прокси укажите, сколько адресов в конце X-Forwarded-For добавляют ваши прокси.
+ON_RENDER = os.environ.get("RENDER", "").lower() == "true"
+TRUSTED_PROXY_HOPS = int(os.environ.get("TRUSTED_PROXY_HOPS", "0"))
+
 MAX_PHOTOS_PER_POST = 10
 POST_MAX_LEN = 5000
 NOTE_MAX_LEN = 500

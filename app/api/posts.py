@@ -644,9 +644,36 @@ async def delete_comment(request: Request):
 # ----------------------------------------------------------------------------
 # Жалобы
 # ----------------------------------------------------------------------------
+def _report_target_visible(ttype: str, tid: int, v: int) -> bool:
+    """Пожаловаться можно только на то, что человек может видеть. Иначе по ответам на жалобы
+    можно было бы перебирать номера и узнавать, существуют ли закрытые записи, истории и сообщения."""
+    if ttype == "post":
+        return bool(_fetch_visible([tid], v))
+    if ttype == "comment":
+        pid = db.value("SELECT post_id FROM comments WHERE id=?", (tid,))
+        return bool(pid and _fetch_visible([pid], v))
+    if ttype == "user":
+        return tid != v and bool(db.value("SELECT 1 FROM users WHERE id=?", (tid,)))
+    if ttype == "reel":
+        return bool(db.value("SELECT 1 FROM reels WHERE id=?", (tid,)))
+    if ttype == "reel_comment":
+        return bool(db.value("SELECT 1 FROM reel_comments WHERE id=?", (tid,)))
+    if ttype == "message":
+        return bool(db.value("""SELECT 1 FROM messages m JOIN conversation_members cm
+                                ON cm.conversation_id = m.conversation_id AND cm.user_id = ? WHERE m.id = ?""", (v, tid)))
+    if ttype == "story":
+        from .stories import _visible_sql
+        return bool(db.value(f"""SELECT 1 FROM stories s JOIN profiles pr ON pr.user_id = s.author_id
+                                 WHERE s.id = :id AND {_visible_sql()}""", {"id": tid, "v": v}))
+    if ttype == "community":
+        return bool(db.value("SELECT 1 FROM communities WHERE id=?", (tid,)))
+    return False
+
+
 @auth()
 async def report(request: Request):
     limit(request, "write")
+    limit(request, "report")
     data = await body(request)
     ttype = data.get("target_type")
     from .admin import TARGETS
@@ -660,6 +687,8 @@ async def report(request: Request):
     if not reason:
         raise ApiError(400, "Выберите причину жалобы")
     v = request.state.user["id"]
+    if not _report_target_visible(ttype, tid, v):
+        raise ApiError(404, "Не найдено")
     # одна открытая жалоба от человека на одно и то же
     if not db.value("SELECT 1 FROM reports WHERE reporter_id=? AND target_type=? AND target_id=? AND status='open'", (v, ttype, tid)):
         db.run("INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES (?,?,?,?)", (v, ttype, tid, reason))

@@ -6,6 +6,7 @@
 import os
 import re
 import sqlite3
+import threading
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -18,6 +19,10 @@ DATABASE_URL = DATABASE_URLS[0] if DATABASE_URLS else ""
 IS_PG = DATABASE_URL.startswith(("postgres://", "postgresql://"))
 
 _conn = None
+# Одно соединение обслуживает и основной поток, и фоновые (обработка фото, «Мир Круга»).
+# Замок не даёт запросам из разных потоков перемешаться, а транзакции — подхватить чужие запросы:
+# пока один поток внутри tx(), остальные ждут её завершения.
+_lock = threading.RLock()
 
 
 # ============================================================================
@@ -377,10 +382,11 @@ def _connect_pg():
 def connect(path: Path | str | None = None):
     """Открывает (или переоткрывает) соединение и применяет схему."""
     global _conn
-    if _conn is not None:
-        _conn.close()
-    _conn = _connect_pg() if IS_PG else _connect_sqlite(path)
-    return _conn
+    with _lock:
+        if _conn is not None:
+            _conn.close()
+        _conn = _connect_pg() if IS_PG else _connect_sqlite(path)
+        return _conn
 
 
 def conn():
@@ -390,33 +396,38 @@ def conn():
 
 
 def all(sql: str, params: tuple | dict = ()) -> list[dict]:  # noqa: A001
-    return conn().execute(sql, params).fetchall()
+    with _lock:
+        return conn().execute(sql, params).fetchall()
 
 
 def one(sql: str, params: tuple | dict = ()) -> dict | None:
-    return conn().execute(sql, params).fetchone()
+    with _lock:
+        return conn().execute(sql, params).fetchone()
 
 
 def value(sql: str, params: tuple | dict = ()):
-    row = conn().execute(sql, params).fetchone()
+    with _lock:
+        row = conn().execute(sql, params).fetchone()
     return None if row is None else next(iter(row.values()))
 
 
 def run(sql: str, params: tuple | dict = ()):
-    return conn().execute(sql, params)
+    with _lock:
+        return conn().execute(sql, params)
 
 
 @contextmanager
 def tx():
-    c = conn()
-    c.execute("BEGIN IMMEDIATE")
-    try:
-        yield c
-    except Exception:
-        c.execute("ROLLBACK")
-        raise
-    else:
-        c.execute("COMMIT")
+    with _lock:
+        c = conn()
+        c.execute("BEGIN IMMEDIATE")
+        try:
+            yield c
+        except Exception:
+            c.execute("ROLLBACK")
+            raise
+        else:
+            c.execute("COMMIT")
 
 
 def now() -> str:

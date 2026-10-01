@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 
 from starlette.applications import Starlette
 from starlette.exceptions import HTTPException
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, FileResponse, JSONResponse, Response
 from starlette.routing import Mount, Route
@@ -36,10 +37,31 @@ APP_VERSION = (os.environ.get("RENDER_GIT_COMMIT") or str(int(time.time())))[:12
 
 
 MAX_BODY = (max(config.MAX_VIDEO_MB, config.MAX_UPLOAD_MB * 10) + 5) * 1024 * 1024
+MAX_JSON = config.MAX_JSON_KB * 1024
+
+
+class BodyTooLarge(Exception):
+    """Тело запроса превысило лимит прямо во время приёма (например, при передаче без Content-Length)."""
+
+
+def _limited_receive(receive, cap: int):
+    """Обёртка над receive: считает принятые байты и обрывает приём, как только их больше cap.
+    Заголовок Content-Length клиент может не прислать или занизить — поэтому считаем сами."""
+    seen = 0
+
+    async def wrapped():
+        nonlocal seen
+        message = await receive()
+        if message["type"] == "http.request":
+            seen += len(message.get("body", b""))
+            if seen > cap:
+                raise BodyTooLarge()
+        return message
+    return wrapped
 
 
 class SecurityMiddleware:
-    """Загружает сессию, проверяет CSRF и Origin, добавляет заголовки безопасности."""
+    """Загружает сессию, проверяет CSRF и Origin, ограничивает размер запроса, добавляет заголовки безопасности."""
 
     def __init__(self, app):
         self.app = app
@@ -50,14 +72,19 @@ class SecurityMiddleware:
         request = Request(scope)
         path = scope["path"]
         if path.startswith("/api/"):
-            # слишком большое тело отклоняем сразу, до того как сервер начнёт его принимать
+            # JSON-запросам хватает сотен килобайт; большие тела бывают только у загрузок файлов
+            ctype = request.headers.get("content-type", "")
+            cap = MAX_BODY if ctype.startswith("multipart/") else MAX_JSON
             try:
                 length = int(request.headers.get("content-length") or 0)
             except ValueError:
                 length = 0
-            if length > MAX_BODY:
-                return await self._reject(scope, receive, send, "Файл слишком большой", status=413)
+            if length > cap:  # отклоняем сразу, до того как сервер начнёт принимать тело
+                return await self._reject(scope, receive, send, "Файл слишком большой" if cap == MAX_BODY else "Слишком большой запрос", status=413)
+            if scope["method"] not in SAFE_METHODS:
+                receive = _limited_receive(receive, cap)
             load_session(request)
+            media.current_user.set(request.state.user)
             if scope["method"] not in SAFE_METHODS:
                 origin = request.headers.get("origin")
                 host = request.headers.get("host", "")
@@ -76,8 +103,11 @@ class SecurityMiddleware:
                     (b"x-frame-options", b"DENY"),
                     (b"permissions-policy", b"camera=(self), microphone=(self), geolocation=()"),
                 ]
+                if config.COOKIE_SECURE:  # сайт работает только по HTTPS — браузер запомнит это на год
+                    headers.append((b"strict-transport-security", b"max-age=31536000; includeSubDomains"))
                 if not path.startswith("/api/"):
                     headers.append((b"content-security-policy", CSP.encode()))
+                    headers.append((b"cross-origin-opener-policy", b"same-origin"))
                 if path.startswith("/api/"):
                     headers.append((b"cache-control", b"no-store"))
                     headers.append((b"x-app-version", APP_VERSION))
@@ -110,6 +140,31 @@ class SecurityMiddleware:
 
 async def api_error(request: Request, exc: ApiError):
     return JSONResponse({"error": exc.message, "code": exc.code}, status_code=exc.status)
+
+
+async def body_too_large(request: Request, exc: BodyTooLarge):
+    return JSONResponse({"error": "Слишком большой запрос", "code": "too_large"}, status_code=413)
+
+
+class SelectiveGZip:
+    """Сжимает текстовые ответы: JSON API, страницу приложения, JS и CSS (в 4–8 раз меньше трафика).
+    Не трогает поток событий (сжатие копило бы события в буфере), фото, видео и музыку — они уже сжаты,
+    а для видео сжатие сломало бы перемотку (Range)."""
+
+    TEXT_EXT = (".js", ".css", ".svg", ".json", ".webmanifest", ".html", ".txt")
+
+    def __init__(self, app):
+        self.app = app
+        self.gzip = GZipMiddleware(app, minimum_size=1024, compresslevel=6)
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            p = scope["path"]
+            last = p.rsplit("/", 1)[-1]
+            if (p.startswith("/api/") and p != "/api/stream") or p.endswith(self.TEXT_EXT) or \
+                    (not p.startswith(("/uploads/", "/static/", "/api/")) and "." not in last):
+                return await self.gzip(scope, receive, send)
+        return await self.app(scope, receive, send)
 
 
 async def http_error(request: Request, exc: HTTPException):
@@ -211,6 +266,7 @@ async def housekeeping():
             db.run("DELETE FROM sessions WHERE expires_at < ?", (db.now(),))
             db.run("DELETE FROM profile_visits WHERE visited_at < ?", (db.future(days=-90),))
             db.run("DELETE FROM email_codes WHERE expires_at < ?", (db.now(),))
+            db.run("DELETE FROM upload_usage WHERE day < ?", (db.future(days=-3)[:10],))
             if removed:
                 log.info("Удалено истёкших историй: %s", removed)
         except Exception:
@@ -248,7 +304,7 @@ app = Starlette(
     debug=False,
     routes=routes,
     middleware=[],
-    exception_handlers={ApiError: api_error, HTTPException: http_error, Exception: server_error},
+    exception_handlers={ApiError: api_error, BodyTooLarge: body_too_large, HTTPException: http_error, Exception: server_error},
     lifespan=lifespan,
 )
-app = SecurityMiddleware(app)
+app = SelectiveGZip(SecurityMiddleware(app))

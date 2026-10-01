@@ -544,14 +544,26 @@ async def typing(request: Request):
 # ----------------------------------------------------------------------------
 # Поток событий
 # ----------------------------------------------------------------------------
+SESSION_RECHECK = 60  # секунд: как часто открытый поток сверяется с сессией
+
+
+def session_alive(sid: str) -> bool:
+    """Сессия ещё действует: не завершена (выход, «выйти на всех устройствах»), не истекла, аккаунт не заблокирован."""
+    return bool(db.value("""SELECT 1 FROM sessions s JOIN users u ON u.id = s.user_id
+                            WHERE s.id=? AND s.expires_at > ? AND u.is_banned = 0""", (sid, db.now())))
+
+
 @auth()
 async def stream(request: Request):
     v = request.state.user["id"]
+    sid = request.state.session["id"]
     q, first = hub.subscribe(v)
     if first:
         hub.publish_many(social.friend_ids(v), "presence", {"user_id": v, "online": True})
 
     async def events():
+        loop = asyncio.get_running_loop()
+        checked = loop.time()
         try:
             yield {"event": "hello", "data": "{}"}
             while True:
@@ -560,6 +572,12 @@ async def stream(request: Request):
                     yield {"event": event, "data": payload}
                 except asyncio.TimeoutError:
                     yield {"comment": "ping"}
+                # поток живёт часами — без этой проверки события продолжали бы приходить после выхода или блокировки
+                if loop.time() - checked >= SESSION_RECHECK:
+                    checked = loop.time()
+                    if not session_alive(sid):
+                        yield {"event": "session_end", "data": "{}"}
+                        return
         finally:
             if hub.unsubscribe(v, q):
                 db.run("UPDATE users SET last_seen_at=? WHERE id=?", (db.now(), v))

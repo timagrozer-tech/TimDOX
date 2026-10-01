@@ -79,7 +79,8 @@ class Stage7Test(unittest.TestCase):
         self.assertEqual(self.a.post("/api/reports", {"target_type": "post", "target_id": post["id"]}).status_code, 400)  # без причины
         for who in (self.a, self.b, self.a):  # повтор от того же человека не считается
             self.assertEqual(who.post("/api/reports", {"target_type": "post", "target_id": post["id"], "reason": "Спам"}).status_code, 200)
-        self.assertEqual(self.a.post("/api/reports", {"target_type": "reel", "target_id": 1, "reason": "Спам"}).status_code, 200)
+        # жалоба на несуществующий объект не принимается (раньше по ответам можно было перебирать номера)
+        self.assertEqual(self.a.post("/api/reports", {"target_type": "reel", "target_id": 987654, "reason": "Спам"}).status_code, 404)
         self.assertEqual(self.a.get("/api/admin/reports").status_code, 403)
         items = admin.get("/api/admin/reports").json()["items"]
         it = next(i for i in items if i["target_type"] == "post" and i["target_id"] == post["id"])
