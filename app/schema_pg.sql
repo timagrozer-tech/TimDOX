@@ -662,3 +662,60 @@ CREATE TABLE IF NOT EXISTS call_participants (
     left_at   TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_call_parts ON call_participants(call_id, user_id);
+
+-- Экономика Э0: кошельки, журнал проводок, лимиты, задания
+CREATE TABLE IF NOT EXISTS ledger_tx (
+    id         BIGSERIAL PRIMARY KEY,
+    kind       TEXT NOT NULL,
+    ref        TEXT,
+    idem       TEXT UNIQUE,
+    meta       TEXT,
+    created_at TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE TABLE IF NOT EXISTS ledger_entries (
+    id       BIGSERIAL PRIMARY KEY,
+    tx_id    BIGINT NOT NULL REFERENCES ledger_tx(id) ON DELETE CASCADE,
+    account  BIGINT NOT NULL,
+    currency TEXT NOT NULL,
+    delta    BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ledger_acc ON ledger_entries(account, currency, tx_id);
+CREATE TABLE IF NOT EXISTS wallets (
+    account  BIGINT NOT NULL,
+    currency TEXT NOT NULL,
+    balance  BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (account, currency)
+);
+CREATE TABLE IF NOT EXISTS econ_counters (
+    user_id BIGINT NOT NULL,
+    day     TEXT NOT NULL,
+    source  TEXT NOT NULL,
+    n       INTEGER NOT NULL DEFAULT 0,
+    amount  INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, day, source)
+);
+CREATE TABLE IF NOT EXISTS econ_state (
+    user_id    BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    streak     INTEGER NOT NULL DEFAULT 0,
+    last_day   TEXT,
+    grace_week TEXT
+);
+CREATE TABLE IF NOT EXISTS user_quests (
+    user_id  BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day      TEXT NOT NULL,
+    slot     INTEGER NOT NULL,
+    code     TEXT NOT NULL,
+    event    TEXT NOT NULL,
+    target   INTEGER NOT NULL,
+    progress INTEGER NOT NULL DEFAULT 0,
+    claimed  INTEGER NOT NULL DEFAULT 0,
+    swapped  INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, day, slot)
+);
+CREATE TABLE IF NOT EXISTS econ_weekly (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    week    TEXT NOT NULL,
+    days    INTEGER NOT NULL DEFAULT 0,
+    claimed INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, week)
+);

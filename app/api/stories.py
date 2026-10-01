@@ -6,7 +6,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from .. import config, db, media, social
+from .. import config, db, economy, media, social
 from ..security import censor, clean_text
 from ..social import is_friend_sql, not_blocked_sql
 from ..web import ApiError, auth, body, limit, ok, path_int
@@ -162,6 +162,7 @@ async def create_story(request: Request):
                     VALUES (?,?,?,?,?,?,?,?)""",
                  (v, saved["path"] if saved else None, saved["thumb"] if saved else None, text, background,
                   json.dumps(style, ensure_ascii=False), visibility, db.future(hours=STORY_HOURS))).lastrowid
+    economy.on_event(v, "story")
     return JSONResponse(_story_view(db.one("SELECT * FROM stories WHERE id=?", (sid,)), set()), status_code=201)
 
 

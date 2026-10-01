@@ -22,6 +22,7 @@ const NAV = [
   { href: "/communities", icon: "community", label: "Сообщества", match: (p) => p.startsWith("/communities") || p.startsWith("/c/") },
   { href: "/invite", icon: "userAdd", label: "Пригласить", cls: "nav-invite", match: (p) => p === "/invite" },
   { href: () => `/u/${state.me.username}`, icon: "user", label: "Моя страница", match: (p) => p === `/u/${state.me.username}` },
+  { href: "/wallet", icon: "coin", label: "Кошелёк", cls: "nav-wallet", more: true, match: (p) => p === "/wallet" },
   { href: "/bookmarks", icon: "bookmark", label: "Закладки", more: true, match: (p) => p === "/bookmarks" },
   { href: "/search", icon: "search", label: "Поиск", cls: "nav-search", more: true, match: (p) => p.startsWith("/search") || p.startsWith("/tag/") },
   { href: "/settings", icon: "settings", label: "Настройки", more: true, match: (p) => p.startsWith("/settings") },
@@ -54,6 +55,7 @@ function sidebar() {
   return h("aside.sidebar", { "aria-label": "Навигация" },
     logo(),
     nav,
+    h("a.sidebar-wallet", { href: "/wallet", title: "Кошелёк и задания" }, h("span.sw-ic", "🪙"), h("b.sw-kc", "—"), h("small.sw-lvl", "")),
     h("button.btn.accent.create-btn", { type: "button", onclick: () => openComposerModal(), title: "Создать запись", "aria-label": "Создать запись" }, icon("plus"), h("span.create-label", "Создать запись")),
     h("button.sidebar-acc", { type: "button", onclick: openAccounts, title: "Аккаунты: переключить или добавить", "aria-label": "Аккаунты" },
       avatar(state.me, "sm", { presence: false }), h("span.grow", h("b", state.me.name), h("small", `@${state.me.username}`)), icon("chevronsUpDown", "sm")),
@@ -224,6 +226,7 @@ export function setActive(path, wide = false) {
     if (active) { const d = a.closest("details.nav-more"); if (d) d.open = true; }
   });
   requestAnimationFrame(() => syncPills(true));
+  refreshWallet(path === "/wallet");
   // правую колонку обновляем не чаще раза в минуту
   if (shell && !wide && Date.now() - shell.asideLoaded > 60000 && getComputedStyle(shell.aside).display !== "none") {
     shell.asideLoaded = Date.now();
@@ -232,6 +235,19 @@ export function setActive(path, wide = false) {
 }
 
 export function refreshAside() { if (shell) { shell.asideLoaded = 0; } }
+/** Баланс в боковом меню: тихо, без отдельного запроса на каждой странице — раз в минуту */
+let walletAt = 0;
+document.addEventListener("wallet:changed", () => refreshWallet(true));
+export async function refreshWallet(force = false) {
+  if (!force && Date.now() - walletAt < 60000) return;
+  walletAt = Date.now();
+  try {
+    const w = await api.get("/api/wallet");
+    document.querySelectorAll(".sw-kc").forEach((b) => { b.textContent = w.kc.toLocaleString("ru-RU"); });
+    document.querySelectorAll(".sw-lvl").forEach((b) => { b.textContent = `ур. ${w.level.level}`; });
+  } catch { /* не важно */ }
+}
+
 export function refreshSidebarUser() {
   document.querySelectorAll(".sidebar-user").forEach((box) => {
     box.setAttribute("href", `/u/${state.me.username}`);

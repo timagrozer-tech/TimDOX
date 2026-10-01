@@ -4,7 +4,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from .. import collection, config, db, media, music, polls, social
+from .. import collection, config, db, economy, media, music, polls, social
 from ..security import censor, clean_text, extract_hashtags, extract_mentions
 from ..social import is_friend_sql, not_blocked_sql, visible_post_sql
 from ..web import ApiError, auth, body, int_param, limit, ok, path_int
@@ -401,6 +401,7 @@ async def _create_post(request: Request, v: int, form):
         author = db.value("SELECT author_id FROM posts WHERE id=?", (quote_of,))
         social.notify(author, v, "quote", post_id=pid)
     row = db.one("SELECT * FROM posts WHERE id=?", (pid,))
+    economy.on_post(v, pid, text, bool(saved))
     return JSONResponse(hydrate([row], v)[0], status_code=201)
 
 
@@ -482,6 +483,7 @@ async def delete_post(request: Request):
     # простые репосты удалённой записи теряют смысл — удаляем их тоже
     db.run("DELETE FROM posts WHERE quote_of=? AND is_repost=1", (pid,))
     db.run("DELETE FROM posts WHERE id=?", (pid,))
+    economy.on_post_deleted(row["author_id"], pid, row["created_at"])
     return ok()
 
 
@@ -505,6 +507,8 @@ async def react(request: Request):
         social.unnotify(post["author_id"], v, "reaction", post["id"])
     social.notify(post["author_id"], v, "reaction", post_id=post["id"], extra={"reaction": rtype})
     collection.check(post["author_id"])
+    if not prev and post["author_id"] != v:
+        economy.on_event(v, "react")
     return JSONResponse(hydrate([post], v)[0]["reactions"])
 
 
@@ -633,6 +637,7 @@ async def add_comment(request: Request):
             social.notify(uid, v, "mention", post_id=post["id"], comment_id=cid)
             notified.add(uid)
     row = db.one("SELECT * FROM comments WHERE id=?", (cid,))
+    economy.on_comment(v, cid, text, post["author_id"])
     view = _comment_view(row, social.cards_by_ids([v]), v, post["author_id"])
     view["replies"] = []
     return JSONResponse(view, status_code=201)
@@ -647,6 +652,7 @@ async def delete_comment(request: Request):
     if not row or u["id"] not in (row["author_id"], row["post_author"]) and not u["is_admin"]:
         raise ApiError(404, "Комментарий не найден")
     db.run("DELETE FROM comments WHERE id=?", (cid,))
+    economy.on_comment_deleted(row["author_id"], cid, row["created_at"])
     return ok()
 
 

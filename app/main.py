@@ -14,7 +14,8 @@ from starlette.responses import RedirectResponse, FileResponse, JSONResponse, Re
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from . import collection, config, db, media, referrals
+from . import collection, config, db, economy, media, referrals
+from .api import wallet as wallet_api
 from .api import accounts, admin, auth_routes, calls, collection_routes, invites, reels, stickers, communities, events, messages, misc, music as music_api, people_extra, posts, stats, stories, users
 from .security import load_extra_banned
 from .world import api as world_api, engine as world_engine
@@ -269,6 +270,8 @@ async def housekeeping():
         try:
             removed = stories.cleanup_expired()
             referrals.qualify_pending()
+            economy.settle_incoming()
+            db.run("DELETE FROM econ_counters WHERE day < ?", (db.future(days=-14)[:10],))
             db.run("DELETE FROM sessions WHERE expires_at < ?", (db.now(),))
             db.run("DELETE FROM profile_visits WHERE visited_at < ?", (db.future(days=-90),))
             db.run("DELETE FROM email_codes WHERE expires_at < ?", (db.now(),))
@@ -301,7 +304,7 @@ routes = [
     Route("/api/health", health),
     Route("/sw.js", service_worker),
     Route("/manifest.webmanifest", manifest),
-    *invites.routes, *accounts.routes, *calls.routes, *admin.routes, *world_api.routes, *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
+    *wallet_api.routes, *invites.routes, *accounts.routes, *calls.routes, *admin.routes, *world_api.routes, *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
     *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *stats.routes, *music_api.routes, *collection_routes.routes, *reels.routes, *stickers.routes,
     Mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static"),
     Route("/uploads/{path:path}", uploads, methods=["GET", "HEAD"]),

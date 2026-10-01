@@ -7,7 +7,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from .. import config, db, media, social
+from .. import config, db, economy, media, social
 from ..realtime import hub
 from ..security import LIMITS, censor, clean_text, rate_limiter
 from ..web import ApiError, auth, body, int_param, limit, ok, path_int
@@ -375,7 +375,9 @@ async def send_message(request: Request):
     text = censor(clean_text(data.get("text"), config.MESSAGE_MAX_LEN))
     if not text:
         raise ApiError(400, "Пустое сообщение")
-    return JSONResponse(deliver_message(conv_id, v, text, reply_to=_reply_id(data)), status_code=201)
+    msg = deliver_message(conv_id, v, text, reply_to=_reply_id(data))
+    economy.on_event(v, "message")
+    return JSONResponse(msg, status_code=201)
 
 
 def _reply_id(data) -> int | None:
