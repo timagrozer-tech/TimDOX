@@ -105,10 +105,14 @@ export async function profilePage({ params, query }) {
       h("div.profile-main",
         h("div.profile-top", avatarWrap, actions),
         h("div.profile-name",
-          h("h1", u.name, vmark(u), shown("constellation") ? constellationSpark(u, data.constellation, isMe) : null, statusText ? h("span.status-pill.online", statusText) : null,
-            !isMe && rel.follows_you && rel.status !== "friends" ? h("span.status-pill", "подписан(а) на вас") : null),
-          data.title ? h("span.profile-title", `✦ ${data.title}`) : null,
-          h("div.handle", `@${u.username}`, u.badge ? h("span.official-chip", u.badge) : null),
+          h("h1", u.name, vmark(u), shown("constellation") ? constellationSpark(u, data.constellation, isMe) : null),
+          // одна строка метаданных: логин, «в сети», подпись официального аккаунта, титул — без отдельных этажей
+          h("div.profile-meta",
+            h("span.handle", `@${u.username}`),
+            statusText ? h("span.meta-online", statusText) : null,
+            u.badge ? h("span.official-chip", u.badge) : null,
+            data.title ? h("span.profile-title", data.title) : null,
+            !isMe && rel.follows_you && rel.status !== "friends" ? h("span.meta-note", "подписан(а) на вас") : null),
           statusChip()),
         u.ai ? personaBox() : null,
         shown("about") && data.bio && !data.hidden ? h("p.profile-bio", data.bio) : null,
@@ -338,7 +342,7 @@ export async function profilePage({ params, query }) {
   const _renderHeader = renderHeader;
   renderHeader = function () {
     _renderHeader();
-    const blocks = { constellation: () => (!data.hidden && shown("constellation") ? constellationBlock(u, data.constellation, isMe) : null) };
+    const blocks = {};
     extras.replaceChildren(...space.order.filter((b) => blocks[b]).map((b) => blocks[b]()).filter(Boolean));
   };
   renderHeader();

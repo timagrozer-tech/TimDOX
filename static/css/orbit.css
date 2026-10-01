@@ -3711,3 +3711,28 @@ html.cst-open, html.cst-open body { overflow: hidden; }
 .shop-links { justify-content: center; gap: var(--s4); flex-wrap: wrap; }
 .shop-preview .avatar { background: var(--surface) !important; }
 :root[data-glass="liquid"] .segmented [aria-pressed="true"] { color: var(--text); }
+
+/* ---- шапка профиля: имя, затем одна аккуратная строка метаданных ---- */
+.profile-name h1 { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.profile-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 4px; font-size: 14px; color: var(--text-3); }
+.profile-meta .handle { font-size: 14px; color: var(--text-3); }
+.profile-meta .official-chip, .profile-meta .profile-title { margin: 0; height: 24px; padding: 0 10px; font-size: 12px; line-height: 22px; vertical-align: 0; border-radius: 999px; }
+.profile-meta .profile-title { color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); font-weight: 700; }
+.profile-meta .profile-title::before { content: "✦"; margin-right: 5px; color: #a78bfa; }
+.meta-online { display: inline-flex; align-items: center; gap: 5px; color: #16a34a; font-weight: 700; font-size: 13px; }
+.meta-online::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgb(34 197 94 / .18); }
+.meta-note { font-size: 12.5px; }
+@media (max-width: 719px) {
+  .profile-name { text-align: center; }
+  .profile-name h1 { justify-content: center; }
+  .profile-meta { justify-content: center; }
+}
+/* ✦ — цветной знак, а не серая звезда */
+.cst-spark { width: 26px; height: 26px; margin-left: 0; font-size: 22px; color: transparent; text-shadow: none;
+  background: linear-gradient(135deg, #a78bfa, #f472b6 55%, #60a5fa); -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 6px rgb(167 139 250 / .55)); }
+.cst-spark:hover { filter: drop-shadow(0 0 10px rgb(244 114 182 / .8)); }
+/* окна поверх Созвездия: настройка миров открывается над вселенной, а не под ней */
+html.cst-open .modal-backdrop { z-index: 700; }
+html.cst-open .toasts { z-index: 710; }
+html.cst-open .menu { z-index: 720; }
