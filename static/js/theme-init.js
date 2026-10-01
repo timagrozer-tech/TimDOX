@@ -6,6 +6,7 @@
     var dark = t === "dark" || (t === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
     root.dataset.theme = dark ? "dark" : "light";
     root.dataset.motion = localStorage.getItem("krug-motion") || "full";
+    root.dataset.glass = localStorage.getItem("krug-glass") || "liquid";
     var look = JSON.parse(localStorage.getItem("krug-look") || "null");
     if (look && look.vars) {
       for (var k in look.vars) root.style.setProperty(k, look.vars[k]);

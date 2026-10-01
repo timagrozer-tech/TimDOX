@@ -7,6 +7,7 @@ import { openComposerModal } from "./composer.js";
 import { logout } from "../app-actions.js";
 import { canInstall, install, installButton } from "../pwa.js";
 import { openAccounts, longPress } from "./accounts.js";
+import { attachPill, syncPills, refract } from "../liquid.js";
 
 let shell = null;
 let listenersBound = false;
@@ -86,9 +87,10 @@ function topbar() {
   return h("header.topbar",
     logo(),
     h("div.spacer"),
-    h("a.btn.ghost.icon-only.icon-btn", { href: "/search", "aria-label": "Поиск" }, icon("search")),
-    h("a.btn.ghost.icon-only.icon-btn", { href: "/notifications", "aria-label": "Уведомления" }, icon("bell"), badge("notifications")),
-    menuBtn);
+    h("div.lg-group",
+      h("a.btn.ghost.icon-only.icon-btn", { href: "/search", "aria-label": "Поиск" }, icon("search")),
+      h("a.btn.ghost.icon-only.icon-btn", { href: "/notifications", "aria-label": "Уведомления" }, icon("bell"), badge("notifications")),
+      menuBtn));
 }
 
 /** «+» внизу: что создать — запись, историю или клип */
@@ -197,6 +199,13 @@ export function ensureShell(root) {
   const el = h("div.app", topbar(), h("div.layout", sidebar(), main, aside), tabbar());
   root.replaceChildren(el);
   shell = { el, main, aside, asideLoaded: 0 };
+  // Liquid Glass: капсула активного пункта перетекает между вкладками; края дока и панели преломляют фон
+  const dock = el.querySelector(".tabbar"), side = el.querySelector(".sidebar");
+  attachPill(dock, "a.active:not(.tab-create)", { x: 3, y: 6 });
+  attachPill(el.querySelector(".sidebar .nav"), "a.active");
+  refract(dock, { bezel: 16, scale: 30 });
+  refract(side, { bezel: 20, scale: 36 });
+  el.querySelectorAll(".topbar .lg-group, .topbar .logo").forEach((g) => refract(g, { bezel: 12, scale: 22 }));
   if (listenersBound) return shell;
   listenersBound = true;
 
@@ -242,6 +251,7 @@ export function setActive(path, wide = false) {
     if (active) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     if (active) { const d = a.closest("details.nav-more"); if (d) d.open = true; }
   });
+  requestAnimationFrame(() => syncPills(true));
   // правую колонку обновляем не чаще раза в минуту
   if (shell && !wide && Date.now() - shell.asideLoaded > 60000 && getComputedStyle(shell.aside).display !== "none") {
     shell.asideLoaded = Date.now();

@@ -44,6 +44,7 @@ import { ensureShell, setActive, destroyShell } from "./components/layout.js";
 import { notifText, notifLink } from "./components/notif.js";
 import { initFx } from "./fx.js";
 import { initMotion } from "./motion.js";
+import { initLiquid } from "./liquid.js";
 
 import * as authPages from "./pages/auth.js";
 import { feedPage } from "./pages/feed.js";
@@ -207,6 +208,7 @@ on("logged-out", () => {
 // ---------------------------------------------------------------- Запуск
 restoreLook();
 initMotion();
+initLiquid();
 initCalls();
 initFx();
 initAvatarFallback();

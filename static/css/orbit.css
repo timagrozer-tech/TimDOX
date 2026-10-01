@@ -3079,3 +3079,179 @@ body.in-call { overflow: hidden; }
 .ci-actions .call-btn.green { animation: ci-shake 1.6s ease-in-out infinite; }
 @keyframes ci-shake { 0%, 60%, 100% { transform: none; } 65%, 75%, 85% { transform: rotate(-12deg); } 70%, 80%, 90% { transform: rotate(12deg); } }
 @media (prefers-reduced-motion: reduce) { .call, .ci-actions .call-btn.green, .call-tile-av.pulse i, .ci-av i { animation: none !important; } }
+
+/* ==========================================================================
+   KRUG Liquid Glass — живое стекло навигации и элементов управления (data-glass="liquid")
+   Толстое прозрачное стекло: сильная насыщенность фона, блик по краю, свет от курсора/наклона,
+   преломление краёв (Chromium), «жидкая» капсула активной вкладки.
+   ========================================================================== */
+:root[data-glass="liquid"] {
+  --lg-tint: rgb(255 255 255 / .2);
+  --lg-tint-strong: rgb(255 255 255 / .6);
+  --lg-blur: 7px;
+  --lg-sat: 2;
+  --lg-hi: rgb(255 255 255 / .95);
+  --lg-rim-a: rgb(255 255 255 / .9);
+  --lg-rim-b: rgb(255 255 255 / .12);
+  --lg-spec: rgb(255 255 255 / .55);
+  --lg-shadow: 0 20px 44px -20px rgb(24 16 70 / .5), 0 3px 10px -2px rgb(24 16 70 / .1);
+  --lg-pill: rgb(255 255 255 / .55);
+}
+:root[data-glass="liquid"][data-theme="dark"] {
+  --lg-tint: rgb(40 40 60 / .22);
+  --lg-tint-strong: rgb(22 22 34 / .66);
+  --lg-hi: rgb(255 255 255 / .42);
+  --lg-rim-a: rgb(255 255 255 / .5);
+  --lg-rim-b: rgb(255 255 255 / .05);
+  --lg-spec: rgb(255 255 255 / .22);
+  --lg-shadow: 0 22px 48px -18px rgb(0 0 0 / .75), 0 2px 8px rgb(0 0 0 / .3);
+  --lg-pill: rgb(255 255 255 / .16);
+}
+
+/* ---- материал ---- */
+:root[data-glass="liquid"] :is(.tabbar, .lg-group, .topbar .logo, .mp) ,
+:root[data-glass="liquid"] .sidebar {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / .22), rgb(255 255 255 / 0) 42%, rgb(255 255 255 / .07)),
+    var(--lg-tint);
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.05);
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.05);
+  border-color: transparent;
+  box-shadow:
+    inset 0 1.5px .5px -.5px var(--lg-hi),
+    inset 0 -1px 1px -.5px rgb(255 255 255 / .35),
+    inset 0 0 22px -8px rgb(255 255 255 / .45),
+    var(--lg-shadow);
+}
+/* преломление краёв — только Chromium; в остальных браузерах остаётся размытие выше */
+:root[data-glass="liquid"][data-refract="1"] .lg-refract {
+  -webkit-backdrop-filter: var(--lg-refract) blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.05);
+  backdrop-filter: var(--lg-refract) blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.05);
+}
+:root[data-glass="liquid"] :is(.modal, .menu) {
+  background: linear-gradient(180deg, rgb(255 255 255 / .18), rgb(255 255 255 / 0) 30%), var(--lg-tint-strong);
+  -webkit-backdrop-filter: blur(26px) saturate(2.1); backdrop-filter: blur(26px) saturate(2.1);
+  border-color: transparent;
+  box-shadow: inset 0 1.5px .5px -.5px var(--lg-hi), inset 0 0 0 1px var(--lg-rim-b), inset 0 0 30px -10px rgb(255 255 255 / .35), var(--shadow-lg);
+}
+
+/* ---- световой кант: яркий сверху-слева и снизу-справа, тусклый по бокам, плюс свет от курсора ---- */
+:root[data-glass="liquid"] :is(.tabbar, .lg-group, .topbar .logo, .sidebar, .mp, .modal, .menu)::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 3;
+  padding: 1.2px;
+  background:
+    radial-gradient(180px circle at var(--lx, 30%) var(--ly, 0%), var(--lg-rim-a), transparent 70%),
+    linear-gradient(135deg, var(--lg-rim-a), var(--lg-rim-b) 28%, var(--lg-rim-b) 70%, var(--lg-rim-a));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+/* блик на поверхности стекла */
+:root[data-glass="liquid"] :is(.tabbar, .lg-group, .sidebar, .mp)::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  background: radial-gradient(240px circle at var(--lx, 30%) var(--ly, 0%), var(--lg-spec), transparent 65%);
+  mix-blend-mode: soft-light; opacity: .9;
+}
+:root[data-glass="liquid"].lg-fixed :is(.tabbar, .lg-group, .topbar .logo, .sidebar, .mp, .modal, .menu)::after,
+:root[data-glass="liquid"].lg-fixed :is(.tabbar, .lg-group, .sidebar, .mp)::before { background-attachment: fixed, scroll; }
+:root[data-glass="liquid"] .mp { isolation: isolate; }
+
+/* ---- жидкая капсула активного пункта ---- */
+.lg-pill { display: none; }
+:root[data-glass="liquid"] .lg-pill {
+  display: block; position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 1; pointer-events: none;
+  border-radius: 999px; opacity: 0; transition: opacity .2s, scale .35s cubic-bezier(.3, 1.6, .5, 1);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / .5), rgb(255 255 255 / .05) 60%, rgb(255 255 255 / .18)),
+    color-mix(in srgb, var(--primary) 14%, var(--lg-pill));
+  box-shadow:
+    inset 0 1.5px 1px -.5px rgb(255 255 255 / .95),
+    inset 0 -2px 6px -2px color-mix(in srgb, var(--primary) 35%, transparent),
+    inset 0 0 0 .5px rgb(255 255 255 / .5),
+    0 8px 18px -10px color-mix(in srgb, var(--primary) 70%, transparent);
+}
+:root[data-glass="liquid"][data-theme="dark"] .lg-pill {
+  background: linear-gradient(180deg, rgb(255 255 255 / .22), rgb(255 255 255 / .02) 60%, rgb(255 255 255 / .08)), color-mix(in srgb, var(--primary) 26%, var(--lg-pill));
+  box-shadow: inset 0 1px .5px rgb(255 255 255 / .45), inset 0 0 0 .5px rgb(255 255 255 / .16), 0 8px 22px -10px color-mix(in srgb, var(--primary) 80%, transparent);
+}
+:root[data-glass="liquid"] .lg-pill.on { opacity: 1; }
+:root[data-glass="liquid"] .lg-pill.press { scale: 1.14; }
+:root[data-glass="liquid"] :is(.tabbar a, .sidebar .nav a, .sidebar .nav summary) { z-index: 2; }
+/* прежние индикаторы активной вкладки не нужны */
+:root[data-glass="liquid"] .tabbar a::before,
+:root[data-glass="liquid"] .sidebar .nav a.active::before { display: none; }
+:root[data-glass="liquid"] .sidebar .nav a.active { background: transparent; box-shadow: none; }
+:root[data-glass="liquid"] .sidebar .nav { position: relative; }
+:root[data-glass="liquid"] .tabbar a.active .icon { filter: none; }
+
+/* ---- телефон: парящий док-капсула и прозрачная шапка с отдельными стеклянными кнопками ---- */
+@media (max-width: 719px) {
+  :root[data-glass="liquid"] .tabbar { border-radius: 999px; left: 14px; right: 14px; overflow: visible; }
+  :root[data-glass="liquid"] .tabbar .create { border-radius: 999px; box-shadow: inset 0 1.5px 1px -.5px rgb(255 255 255 / .8), inset 0 -2px 6px -2px rgb(0 0 0 / .2), 0 8px 18px -8px color-mix(in srgb, var(--primary) 80%, transparent); }
+  :root[data-glass="liquid"] .topbar {
+    background: transparent; border-bottom: 0; box-shadow: none; padding: 0 10px;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  /* «край прокрутки»: мягкое размытие, которое растворяется книзу — контент уходит под шапку плавно */
+  :root[data-glass="liquid"] .topbar::before {
+    content: ""; position: absolute; inset: 0 0 -22px; z-index: -1; pointer-events: none;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 70%, transparent), transparent);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    -webkit-mask: linear-gradient(#000 45%, transparent); mask: linear-gradient(#000 45%, transparent);
+    opacity: 0; transition: opacity .3s;
+  }
+  :root[data-glass="liquid"].is-scrolled .topbar::before { opacity: 1; }
+  :root[data-glass="liquid"] .topbar .logo { position: relative; padding: 6px 14px 6px 8px; border-radius: 999px; }
+  :root[data-glass="liquid"] .lg-group { position: relative; display: flex; align-items: center; gap: 0; padding: 3px; border-radius: 999px; }
+  :root[data-glass="liquid"] .lg-group .btn { position: relative; z-index: 1; background: transparent; border-radius: 999px; }
+  :root[data-glass="liquid"] .lg-group .btn:active { background: rgb(255 255 255 / .3); }
+}
+.lg-group { display: contents; }
+:root[data-glass="liquid"] .lg-group { display: flex; }
+@media (min-width: 720px) { :root[data-glass="liquid"] .lg-group { display: contents; } }
+
+/* ---- компьютер: боковая панель — парящий лист стекла ---- */
+@media (min-width: 720px) {
+  :root[data-glass="liquid"] .sidebar { padding: 14px 10px; border-radius: 30px; isolation: isolate; }
+  :root[data-glass="liquid"] .sidebar > * { position: relative; z-index: 1; }
+  :root[data-glass="liquid"] .sidebar .nav a:hover { transform: none; background: rgb(255 255 255 / .16); }
+  :root[data-glass="liquid"] .sidebar .nav a.active:hover { background: transparent; }
+  :root[data-glass="liquid"] .sidebar .nav a.active .icon { filter: none; }
+}
+
+/* ---- кнопки и чипы: «гелевое» стекло без размытия (дёшево даже в длинной ленте) ---- */
+:root[data-glass="liquid"] :is(.btn.soft, .btn.outline, .chip, .segmented) {
+  background: linear-gradient(180deg, rgb(255 255 255 / .35), rgb(255 255 255 / .05)), color-mix(in srgb, var(--primary) 8%, var(--lg-tint));
+  border-color: transparent;
+  box-shadow: inset 0 1px .5px rgb(255 255 255 / .9), inset 0 0 0 1px rgb(255 255 255 / .28), inset 0 -1px 3px -1px rgb(0 0 0 / .08), 0 2px 8px -4px rgb(24 16 70 / .2);
+}
+:root[data-glass="liquid"][data-theme="dark"] :is(.btn.soft, .btn.outline, .chip, .segmented) {
+  background: linear-gradient(180deg, rgb(255 255 255 / .1), rgb(255 255 255 / .02)), color-mix(in srgb, var(--primary) 12%, var(--lg-tint));
+  box-shadow: inset 0 1px .5px rgb(255 255 255 / .28), inset 0 0 0 1px rgb(255 255 255 / .08), 0 2px 10px -4px rgb(0 0 0 / .5);
+}
+:root[data-glass="liquid"] :is(.btn.primary, .btn.accent, .btn.orange) {
+  box-shadow: inset 0 1.5px 1px -.5px rgb(255 255 255 / .75), inset 0 -3px 8px -3px rgb(0 0 0 / .25), 0 10px 26px -12px color-mix(in srgb, var(--primary) 80%, transparent);
+}
+:root[data-glass="liquid"] :is(.btn.soft, .btn.outline, .btn.primary, .btn.accent, .chip) { transition: scale .3s cubic-bezier(.3, 1.6, .5, 1), filter .2s, background-position .4s; }
+:root[data-glass="liquid"] :is(.btn.soft, .btn.outline, .btn.primary, .btn.accent, .chip):active { scale: .95; }
+:root[data-glass="liquid"] .segmented [aria-pressed="true"] { background: linear-gradient(180deg, rgb(255 255 255 / .7), rgb(255 255 255 / .25)); box-shadow: inset 0 1px .5px #fff, 0 3px 10px -4px rgb(24 16 70 / .35); }
+:root[data-glass="liquid"][data-theme="dark"] .segmented [aria-pressed="true"] { background: rgb(255 255 255 / .16); box-shadow: inset 0 1px .5px rgb(255 255 255 / .4); }
+
+/* ---- уведомления: тёмное стекло ---- */
+:root[data-glass="liquid"] .toast {
+  background: linear-gradient(180deg, rgb(255 255 255 / .1), transparent 50%), rgb(18 18 30 / .62);
+  -webkit-backdrop-filter: blur(18px) saturate(2); backdrop-filter: blur(18px) saturate(2);
+  box-shadow: inset 0 1px .5px rgb(255 255 255 / .35), inset 0 0 0 1px rgb(255 255 255 / .1), var(--shadow-lg);
+}
+
+/* ---- телефон в «лёгком» режиме: стекло остаётся, но без тяжёлых слоёв ---- */
+:root[data-glass="liquid"].lite :is(.tabbar, .lg-group, .topbar .logo, .sidebar) {
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.05);
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.05);
+}
+:root[data-glass="liquid"] body.reels-mode .tabbar { background: rgb(14 14 20 / .4); }
+:root[data-glass="liquid"] .modal { position: relative; }
+/* преломление важнее любых облегчённых вариантов стекла выше */
+:root[data-glass="liquid"][data-refract="1"] .lg-refract.lg-refract {
+  -webkit-backdrop-filter: var(--lg-refract) blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.05);
+  backdrop-filter: var(--lg-refract) blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.05);
+}

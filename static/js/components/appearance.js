@@ -3,6 +3,7 @@ import { api, state } from "../api.js";
 import { h, icon } from "../dom.js";
 import { toast, toastError, applyTheme, currentTheme } from "../ui.js";
 import { setMotion, currentMotion } from "../fx.js";
+import { setGlassMode } from "../liquid.js";
 import {
   PALETTES, BACKGROUNDS, FONTS, SHAPES, PRESETS, applyLook, currentLook, currentBgImage, paletteOf, paletteFromColor,
 } from "../look.js";
@@ -201,6 +202,12 @@ export function appearanceSection(settings) {
     type: "button", "aria-pressed": String(v === cur), onclick: () => { setMotion(v); paintMotion(v); },
   }, t)));
 
+  const glassSeg = h("div.segmented", { role: "group", "aria-label": "Стекло" });
+  const paintGlass = () => glassSeg.replaceChildren(...[["liquid", "Liquid Glass"], ["classic", "Матовое"]].map(([v, t]) => h("button", {
+    type: "button", "aria-pressed": String(v === (document.documentElement.dataset.glass || "liquid")), onclick: () => { setGlassMode(v); paintGlass(); },
+  }, t)));
+  paintGlass();
+
   function paint() {
     paintPresets(); paintMode(); paintSwatches(); paintBg(); paintFonts(); paintShape();
   }
@@ -220,6 +227,7 @@ export function appearanceSection(settings) {
     bg: ["Фон", () => [bgGrid, bgExtra]],
     font: ["Шрифт", () => [fontGrid]],
     more: ["Ещё", () => [
+      h("div.look-row", h("span", "Стекло", h("small.muted", "Живое прозрачное стекло панелей и кнопок")), glassSeg),
       h("div.look-row", h("span", "Углы"), shapeSeg),
       h("div.look-row", h("span", "Анимации", h("small.muted", "На слабых телефонах можно выключить")), motionSeg),
     ]],
