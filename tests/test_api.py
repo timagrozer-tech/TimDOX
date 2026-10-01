@@ -84,7 +84,8 @@ class ApiTest(unittest.TestCase):
 
         # подтверждение почты по ссылке из письма
         outbox = (config.DATA_DIR / "outbox.log").read_text(encoding="utf-8")
-        token = outbox.split("/verify?token=")[1].split()[0]
+        anna_mail = next(e for e in outbox.split("-" * 60) if "To: anna@example.com" in e)  # другие тесты тоже пишут в журнал
+        token = anna_mail.split("/verify?token=")[1].split()[0]
         self.assertEqual(anna.post("/api/auth/verify", {"token": token}).status_code, 200)
         self.assertTrue(anna.refresh()["user"]["email_verified"])
 
