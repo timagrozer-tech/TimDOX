@@ -79,6 +79,9 @@ def normalize(kind: str, value: str) -> dict:
     if tpl:
         if not HANDLE.match(h):
             raise Invalid(f"{label}: ник из латинских букв, цифр, точки, дефиса или подчёркивания")
+        if kind == "steam":
+            from .steam import profile_url
+            return {"kind": kind, "handle": h, "url": profile_url(h)}
         return {"kind": kind, "handle": h, "url": tpl.format(h=h)}
     if not TAG.match(h):
         raise Invalid(f"{label}: от 2 до 40 символов")
@@ -131,8 +134,13 @@ def public(uid: int, raw) -> dict:
         if i["kind"] in KRUG_KINDS:
             out.append({"kind": i["kind"], "stats": stats.get(i["kind"], {})})
         else:
+            url = i.get("url")
+            if i["kind"] == "steam" and i.get("handle"):
+                from .steam import STEAMID, profile_url
+                if STEAMID.match(i["handle"]):  # старые записи вели на /id/<число> — это битая ссылка
+                    url = profile_url(i["handle"])
             out.append({"kind": i["kind"], "label": KINDS[i["kind"]][0], "group": KINDS[i["kind"]][1],
-                        "handle": i.get("handle"), "url": i.get("url")})
+                        "handle": i.get("handle"), "url": url})
     return {"style": d["style"], "items": out}
 
 

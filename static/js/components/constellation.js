@@ -6,27 +6,45 @@ import { api, state } from "../api.js";
 import { h, icon, avatar } from "../dom.js";
 import { toast, toastError, modal, busy } from "../ui.js";
 import { pushOverlay, navigate } from "../router.js";
+import { BRAND_PATHS } from "../brands.js";
 
-// внешний вид каждого мира: тип тела и два цвета. Никаких логотипов — у каждого мира своя форма.
+const SVG_NS = "http://www.w3.org/2000/svg";
+/** Знак мира: официальный логотип сервиса или значок для миров Круга, сайта и портфолио */
+const GLYPHS = { xbox: "gamepad", portfolio: "work", website: "globe", network: "users", communities: "community", gallery: "image", collection: "gift" };
+function mark(kind) {
+  if (BRAND_PATHS[kind]) {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("class", "cst-mark");
+    svg.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", BRAND_PATHS[kind]);
+    svg.append(path);
+    return svg;
+  }
+  return GLYPHS[kind] ? icon(GLYPHS[kind], "cst-mark line") : null;
+}
+
+// внешний вид каждого мира: тип тела, цвета бренда и его знак поверх тела
 const WORLDS = {
-  telegram: { type: "satellite", name: "Спутник связи", c: ["#5fc8ff", "#1f7ae0"] },
-  discord: { type: "satellite", name: "Станция голосов", c: ["#9aa4ff", "#5865f2"] },
+  telegram: { type: "satellite", name: "Спутник связи", c: ["#7fd3ff", "#26a5e4"] },
+  discord: { type: "satellite", name: "Станция голосов", c: ["#a3abff", "#5865f2"] },
   instagram: { type: "planet", name: "Планета кадров", c: ["#ffb35c", "#d6249f"] },
-  tiktok: { type: "planet", name: "Ритм-планета", c: ["#5ef2e8", "#ff2d6f"] },
-  x: { type: "node", name: "Узел мыслей", c: ["#e6e6e6", "#5a5a5a"] },
-  threads: { type: "node", name: "Узел разговоров", c: ["#d9d9d9", "#4a4a4a"] },
+  tiktok: { type: "planet", name: "Ритм-планета", c: ["#25f4ee", "#111111"] },
+  x: { type: "node", name: "Узел мыслей", c: ["#6b6b6b", "#000000"] },
+  threads: { type: "node", name: "Узел разговоров", c: ["#6b6b6b", "#000000"] },
   vk: { type: "planet", name: "Планета друзей", c: ["#7fb2ff", "#0077ff"] },
   steam: { type: "planet", ring: true, name: "Игровая планета", c: ["#66c0f4", "#1b2838"] },
   xbox: { type: "planet", ring: true, name: "Зелёный мир", c: ["#7ee07e", "#107c10"] },
-  playstation: { type: "planet", ring: true, name: "Синий мир", c: ["#7aa8ff", "#003791"] },
-  epic: { type: "crystal", name: "Эпический кристалл", c: ["#f2f2f2", "#2a2a2a"] },
-  riot: { type: "comet", name: "Комета арены", c: ["#ff8a80", "#d13639"] },
-  github: { type: "node", name: "Технологический узел", c: ["#b4a7ff", "#24292f"] },
-  gitlab: { type: "node", name: "Узел сборки", c: ["#ffb169", "#e24329"] },
+  playstation: { type: "planet", ring: true, name: "Синий мир", c: ["#4d8bff", "#0070d1"] },
+  epic: { type: "crystal", name: "Эпический кристалл", c: ["#6b6b6b", "#2a2a2a"] },
+  riot: { type: "comet", name: "Комета арены", c: ["#ff6b6b", "#eb0029"] },
+  github: { type: "node", name: "Технологический узел", c: ["#6e7681", "#181717"] },
+  gitlab: { type: "node", name: "Узел сборки", c: ["#fca326", "#fc6d26"] },
   portfolio: { type: "portal", name: "Портал работ", c: ["#ffd36e", "#ff7a59"] },
   website: { type: "portal", name: "Портал", c: ["#8ef0c9", "#2bb3a3"] },
-  youtube: { type: "planet", ring: true, name: "Медиа-планета", c: ["#ff8a8a", "#e60023"] },
-  twitch: { type: "planet", name: "Планета эфиров", c: ["#c9a4ff", "#7c3aed"] },
+  youtube: { type: "planet", ring: true, name: "Медиа-планета", c: ["#ff6b6b", "#ff0000"] },
+  twitch: { type: "planet", name: "Планета эфиров", c: ["#bf94ff", "#9146ff"] },
   spotify: { type: "planet", name: "Планета звука", c: ["#7ef0a6", "#1db954"] },
   soundcloud: { type: "planet", name: "Облачная планета", c: ["#ffb27a", "#ff5500"] },
   network: { type: "galaxy", name: "Галактика связей", label: "Сеть", c: ["#c7b8ff", "#7c5cff"] },
@@ -65,10 +83,16 @@ function worldInfo(it, user) {
 }
 
 function body(w, kind) {
-  const el = h(`div.cst-body.t-${w.type}${w.ring ? ".ring" : ""}`, { dataset: { kind } });
+  const m = mark(kind);
+  const el = h(`div.cst-body.t-${w.type}${w.ring ? ".ring" : ""}${m ? ".has-mark" : ""}`, { dataset: { kind } }, m);
   el.style.setProperty("--c1", w.c[0]);
   el.style.setProperty("--c2", w.c[1]);
   return el;
+}
+
+function chipMark(kind) {
+  const m = mark(kind);
+  return m ? h("span.cst-chip-mark", { style: { background: (WORLDS[kind] || WORLDS.website).c[1] } }, m) : null;
 }
 
 /** Раскладка по орбитам: до 4 на ближней, до 6 на средней, остальные — на дальней */
@@ -115,7 +139,42 @@ export function openConstellation(user, data, isMe, origin) {
       h("div.cst-card-facts", ...info.facts.filter(Boolean).map((f) => h("span", f))),
       h("div.cst-card-actions", h("button.btn.ghost", { type: "button", onclick: () => showCard(null) }, "Назад"), go));
     card.hidden = false;
+    if (it.kind === "steam" && it.handle) steamCard(it, info, mini);
   };
+
+  // ---- Steam: живой мини-профиль вместо одного ника
+  const MONTHS = { January: "января", February: "февраля", March: "марта", April: "апреля", May: "мая", June: "июня", July: "июля", August: "августа", September: "сентября", October: "октября", November: "ноября", December: "декабря" };
+  const ruDate = (t) => { const m = /^([A-Z][a-z]+) (\d{1,2}), (\d{4})$/.exec(t || ""); return m && MONTHS[m[1]] ? `${m[2]} ${MONTHS[m[1]]} ${m[3]}` : t; };
+  async function steamCard(it, info, mini) {
+    const facts = card.querySelector(".cst-card-facts");
+    facts.replaceChildren(h("span.cst-st-skel"), h("span.cst-st-skel.short"));
+    let d;
+    try { d = await api.get(`/api/users/${encodeURIComponent(user.username)}/steam`); } catch { d = null; }
+    if (selected !== it || closed) return;
+    if (!d?.ok) { facts.replaceChildren(h("span", `@${it.handle}`)); return; }
+    const STATE = { online: "В сети", "in-game": "В игре", offline: "Не в сети" };
+    const ru = (t) => (t || "").replace(/^Last Online/i, "Был(а) в сети").replace(/\bhrs?\b/g, "ч").replace(/\bmins?\b/g, "мин")
+      .replace(/\bdays?\b/g, "дн.").replace(/\bago\b/g, "назад").replace(/^Online$/i, "В сети").replace(/^Offline$/i, "Не в сети")
+      .replace(/^In-Game · /i, "Играет: ");
+    const statusLine = d.state === "in-game" && d.playing ? `Играет: ${d.playing.name}` : ru(d.status) || STATE[d.state];
+    const ava = d.avatar ? h("img.cst-st-ava", { src: d.avatar, alt: "", referrerpolicy: "no-referrer", loading: "lazy" }) : mini;
+    const head = card.querySelector(".cst-card-head");
+    head.replaceChildren(h(`div.cst-st-ava-wrap.s-${d.state}`, ava),
+      h("div.grow", h("b", d.name), h(`small.cst-st-state.s-${d.state}`, statusLine),
+        h("small.cst-st-meta", [d.location, d.since && `в Steam с ${ruDate(d.since)}`].filter(Boolean).join(" · "))),
+      h("span.cst-st-badge", mark("steam")));
+    const game = (g, now) => h(g.link ? "a.cst-st-game" : "div.cst-st-game", g.link ? { href: g.link, target: "_blank", rel: "noopener noreferrer nofollow" } : {},
+      g.logo ? h("img", { src: g.logo, alt: "", referrerpolicy: "no-referrer", loading: "lazy" }) : h("span.cst-st-noimg", icon("gamepad")),
+      h("div.grow", h("b", g.name), h("small", now ? "Играет сейчас" : [g.recent ? `${g.recent} ч за 2 недели` : "", g.total ? `${g.total.toLocaleString("ru-RU")} ч всего` : ""].filter(Boolean).join(" · "))));
+    const list = [];
+    if (d.playing) list.push(game(d.playing, true));
+    d.games.filter((g) => g.name !== d.playing?.name).forEach((g) => list.push(game(g)));
+    facts.replaceChildren(...(list.length ? [h("div.cst-st-games", ...list)]
+      : [h("span", d.private ? "Профиль Steam закрыт — видно только имя и статус" : "Нет игр за последние две недели")]));
+    facts.classList.add("steam");
+    const go = card.querySelector(".cst-card-actions a.btn.primary");
+    if (go) { go.href = d.url; go.replaceChildren("Открыть в Steam", icon("arrowRight", "sm")); }
+  }
 
   const paint = () => {
     root.className = `cst style-${cur.style || "cosmos"}${root.classList.contains("in") ? " in" : ""}`;
@@ -225,9 +284,9 @@ export function openConstellation(user, data, isMe, origin) {
     }) : [h("p.muted", "Пока пусто — выберите миры ниже.")]));
     const add = (kind) => { if (list.length >= 12) return toast("Не больше 12 миров", { error: true }); if (KRUG.includes(kind) && list.some((x) => x.kind === kind)) return; list.push({ kind, value: "" }); paintRows(); rows.lastElementChild?.querySelector("input")?.focus(); };
     const picker = h("div.cst-ed-pick",
-      h("div.cst-ed-group", h("small", "Круг"), h("div.chips", ...KRUG.map((k) => h("button.chip", { type: "button", onclick: () => add(k) }, WORLDS[k].label)))),
+      h("div.cst-ed-group", h("small", "Круг"), h("div.chips", ...KRUG.map((k) => h("button.chip.cst-chip", { type: "button", onclick: () => add(k) }, chipMark(k), WORLDS[k].label)))),
       ...Object.entries(GROUPS).map(([g, t]) => h("div.cst-ed-group", h("small", t),
-        h("div.chips", ...meta.kinds.filter((k) => k.group === g).map((k) => h("button.chip", { type: "button", onclick: () => add(k.kind) }, k.label))))));
+        h("div.chips", ...meta.kinds.filter((k) => k.group === g).map((k) => h("button.chip.cst-chip", { type: "button", style: { "--brand": (WORLDS[k.kind] || WORLDS.website).c[1] }, onclick: () => add(k.kind) }, chipMark(k.kind), k.label))))));
     paintStyle(); paintRows();
     const save = h("button.btn.primary", { type: "button" }, "Сохранить");
     const m = modal({ title: "Ваше созвездие", body: h("div.stack", h("div.look-row", h("span", "Стиль"), styleSeg), rows, picker),

@@ -726,6 +726,24 @@ async def constellation_set(request: Request):
 
 
 @auth()
+async def steam_world(request: Request):
+    """Мини-профиль Steam из Созвездия человека. Только тот ник, что он сам вписал, — не прокси."""
+    v = request.state.user["id"]
+    p = _profile(request.path_params["username"])
+    uid = p["user_id"]
+    rel = social.relation(v, uid)
+    if rel["blocked_me"] or not (uid == v or rel["status"] == "friends" or p["profile_visibility"] == "public"):
+        raise ApiError(404, "Профиль скрыт")
+    item = next((i for i in constellation.load(p.get("constellation"))["items"] if i.get("kind") == "steam"), None)
+    if not item or not item.get("handle"):
+        raise ApiError(404, "Steam не привязан")
+    limit(request, "steam_world")
+    from starlette.concurrency import run_in_threadpool
+    from .. import steam
+    return JSONResponse(await run_in_threadpool(steam.fetch, item["handle"]))
+
+
+@auth()
 async def space_set(request: Request):
     v = request.state.user["id"]
     data = await body(request)
@@ -738,6 +756,7 @@ routes = [
     Route("/api/me/constellation", constellation_get, methods=["GET"]),
     Route("/api/me/constellation", constellation_set, methods=["PUT"]),
     Route("/api/me/space", space_set, methods=["PUT"]),
+    Route("/api/users/{username}/steam", steam_world, methods=["GET"]),
     Route("/api/onboarding", onboarding_get, methods=["GET"]),
     Route("/api/onboarding", onboarding_set, methods=["POST"]),
     Route("/api/users/{username}", profile, methods=["GET"]),
