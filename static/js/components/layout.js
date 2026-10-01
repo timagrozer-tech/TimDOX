@@ -22,13 +22,7 @@ const NAV = [
   { href: "/communities", icon: "community", label: "Сообщества", match: (p) => p.startsWith("/communities") || p.startsWith("/c/") },
   { href: "/invite", icon: "userAdd", label: "Пригласить", cls: "nav-invite", match: (p) => p === "/invite" },
   { href: () => `/u/${state.me.username}`, icon: "user", label: "Моя страница", match: (p) => p === `/u/${state.me.username}` },
-  { href: "/reels", icon: "film", label: "Клипы", more: true, match: (p) => p.startsWith("/reels") },
-  { href: "/world", icon: "world", label: "Мир Круга", cls: "nav-world", more: true, match: (p) => p.startsWith("/world") },
   { href: "/events", icon: "calendar", label: "Мероприятия", badge: "events", more: true, match: (p) => p.startsWith("/events") },
-  { href: "/stats", icon: "chart", label: "Статистика", more: true, match: (p) => p === "/stats" },
-  { href: "/guests", icon: "eye", label: "Гости", badge: "guests", more: true, match: (p) => p === "/guests" },
-  { href: "/collection", icon: "gift", label: "Коллекция", more: true, match: (p) => p === "/collection" },
-  { href: "/stickers", icon: "sticker", label: "Стикеры", more: true, match: (p) => p.startsWith("/stickers") },
   { href: "/bookmarks", icon: "bookmark", label: "Закладки", more: true, match: (p) => p === "/bookmarks" },
   { href: "/search", icon: "search", label: "Поиск", cls: "nav-search", more: true, match: (p) => p.startsWith("/search") || p.startsWith("/tag/") },
   { href: "/settings", icon: "settings", label: "Настройки", more: true, match: (p) => p.startsWith("/settings") },
@@ -71,7 +65,7 @@ function mobileMenu(btn) {
   showMenu(btn, [
     { label: "Аккаунты", hint: `@${state.me.username} · переключить или добавить`, icon: "users", onClick: openAccounts },
     "-",
-    ...navItems().filter((n) => !["Лента", "Моя страница", "Сообщения", "Клипы"].includes(n.label)).map((n) => ({
+    ...navItems().filter((n) => !["Лента", "Моя страница", "Сообщения", "Друзья", "Уведомления", "Поиск"].includes(n.label)).map((n) => ({
       label: n.badge && state.counters[n.badge] ? `${n.label} (${state.counters[n.badge]})` : n.label,
       icon: n.icon, onClick: () => navigate(hrefOf(n)),
     })),
@@ -82,7 +76,7 @@ function mobileMenu(btn) {
 }
 
 function topbar() {
-  const menuBtn = h("button.btn.ghost.icon-only.icon-btn", { type: "button", "aria-label": "Меню", "aria-haspopup": "menu" }, icon("menu"), badge("friend_requests"));
+  const menuBtn = h("button.btn.ghost.icon-only.icon-btn", { type: "button", "aria-label": "Меню", "aria-haspopup": "menu" }, icon("menu"));
   menuBtn.addEventListener("click", () => mobileMenu(menuBtn));
   return h("header.topbar",
     logo(),
@@ -102,10 +96,6 @@ function createMenu(btn) {
       const { createStory } = await import("./stories.js");
       createStory(() => document.querySelector(".stories-card")?._reload?.());
     } },
-    { label: "Клип", hint: "Короткое вертикальное видео", icon: "film", onClick: async () => {
-      const { openUpload } = await import("../pages/reels.js");
-      openUpload(() => navigate("/reels"));
-    } },
   ], { onClose: () => btn.classList.remove("open"), title: "Создать" });
 }
 
@@ -114,7 +104,7 @@ function tabbar() {
   longPress(profileTab, openAccounts);
   return h("nav.tabbar", { "aria-label": "Меню" },
     h("a", { href: "/", dataset: { nav: "Лента" } }, icon("home"), "Лента"),
-    h("a", { href: "/reels", dataset: { nav: "Клипы" } }, icon("film"), "Клипы"),
+    h("a", { href: "/friends", dataset: { nav: "Друзья" } }, icon("users"), "Друзья", badge("friend_requests")),
     h("a.tab-create", { href: "#", "aria-label": "Создать", "aria-haspopup": "menu", onclick: (e) => { e.preventDefault(); createMenu(e.currentTarget); } }, h("span.create", icon("plus"))),
     h("a", { href: "/messages", dataset: { nav: "Сообщения" } }, icon("message"), "Чаты", badge("messages")),
     profileTab);

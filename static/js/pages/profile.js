@@ -119,7 +119,7 @@ export async function profilePage({ params, query }) {
     api.get(`/api/world/persona/${encodeURIComponent(u.username)}`).then((p) => {
       box.style.setProperty("--oc", p.org.color);
       box.replaceChildren(
-        h("a.pb-org", { href: "/world" }, h("span", p.org.emoji), h("b", p.org.name), h("small", p.role)),
+        h("span.pb-org", h("span", p.org.emoji), h("b", p.org.name), h("small", p.role)),
         !isMe ? h("div.pb-rel", h("span", `Ваше звание: `, h("b", p.title), ` (${p.rep})`), p.closeness ? h("span", `💜 близость ${p.closeness}`) : null) : null,
         p.facts?.length ? h("div.pb-facts", h("small", "Помнит о вас: "), p.facts.join(" · ")) : null);
     }).catch(() => box.remove());
@@ -178,8 +178,8 @@ export async function profilePage({ params, query }) {
 
   function showcaseRow() {
     const owned = data.showcase?.owned || [];
-    if (!owned.length) return isMe ? h("a.showcase.empty", { href: "/collection" }, "🎁 Коллекция пуста — зарабатывайте редкие предметы активностью") : null;
-    return h(isMe ? "a.showcase" : "div.showcase", isMe ? { href: "/collection" } : {},
+    if (!owned.length) return null;
+    return h("div.showcase",
       h("span.showcase-label", "Коллекция"),
       ...owned.slice(0, 10).map((it) => h(`span.showcase-item.${it.rarity}`, { title: `${it.name} · ${it.rarity_label}` },
         itemBadge(it))),
@@ -243,7 +243,6 @@ export async function profilePage({ params, query }) {
   const TABS = [
     { id: "posts", label: "Записи", icon: "edit" },
     { id: "photos", label: "Фото", icon: "image" },
-    { id: "reels", label: "Клипы", icon: "film" },
     { id: "friends", label: "Друзья", icon: "users" },
   ];
   let current = null;
