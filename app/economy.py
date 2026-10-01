@@ -22,6 +22,8 @@ SOURCES = {
     "comment": (3, 10, 2),
     "reactions_in": (1, 50, 0),
     "comments_in": (2, 15, 0),
+    "visit_guest": (5, 5, 3),
+    "visit_host": (2, 10, 1),
 }
 
 # задания: код → (текст, событие, сколько нужно)
@@ -34,7 +36,9 @@ QUEST_POOL = {
         ("comment3", "Ответьте в 3 обсуждениях", "comment", 3)],
     3: [("story1", "Опубликуйте историю", "story", 1),
         ("post1b", "Поделитесь новой записью", "post", 1),
-        ("comment5", "Оставьте 5 комментариев", "comment", 5)],
+        ("comment5", "Оставьте 5 комментариев", "comment", 5),
+        ("visit1", "Загляните в город друга", "visit", 1),
+        ("build1", "Постройте или улучшите здание", "build", 1)],
 }
 QUEST_REWARD = {1: (20, 15), 2: (25, 20), 3: (35, 25)}  # (KC, XP)
 ALL_DONE_BONUS = 20
@@ -382,3 +386,31 @@ def on_comment_deleted(uid: int, cid: int, created_at: str) -> None:
 @_safe
 def on_event(uid: int, event: str) -> None:
     track(uid, event)
+
+
+# ---------------------------------------------------------------- траты
+def spend(uid: int, kc: int, kind: str, ref: str = "", xp_back: bool = True) -> int:
+    """Списывает KC и сжигает их. За вложения в город — опыт (1 за каждые 10 KC). ValueError — не хватает монет."""
+    if kc <= 0:
+        raise ValueError("Некорректная сумма")
+    moves = [(uid, "KC", -kc), (BURN, "KC", kc)]
+    xp = kc // 10 if xp_back else 0
+    if xp:
+        moves += [(MINT, "XP", -xp), (uid, "XP", xp)]
+    with db.tx() as c:
+        return _post(c, kind, moves, ref)
+
+
+def earn_amount(uid: int, source: str, amount: int, cap: int, ref: str = "") -> int:
+    """Начисление переменной суммы с суточным потолком источника (казна города и т. п.)."""
+    day = today()
+    used = _count(uid, day, source)["amount"]
+    total = _count(uid, day, "_activity")["amount"]
+    kc = max(0, min(amount, cap - used, ACTIVITY_CAP - total))
+    if kc <= 0:
+        return 0
+    if mint(uid, kc, kind=source, ref=ref, idem=f"{source}:{uid}:{ref}" if ref else None, xp=kc // 2) is None:
+        return 0
+    _bump(uid, day, source, 1, kc)
+    _bump(uid, day, "_activity", 0, kc)
+    return kc

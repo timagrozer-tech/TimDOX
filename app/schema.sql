@@ -677,3 +677,31 @@ CREATE TABLE IF NOT EXISTS econ_weekly (
     claimed INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, week)
 );
+
+-- Город (Э1)
+CREATE TABLE IF NOT EXISTS cities (
+    user_id     INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    name        TEXT,
+    treasury_at TEXT,
+    created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE TABLE IF NOT EXISTS city_buildings (
+    id       INTEGER PRIMARY KEY,
+    user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind     TEXT NOT NULL,
+    x        INTEGER NOT NULL,
+    y        INTEGER NOT NULL,
+    level    INTEGER NOT NULL DEFAULT 1,
+    built_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_city_cell ON city_buildings(user_id, x, y);
+CREATE TABLE IF NOT EXISTS city_visits (
+    id         INTEGER PRIMARY KEY,
+    host_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    guest_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day        TEXT NOT NULL,
+    action     TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    UNIQUE (host_id, guest_id, day)
+);
+CREATE INDEX IF NOT EXISTS idx_city_visits_host ON city_visits(host_id, created_at);
