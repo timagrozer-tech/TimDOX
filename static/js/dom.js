@@ -196,11 +196,12 @@ export function tierBadge(tier, size = "") {
 }
 
 export function avatar(user, size = "", opts = {}) {
-  const el = h(`span.avatar${size ? "." + size : ""}`, { dataset: { userId: user?.id ?? "" } });
+  const el = h(`span.avatar${size ? "." + size : ""}`, { dataset: { userId: user?.id ?? "", name: user?.name || "" } });
+  el.style.setProperty("--av", PALETTE[(user?.id || 0) % PALETTE.length]);
   if (user?.online && opts.presence !== false) el.dataset.online = "true";
   if (user?.frame && opts.frame !== false) el.dataset.frame = user.frame;
   if (user?.avatar) {
-    el.append(h("img", { src: ["xl", "lg"].includes(size) ? user.avatar : thumb(user.avatar), alt: "", loading: "lazy" }));
+    el.append(h("img", { src: ["xl", "lg"].includes(size) ? user.avatar : thumb(user.avatar), alt: "", loading: "lazy", decoding: "async" }));
   } else {
     const name = user?.name || "?";
     const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();

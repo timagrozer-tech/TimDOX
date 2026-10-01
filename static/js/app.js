@@ -43,6 +43,7 @@ import { toast, closeAllModals, closeMenu, setTitle, applyTheme } from "./ui.js"
 import { ensureShell, setActive, destroyShell } from "./components/layout.js";
 import { notifText, notifLink } from "./components/notif.js";
 import { initFx } from "./fx.js";
+import { initMotion } from "./motion.js";
 
 import * as authPages from "./pages/auth.js";
 import { feedPage } from "./pages/feed.js";
@@ -199,7 +200,9 @@ on("logged-out", () => {
 
 // ---------------------------------------------------------------- Запуск
 restoreLook();
+initMotion();
 initFx();
+initAvatarFallback();
 initPwa();
 initPullToRefresh();
 
@@ -216,3 +219,20 @@ initPullToRefresh();
   }
   start();
 })();
+
+// Аватары: если миниатюра не загрузилась — пробуем оригинал, если и он недоступен — показываем инициалы.
+// Один обработчик на всё приложение — работает в ленте, чатах, уведомлениях, поиске и везде, где есть .avatar
+function initAvatarFallback() {
+  document.addEventListener("error", (e) => {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement)) return;
+    const box = img.closest(".avatar, .tc-by");
+    if (!box) return;
+    if (img.src.includes("_t.webp") && !img.dataset.retried) { img.dataset.retried = "1"; img.src = img.src.replace("_t.webp", ".webp"); return; }
+    const name = box.dataset.name || box.getAttribute("title") || box.closest("[aria-label]")?.getAttribute("aria-label") || img.alt || "";
+    const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "•";
+    img.remove();
+    box.classList.add("initials");
+    if (!box.textContent.trim()) box.prepend(initials);
+  }, true);
+}

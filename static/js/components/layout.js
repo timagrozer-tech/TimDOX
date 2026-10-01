@@ -10,26 +10,27 @@ import { canInstall, install, installButton } from "../pwa.js";
 let shell = null;
 let listenersBound = false;
 
+// Основное меню — 8 главных разделов; редкие спрятаны в «Ещё» (меньше пунктов — быстрее находишь нужное)
 const NAV = [
-  { href: () => `/u/${state.me.username}`, icon: "user", label: "Моя страница", match: (p) => p === `/u/${state.me.username}` },
-  { href: "/messages", icon: "message", label: "Сообщения", badge: "messages", match: (p) => p.startsWith("/messages") },
   { href: "/", icon: "home", label: "Лента", match: (p) => p === "/" || p === "/explore" },
-  { href: "/reels", icon: "film", label: "Клипы", match: (p) => p.startsWith("/reels") },
-  { href: "/music", icon: "music", label: "Музыка", cls: "nav-music", match: (p) => p.startsWith("/music") },
-  { href: "/world", icon: "world", label: "Мир Круга", cls: "nav-world", match: (p) => p.startsWith("/world") },
-  { href: "/friends", icon: "users", label: "Друзья", badge: "friend_requests", match: (p) => p.startsWith("/friends") },
+  { href: "/messages", icon: "message", label: "Сообщения", badge: "messages", match: (p) => p.startsWith("/messages") },
   { href: "/notifications", icon: "bell", label: "Уведомления", badge: "notifications", match: (p) => p === "/notifications" },
+  { href: "/friends", icon: "users", label: "Друзья", badge: "friend_requests", match: (p) => p.startsWith("/friends") },
+  { href: "/music", icon: "music", label: "Музыка", cls: "nav-music", match: (p) => p.startsWith("/music") },
   { href: "/communities", icon: "community", label: "Сообщества", match: (p) => p.startsWith("/communities") || p.startsWith("/c/") },
-  { href: "/events", icon: "calendar", label: "Мероприятия", badge: "events", match: (p) => p.startsWith("/events") },
-  { href: "/guests", icon: "eye", label: "Гости", badge: "guests", match: (p) => p === "/guests" },
-  { href: "/stats", icon: "chart", label: "Статистика", match: (p) => p === "/stats" },
   { href: "/invite", icon: "userAdd", label: "Пригласить", cls: "nav-invite", match: (p) => p === "/invite" },
-  { href: "/collection", icon: "gift", label: "Коллекция", match: (p) => p === "/collection" },
-  { href: "/stickers", icon: "sticker", label: "Стикеры", match: (p) => p.startsWith("/stickers") },
-  { href: "/bookmarks", icon: "bookmark", label: "Закладки", match: (p) => p === "/bookmarks" },
-  { href: "/search", icon: "search", label: "Поиск", cls: "nav-search", match: (p) => p.startsWith("/search") || p.startsWith("/tag/") },
-  { href: "/settings", icon: "settings", label: "Настройки", match: (p) => p.startsWith("/settings") },
-  { href: "/admin", icon: "shield", label: "Модерация", badge: "reports", admin: true, match: (p) => p.startsWith("/admin") },
+  { href: () => `/u/${state.me.username}`, icon: "user", label: "Моя страница", match: (p) => p === `/u/${state.me.username}` },
+  { href: "/reels", icon: "film", label: "Клипы", more: true, match: (p) => p.startsWith("/reels") },
+  { href: "/world", icon: "world", label: "Мир Круга", cls: "nav-world", more: true, match: (p) => p.startsWith("/world") },
+  { href: "/events", icon: "calendar", label: "Мероприятия", badge: "events", more: true, match: (p) => p.startsWith("/events") },
+  { href: "/stats", icon: "chart", label: "Статистика", more: true, match: (p) => p === "/stats" },
+  { href: "/guests", icon: "eye", label: "Гости", badge: "guests", more: true, match: (p) => p === "/guests" },
+  { href: "/collection", icon: "gift", label: "Коллекция", more: true, match: (p) => p === "/collection" },
+  { href: "/stickers", icon: "sticker", label: "Стикеры", more: true, match: (p) => p.startsWith("/stickers") },
+  { href: "/bookmarks", icon: "bookmark", label: "Закладки", more: true, match: (p) => p === "/bookmarks" },
+  { href: "/search", icon: "search", label: "Поиск", cls: "nav-search", more: true, match: (p) => p.startsWith("/search") || p.startsWith("/tag/") },
+  { href: "/settings", icon: "settings", label: "Настройки", more: true, match: (p) => p.startsWith("/settings") },
+  { href: "/admin", icon: "shield", label: "Модерация", badge: "reports", admin: true, more: true, match: (p) => p.startsWith("/admin") },
 ];
 const navItems = () => NAV.filter((n) => !n.admin || state.me?.is_admin);
 
@@ -40,10 +41,21 @@ function badge(key) {
   return h("span.badge", { dataset: { badge: key, count: String(n) } }, n ? (n > 99 ? "99+" : String(n)) : "");
 }
 
+function navLink(item) {
+  return h(`a${item.cls ? "." + item.cls : ""}`, { href: hrefOf(item), dataset: { nav: item.label }, title: item.label },
+    icon(item.icon), h("span", item.label), item.badge ? badge(item.badge) : null);
+}
+
 function sidebar() {
-  const nav = h("nav.nav", { "aria-label": "Основное меню" },
-    navItems().map((item) => h(`a${item.cls ? "." + item.cls : ""}`, { href: hrefOf(item), dataset: { nav: item.label }, title: item.label },
-      icon(item.icon), h("span", item.label), item.badge ? badge(item.badge) : null)));
+  const items = navItems();
+  const extra = items.filter((n) => n.more);
+  let open = false;
+  try { open = localStorage.getItem("krug-nav-more") === "1"; } catch { /* приватный режим */ }
+  const more = h("details.nav-more", { open },
+    h("summary", { dataset: { navMore: "1" } }, icon("more"), h("span", "Ещё"), h("span.badge.nav-more-badge", { dataset: { count: "0" } }), h("span.nav-more-chev", icon("down", "sm"))),
+    h("div.nav-more-list", extra.map(navLink)));
+  more.addEventListener("toggle", () => { try { localStorage.setItem("krug-nav-more", more.open ? "1" : "0"); } catch { /* ничего */ } });
+  const nav = h("nav.nav", { "aria-label": "Основное меню" }, items.filter((n) => !n.more).map(navLink), more);
   return h("aside.sidebar", { "aria-label": "Навигация" },
     logo(),
     nav,
@@ -187,6 +199,9 @@ export function ensureShell(root) {
       b.dataset.count = String(n);
       b.textContent = n ? (n > 99 ? "99+" : String(n)) : "";
     });
+    // сумма счётчиков разделов, спрятанных в «Ещё», — чтобы не пропустить заявку или гостя
+    const hidden = NAV.filter((n) => n.more && n.badge && (!n.admin || state.me?.is_admin)).reduce((s, n) => s + (c[n.badge] || 0), 0);
+    document.querySelectorAll(".nav-more-badge").forEach((b) => { b.dataset.count = String(hidden); b.textContent = hidden ? (hidden > 99 ? "99+" : String(hidden)) : ""; });
     const total = (c.notifications || 0) + (c.messages || 0);
     document.title = document.title.replace(/^\(\d+\) /, "");
     if (total) document.title = `(${total}) ${document.title}`;
@@ -218,6 +233,7 @@ export function setActive(path, wide = false) {
     const active = item ? item.match(path) : false;
     a.classList.toggle("active", active);
     if (active) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    if (active) { const d = a.closest("details.nav-more"); if (d) d.open = true; }
   });
   // правую колонку обновляем не чаще раза в минуту
   if (shell && !wide && Date.now() - shell.asideLoaded > 60000 && getComputedStyle(shell.aside).display !== "none") {

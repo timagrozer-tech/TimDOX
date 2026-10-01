@@ -244,7 +244,18 @@ export function lightbox(items, index = 0) {
  * load(cursor) -> {items, next_cursor}; render(item) -> Node
  * Возвращает {el, reload, prepend}.
  */
-export function infiniteList({ load, render, empty, container, onLoaded }) {
+/** Скелетон вместо спиннера: форма повторяет настоящие элементы, поэтому страница не «прыгает» при загрузке */
+export function skeleton(kind = "post", n = 3) {
+  const bar = (w, hgt = 12) => h("i.sk", { style: { width: w, height: `${hgt}px` } });
+  if (kind === "grid") return h("div.sk-grid", { "aria-hidden": "true" }, Array.from({ length: 6 }, () => h("i.sk.sk-tile")));
+  if (kind === "row") return h("div.sk-list", { "aria-hidden": "true" }, Array.from({ length: n + 2 }, (_, i) =>
+    h("div.sk-row", h("i.sk.sk-av"), h("div.sk-lines", bar(`${70 - (i % 3) * 12}%`), bar(`${40 + (i % 2) * 15}%`, 10)))));
+  return h("div.sk-list", { "aria-hidden": "true" }, Array.from({ length: n }, (_, i) =>
+    h("div.sk-post", h("div.sk-row", h("i.sk.sk-av"), h("div.sk-lines", bar("38%"), bar("22%", 10))),
+      bar("92%"), bar(`${78 - i * 9}%`), i === 0 ? h("i.sk.sk-media") : null)));
+}
+
+export function infiniteList({ load, render, empty, container, onLoaded, skeleton: skKind }) {
   const list = container || h("div");
   const sentinel = h("div.sentinel");
   const status = h("div");
@@ -255,7 +266,10 @@ export function infiniteList({ load, render, empty, container, onLoaded }) {
     if (loading || done || errored) return;
     loading = true;
     const my = gen;
-    status.replaceChildren(h("div.spinner", { role: "status", "aria-label": "Загрузка" }));
+    const kind = skKind || (container?.classList.contains("photo-grid") || container?.classList.contains("reel-grid") ? "grid" : "post");
+    status.replaceChildren(count === 0
+      ? h("div", { role: "status", "aria-label": "Загрузка" }, skeleton(kind))
+      : h("div.spinner", { role: "status", "aria-label": "Загрузка" }));
     try {
       const data = await load(cursor);
       if (my !== gen) return;

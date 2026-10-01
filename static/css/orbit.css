@@ -2794,3 +2794,99 @@ h1 > .tbadge { width: .78em; height: .78em; vertical-align: -.05em; margin-left:
 .tree-empty svg { width: 34px; height: 34px; color: var(--c1, #6d5efc); }
 .tree-empty b { color: var(--text, #111); }
 .tree-empty p { margin: 0; }
+
+/* ==========================================================================
+   KRUG Glass 2.0 — слои стекла, световой край, адаптивная прозрачность, пружины
+   L1 — карточки (в лентах без размытия: на длинных списках blur — главный убийца FPS),
+   L2 — навигация, L3 — окна, меню, листы, L4 — сигналы (тосты).
+   ========================================================================== */
+:root {
+  --spring-snappy: cubic-bezier(.2, .9, .3, 1.15); --spring-snappy-ms: 320ms;
+  --spring-gentle: cubic-bezier(.2, .9, .3, 1.05); --spring-gentle-ms: 480ms;
+  --spring-bouncy: cubic-bezier(.2, .9, .3, 1.5); --spring-bouncy-ms: 650ms;
+  --glass-edge: rgb(255 255 255 / .7);
+  --glass-rim: color-mix(in srgb, var(--pl) 10%, transparent);
+  --glass-tint: color-mix(in oklab, var(--pl) 5%, transparent);
+}
+:root[data-theme="dark"] { --glass-edge: rgb(255 255 255 / .1); --glass-rim: rgb(255 255 255 / .06); }
+
+/* световой край: тонкая подсветка сверху — то, что делает стекло стеклом, а не просто размытием */
+.topbar, .tabbar, .modal, .menu, .card, .fp-sheet, .mp { box-shadow: inset 0 1px 0 var(--glass-edge), var(--shadow, none); }
+.topbar, .tabbar { box-shadow: inset 0 1px 0 var(--glass-edge), 0 8px 32px -12px color-mix(in srgb, var(--pl) 22%, rgb(0 0 0 / .12)); }
+.modal, .menu { box-shadow: inset 0 1px 0 var(--glass-edge), 0 0 0 1px var(--glass-rim), var(--shadow-lg); }
+
+/* L1: карточки в длинных списках — без backdrop-filter, плотнее заливка */
+.feed.card, .card.feed, .post.card, .iv-tabs-card, .card.st-card { -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: radial-gradient(420px circle at var(--mx, -500px) var(--my, -500px), var(--spot), transparent 45%), color-mix(in srgb, var(--surface) 88%, transparent); }
+
+/* L2: шапка плотнее, когда под ней прокручивается контент */
+.topbar { transition: background-color .3s, box-shadow .3s; }
+.is-scrolled .topbar { background: color-mix(in srgb, var(--surface) 82%, transparent); }
+
+/* меньше прозрачности по просьбе системы и на слабых устройствах — стекло становится матовым */
+:root[data-transparency="reduce"] .card, :root[data-transparency="reduce"] .modal, :root[data-transparency="reduce"] .menu,
+:root[data-transparency="reduce"] .topbar, :root[data-transparency="reduce"] .tabbar,
+:root[data-perf="low"] .card, :root[data-perf="low"] .modal, :root[data-perf="low"] .menu {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: var(--surface) !important; }
+@media (prefers-contrast: more) { .card, .modal, .menu { border-width: 1.5px; border-color: var(--border-strong); } }
+
+/* пружины: окна, меню, тосты, кнопки, вкладки */
+.modal { animation: modal-in var(--spring-gentle-ms) var(--spring-gentle) both; }
+@keyframes modal-in { from { opacity: 0; transform: translateY(24px) scale(.96); } }
+@media (max-width: 719px) { .modal { animation: sheet-in var(--spring-gentle-ms) var(--spring-gentle) both; } }
+@keyframes sheet-in { from { transform: translateY(100%); } }
+.menu { transform-origin: var(--menu-origin, top center); animation: menu-in var(--spring-snappy-ms) var(--spring-snappy) both; }
+@keyframes menu-in { from { opacity: 0; transform: scale(.9); } }
+.toast { animation: toast-spring var(--spring-bouncy-ms) var(--spring-bouncy) both; }
+.btn:active:not(:disabled), .iv-share:active, .tab-create:active .create { transform: scale(.96); transition: transform 90ms ease-out; }
+.btn { transition: transform var(--spring-snappy-ms) var(--spring-snappy), box-shadow .25s, background-color .2s, color .2s; }
+.tabbar a { transition: color .2s, transform var(--spring-snappy-ms) var(--spring-snappy); }
+.tabbar a:active { transform: scale(.9); }
+.tabbar a.active .icon { animation: tab-pop var(--spring-bouncy-ms) var(--spring-bouncy); }
+@keyframes tab-pop { from { transform: scale(.7) translateY(3px); } }
+.action.reacted .icon, .action.liked .icon { animation: like-pop var(--spring-bouncy-ms) var(--spring-bouncy); }
+@keyframes like-pop { 0% { transform: scale(.6); } 40% { transform: scale(1.25); } }
+.counter-roll { display: inline-block; animation: roll-in var(--spring-snappy-ms) var(--spring-snappy); }
+@keyframes roll-in { from { transform: translateY(60%); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .modal, .menu, .toast, .tabbar a.active .icon, .action .icon { animation: none !important; }
+}
+:root[data-motion="reduced"] .modal, :root[data-motion="reduced"] .menu, :root[data-motion="reduced"] .toast { animation-duration: 1ms !important; }
+
+/* ---------------------------------------------------------------- Скелетоны */
+.sk { display: block; border-radius: 8px; background: linear-gradient(90deg, var(--surface-3) 25%, color-mix(in srgb, var(--primary) 9%, var(--surface-2)) 40%, var(--surface-3) 60%);
+  background-size: 300% 100%; animation: sk-wave 1.4s ease-in-out infinite; }
+@keyframes sk-wave { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+.sk-list { display: grid; gap: 4px; padding: 6px 0; }
+.sk-post { display: grid; gap: 10px; padding: 16px; }
+.sk-post + .sk-post { border-top: 1px solid var(--border); }
+.sk-row { display: flex; align-items: center; gap: 12px; padding: 6px 12px; }
+.sk-post .sk-row { padding: 0; }
+.sk-av { width: 40px; height: 40px; border-radius: 50%; flex: none; }
+.sk-lines { flex: 1; display: grid; gap: 7px; }
+.sk-media { height: 220px; border-radius: 16px; }
+.sk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; }
+.sk-tile { aspect-ratio: 1; border-radius: 6px; }
+
+/* ---------------------------------------------------------------- Меню: «Ещё» */
+.nav-more summary { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-radius: 14px; cursor: pointer; list-style: none;
+  color: var(--text-2); font-weight: 600; transition: background-color .15s, color .15s; position: relative; }
+.nav-more summary::-webkit-details-marker { display: none; }
+.nav-more summary:hover { background: var(--surface-3); color: var(--text); }
+.nav-more summary .icon { width: 22px; height: 22px; }
+.nav-more .nav-more-chev { margin-left: auto; display: grid; transition: transform var(--spring-snappy-ms) var(--spring-snappy); }
+.nav-more[open] .nav-more-chev { transform: rotate(180deg); }
+.nav-more[open] .nav-more-badge { display: none; }
+.nav-more-list { display: grid; gap: 2px; padding-top: 2px; }
+.nav-more[open] .nav-more-list > a { animation: nav-rise .32s var(--spring-snappy) backwards; }
+@keyframes nav-rise { from { opacity: 0; transform: translateY(-6px); } }
+.nav-more[open] .nav-more-list > a:nth-child(2) { animation-delay: 20ms; } .nav-more[open] .nav-more-list > a:nth-child(3) { animation-delay: 40ms; }
+.nav-more[open] .nav-more-list > a:nth-child(4) { animation-delay: 60ms; } .nav-more[open] .nav-more-list > a:nth-child(n+5) { animation-delay: 80ms; }
+.sidebar .nav { overflow-y: auto; scrollbar-width: none; min-height: 0; }
+@media (min-width: 720px) and (max-width: 1099px) {
+  .nav-more summary { justify-content: center; }
+  .nav-more summary > span:not(.badge), .nav-more .nav-more-chev { display: none; }
+  .nav-more .nav-more-badge { position: absolute; top: 4px; right: 6px; height: 18px; min-width: 18px; font-size: 11px; }
+}
+@media (min-width: 1100px) { .nav-more-badge { margin-left: auto; } .nav-more-badge:not(:empty) + .nav-more-chev { margin-left: 6px; } }

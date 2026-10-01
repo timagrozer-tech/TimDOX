@@ -1,6 +1,6 @@
 // Элементы раздела «Музыка»: строки треков, карточки, подборки, жанры, станции, трек в записи и выбор трека.
 import { api } from "../api.js";
-import { h, icon } from "../dom.js";
+import { h, icon, thumb } from "../dom.js";
 import { modal, toastError } from "../ui.js";
 import { fmtDur } from "../components/mediakit.js";
 import { playFrom, playQueue, toggle, current, isPlaying, likeButton, trackMenu, coverOf, hue, loadLikes } from "./player.js";
@@ -37,7 +37,7 @@ export function trackList(list, context, opts = {}) {
 export function trackCard(t, list, context = "") {
   const card = h(`div.tc${stateClasses(t)}`, { dataset: { track: t.key }, role: "button", tabindex: 0, "aria-label": `${t.title} — ${t.artist}` },
     h("span.tc-art", coverOf(t), h("span.tc-fab", icon("play"), icon("pause")), eq(),
-      t.by ? h("span.tc-by", { title: `${t.by.name} любит этот трек` }, t.by.avatar ? h("img", { src: t.by.avatar, alt: "" }) : t.by.name[0]) : null),
+      t.by ? h("span.tc-by", { title: `${t.by.name} любит этот трек` }, t.by.avatar ? h("img", { src: thumb(t.by.avatar), alt: "", loading: "lazy" }) : t.by.name[0]) : null),
     h("span.tc-title", t.title),
     h("span.tc-sub", t.by ? `♥ ${t.by.name.split(" ")[0]}` : t.artist));
   const go = () => playFrom(list, t, context);

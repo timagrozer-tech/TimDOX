@@ -30,6 +30,7 @@ export async function notificationsPage() {
   setTitle("Уведомления");
   const card = h("div.card", { style: { overflow: "hidden" } });
   const list = infiniteList({
+    skeleton: "row",
     load: (cursor) => api.get("/api/notifications", { cursor }),
     render: row,
     empty: h("div.card.empty", icon("bell"), h("h3", "Уведомлений пока нет"), h("p", "Здесь появятся реакции, комментарии, упоминания и заявки в друзья.")),
