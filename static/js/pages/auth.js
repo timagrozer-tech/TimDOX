@@ -81,24 +81,27 @@ function showErrors(form, err) {
 }
 
 export async function loginPage({ query }) {
-  setTitle("Вход");
+  const adding = !!query.add && !!state.me;
+  setTitle(adding ? "Добавить аккаунт" : "Вход");
   const submit = h("button.btn.primary.lg.block", { type: "submit" }, "Войти");
   const form = h("form.auth-form", { novalidate: true },
     logo(),
-    h("h1", "С возвращением!"),
-    h("p.sub", "Войдите, чтобы увидеть новости друзей."),
+    h("h1", adding ? "Ещё один аккаунт" : "С возвращением!"),
+    h("p.sub", adding ? `Вы останетесь в @${state.me.username} — переключаться можно в один тап.` : "Войдите, чтобы увидеть новости друзей."),
     h("div.form-error.hidden", { role: "alert" }),
     field({ label: "E-mail или логин", name: "email", autocomplete: "username", placeholder: "you@example.com" }),
     field({ label: "Пароль", name: "password", type: "password", autocomplete: "current-password" }),
     h("div.row", h("div.spacer"), h("a", { href: "/forgot", style: { fontSize: "14px" } }, "Забыли пароль?")),
     submit,
-    h("p.auth-switch", "Ещё нет аккаунта? ", h("a", { href: `/register${query.next ? "?next=" + encodeURIComponent(query.next) : ""}` }, "Зарегистрироваться")));
+    adding ? h("p.auth-switch", h("a", { href: "/" }, "Отмена — вернуться в Круг"))
+      : h("p.auth-switch", "Ещё нет аккаунта? ", h("a", { href: `/register${query.next ? "?next=" + encodeURIComponent(query.next) : ""}` }, "Зарегистрироваться")));
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     busy(submit, async () => {
       try {
-        const r = await api.post("/api/auth/login", { email: $(form, "email").value, password: $(form, "password").value });
-        if (r?.mfa_required) { form.replaceWith(codeStep(r.ticket, query.next)); return; }
+        const r = await api.post("/api/auth/login", { email: $(form, "email").value, password: $(form, "password").value, add: adding || undefined });
+        if (r?.mfa_required) { form.replaceWith(codeStep(r.ticket, query.next, adding)); return; }
+        if (adding) { location.assign("/"); return; }
         await afterLogin(query.next);
       } catch (err) { showErrors(form, err); }
     });
@@ -108,7 +111,7 @@ export async function loginPage({ query }) {
 }
 
 /** Второй шаг входа: код из приложения-аутентификатора или резервный код */
-function codeStep(ticket, next) {
+function codeStep(ticket, next, adding = false) {
   const submit = h("button.btn.primary.lg.block", { type: "submit" }, "Подтвердить");
   let backup = false;
   const input = () => $(form, "code");
@@ -138,7 +141,8 @@ function codeStep(ticket, next) {
   });
   const go = () => busy(submit, async () => {
     try {
-      await api.post("/api/auth/2fa", { ticket, code: input().value });
+      await api.post("/api/auth/2fa", { ticket, code: input().value, add: adding || undefined });
+      if (adding) { location.assign("/"); return; }
       await afterLogin(next);
     } catch (err) {
       if (err.code === "mfa_expired") { toast(err.message, { icon: "alert" }); navigate("/login", { replace: true }); return; }
@@ -206,7 +210,7 @@ export async function registerPage({ query }) {
           website: $(form, "website").value, t: Math.round(performance.now() - shownAt), ref: ref || undefined,
         });
         toast("Аккаунт создан! Мы отправили письмо для подтверждения e-mail.", { icon: "mail", duration: 6000 });
-        await afterLogin(query.next || "/?welcome=1");
+        await afterLogin(query.next || "/welcome");
       } catch (err) { showErrors(form, err); }
     });
   });

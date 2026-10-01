@@ -658,7 +658,48 @@ async def delete_account(request: Request):
     return resp
 
 
+# ---------------------------------------------------------------- Онбординг 2.0 и обучение
+ONBOARDING_STYLES = ("modern", "fun", "future")
+TOUR_KEYS = ("feed", "profile", "friends", "messages", "settings", "security", "invite", "music")
+
+
+def _onboarding(v: int) -> dict:
+    try:
+        d = json.loads(db.value("SELECT onboarding FROM profiles WHERE user_id=?", (v,)) or "{}")
+    except ValueError:
+        d = {}
+    return d if isinstance(d, dict) else {}
+
+
+@auth()
+async def onboarding_get(request: Request):
+    d = _onboarding(request.state.user["id"])
+    return JSONResponse({"style": d.get("style"), "done": bool(d.get("done")), "tours": d.get("tours") or [],
+                         "sound": d.get("sound", True)})
+
+
+@auth()
+async def onboarding_set(request: Request):
+    v = request.state.user["id"]
+    data = await body(request)
+    d = _onboarding(v)
+    if data.get("style") in ONBOARDING_STYLES:
+        d["style"] = data["style"]
+    if "done" in data:
+        d["done"] = bool(data["done"])
+    if "sound" in data:
+        d["sound"] = bool(data["sound"])
+    if data.get("tour") in TOUR_KEYS:
+        d["tours"] = sorted(set(d.get("tours") or []) | {data["tour"]})
+    if data.get("reset_tours"):
+        d["tours"] = []
+    db.run("UPDATE profiles SET onboarding=? WHERE user_id=?", (json.dumps(d), v))
+    return JSONResponse({"style": d.get("style"), "done": bool(d.get("done")), "tours": d.get("tours") or [], "sound": d.get("sound", True)})
+
+
 routes = [
+    Route("/api/onboarding", onboarding_get, methods=["GET"]),
+    Route("/api/onboarding", onboarding_set, methods=["POST"]),
     Route("/api/users/{username}", profile, methods=["GET"]),
     Route("/api/users/{username}/friends", user_friends, methods=["GET"]),
     Route("/api/users/{username}/follows", user_follows, methods=["GET"]),

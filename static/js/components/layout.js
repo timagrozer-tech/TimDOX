@@ -6,6 +6,7 @@ import { showMenu, toastError } from "../ui.js";
 import { openComposerModal } from "./composer.js";
 import { logout } from "../app-actions.js";
 import { canInstall, install, installButton } from "../pwa.js";
+import { openAccounts, longPress } from "./accounts.js";
 
 let shell = null;
 let listenersBound = false;
@@ -60,11 +61,15 @@ function sidebar() {
     logo(),
     nav,
     h("button.btn.accent.create-btn", { type: "button", onclick: () => openComposerModal(), title: "Создать запись", "aria-label": "Создать запись" }, icon("plus"), h("span.create-label", "Создать запись")),
+    h("button.sidebar-acc", { type: "button", onclick: openAccounts, title: "Аккаунты: переключить или добавить", "aria-label": "Аккаунты" },
+      avatar(state.me, "sm", { presence: false }), h("span.grow", h("b", state.me.name), h("small", `@${state.me.username}`)), icon("chevronsUpDown", "sm")),
     installButton("btn.ghost.sm.install-side"));
 }
 
 function mobileMenu(btn) {
   showMenu(btn, [
+    { label: "Аккаунты", hint: `@${state.me.username} · переключить или добавить`, icon: "users", onClick: openAccounts },
+    "-",
     ...navItems().filter((n) => !["Лента", "Моя страница", "Сообщения", "Клипы"].includes(n.label)).map((n) => ({
       label: n.badge && state.counters[n.badge] ? `${n.label} (${state.counters[n.badge]})` : n.label,
       icon: n.icon, onClick: () => navigate(hrefOf(n)),
@@ -103,12 +108,14 @@ function createMenu(btn) {
 }
 
 function tabbar() {
+  const profileTab = h("a", { href: `/u/${state.me.username}`, dataset: { nav: "Моя страница" }, title: "Профиль · удерживайте, чтобы сменить аккаунт" }, icon("user"), "Профиль");
+  longPress(profileTab, openAccounts);
   return h("nav.tabbar", { "aria-label": "Меню" },
     h("a", { href: "/", dataset: { nav: "Лента" } }, icon("home"), "Лента"),
     h("a", { href: "/reels", dataset: { nav: "Клипы" } }, icon("film"), "Клипы"),
     h("a.tab-create", { href: "#", "aria-label": "Создать", "aria-haspopup": "menu", onclick: (e) => { e.preventDefault(); createMenu(e.currentTarget); } }, h("span.create", icon("plus"))),
     h("a", { href: "/messages", dataset: { nav: "Сообщения" } }, icon("message"), "Чаты", badge("messages")),
-    h("a", { href: `/u/${state.me.username}`, dataset: { nav: "Моя страница" } }, icon("user"), "Профиль"));
+    profileTab);
 }
 
 // ---------------------------------------------------------------- Правая колонка

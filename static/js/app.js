@@ -67,6 +67,8 @@ import { adminPage } from "./pages/admin.js";
 import { worldPage } from "./pages/world.js";
 import { statsPage } from "./pages/stats.js";
 import { invitePage } from "./pages/invite.js";
+import { welcomePage } from "./pages/welcome.js";
+import { queueTour, stopTour } from "./tour.js";
 import { musicPage, genrePage, playlistPage } from "./pages/music.js";
 import { initPlayer } from "./music/player.js";
 
@@ -90,6 +92,7 @@ route("/search", searchPage);
 route("/tag/:tag", tagPage);
 route("/bookmarks", bookmarksPage);
 route("/invite", invitePage);
+route("/welcome", welcomePage, { bare: true });
 route("/settings", settingsPage);
 route("/communities", communitiesPage);
 route("/c/:slug", communityPage);
@@ -125,6 +128,7 @@ onRender(async (m, query, sameUrl, backKey) => {
   const myGen = ++renderGen;
   closeAllModals();
   closeMenu();
+  stopTour();
   stopAllMedia();
   const path = location.pathname;
   if (!m) {
@@ -138,9 +142,9 @@ onRender(async (m, query, sameUrl, backKey) => {
   if (!m.opts.public && !state.me) {
     return navigate(`/login?next=${encodeURIComponent(path + location.search)}`, { replace: true });
   }
-  if (m.opts.guestOnly && state.me) return navigate("/", { replace: true });
+  if (m.opts.guestOnly && state.me && !(path === "/login" && query.add)) return navigate("/", { replace: true });
 
-  const useShell = !!state.me && !m.opts.guestOnly && !["/reset", "/verify"].includes(path);
+  const useShell = !!state.me && !m.opts.guestOnly && !m.opts.bare && !["/reset", "/verify"].includes(path);
   let container;
   if (useShell) {
     const shell = ensureShell(root);
@@ -175,6 +179,7 @@ onRender(async (m, query, sameUrl, backKey) => {
   }
   shown = { url: location.pathname + location.search, path, node };
   window.scrollTo(0, 0);
+  if (useShell && node) queueTour(path, query); // обучение при первом заходе в раздел
   if (useShell && document.activeElement === document.body) container.focus({ preventScroll: true });
 });
 

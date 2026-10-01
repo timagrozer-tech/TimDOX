@@ -2,17 +2,20 @@
 import { api, state, disconnectStream, emit, loadMe, connectStream } from "./api.js";
 import { navigate } from "./router.js";
 import { applyTheme } from "./ui.js";
-import { applyLook } from "./look.js";
+import { applyLook, DEFAULT_LOOK } from "./look.js";
 
 /** Применяет тему и оформление, сохранённые в аккаунте */
 export function applyUserLook() {
   if (!state.me) return;
-  if (state.me.theme) applyTheme(state.me.theme);
-  if (state.me.appearance) applyLook(state.me.appearance, state.me.background);
+  // у каждого аккаунта своё оформление: если своего нет — стандартное, а не оставшееся от другого аккаунта
+  applyTheme(state.me.theme || "system");
+  applyLook(state.me.appearance || DEFAULT_LOOK, state.me.background || null);
 }
 
 export async function logout() {
-  try { await api.post("/api/auth/logout"); } catch { /* сессия уже могла истечь */ }
+  let r = null;
+  try { r = await api.post("/api/auth/logout"); } catch { /* сессия уже могла истечь */ }
+  if (r?.switched) { location.assign("/"); return; } // на устройстве есть другой аккаунт — открываем его
   state.me = null;
   state.csrf = null;
   disconnectStream();
@@ -24,4 +27,12 @@ export async function afterLogin(next) {
   applyUserLook();
   connectStream();
   navigate(next && next.startsWith("/") && !next.startsWith("//") ? next : "/", { replace: true });
+}
+
+/** Мгновенное переключение на другой аккаунт устройства */
+export async function switchAccount(slot) {
+  await api.post("/api/accounts/switch", { slot });
+  disconnectStream();
+  // полная перезагрузка: у каждого аккаунта свои кэши, настройки и поток событий — так ничего не смешается
+  location.assign("/");
 }

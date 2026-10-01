@@ -88,6 +88,7 @@ MIGRATIONS = [
     ("sessions", "last_seen_at", "TEXT"),
     ("profiles", "invite_tier", "TEXT"),
     ("profiles", "invites_qualified", "INTEGER NOT NULL DEFAULT 0"),
+    ("profiles", "onboarding", "TEXT"),
 ]
 POST_MIGRATION_SQL = """
 CREATE INDEX IF NOT EXISTS idx_posts_community ON posts(community_id, id DESC);

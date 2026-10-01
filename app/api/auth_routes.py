@@ -13,6 +13,7 @@ from .. import config, db, email_codes, mailer, qr, referrals, social, twofa
 from ..security import (DISPOSABLE_DOMAINS, LIMITS, USERNAME_RE, hash_password, new_token, rate_limiter, token_hash,
                         validate_password, verify_password)
 from ..web import ApiError, auth, body, client_ip, ip_prefix, limit, ok
+from . import accounts
 
 
 def parse_appearance(value):
@@ -69,10 +70,12 @@ def _is_new_place(request: Request, user_id: int) -> bool:
     return seen > 0 and not same
 
 
-async def _finish_login(request: Request, user_id: int, method: str) -> JSONResponse:
+async def _finish_login(request: Request, user_id: int, method: str, add: bool = False) -> JSONResponse:
     new_place = _is_new_place(request, user_id)
-    log_login(request, user_id, True, method)
     resp = JSONResponse({"ok": True})
+    if add:  # «Добавить аккаунт»: текущий сеанс не закрываем, а откладываем в список аккаунтов устройства
+        accounts.stash_current(request, resp, user_id)
+    log_login(request, user_id, True, method)
     _start_session(request, resp, user_id)
     if new_place and mailer.configured():
         email = db.value("SELECT email FROM users WHERE id=?", (user_id,))
@@ -198,7 +201,7 @@ async def login(request: Request):
         db.run("INSERT INTO mfa_tickets (id, user_id, expires_at) VALUES (?,?,?)",
                (token_hash(ticket), row["id"], db.future(minutes=5)))
         return JSONResponse({"mfa_required": True, "ticket": ticket})
-    return await _finish_login(request, row["id"], "password")
+    return await _finish_login(request, row["id"], "password", add=bool(data.get("add")))
 
 
 async def login_2fa(request: Request):
@@ -219,14 +222,24 @@ async def login_2fa(request: Request):
     db.run("DELETE FROM mfa_tickets WHERE id=?", (tid,))
     if db.value("SELECT is_banned FROM users WHERE id=?", (t["user_id"],)):
         raise ApiError(403, "Аккаунт заблокирован администрацией")
-    return await _finish_login(request, t["user_id"], method)
+    return await _finish_login(request, t["user_id"], method, add=bool(data.get("add")))
 
 
 async def logout(request: Request):
     if request.state.session:
         db.run("DELETE FROM sessions WHERE id=?", (request.state.session["id"],))
+    # на устройстве есть другие аккаунты — переключаемся на следующий, а не выходим совсем
+    others = accounts.alive_tokens(request)
+    if others:
+        token = others[0][0]
+        resp = JSONResponse({"ok": True, "switched": True})
+        resp.set_cookie(config.SESSION_COOKIE, token, max_age=config.SESSION_DAYS * 86400,
+                        httponly=True, samesite="lax", secure=config.COOKIE_SECURE, path="/")
+        accounts.write_tokens(resp, [t for t, _ in others[1:]])
+        return resp
     resp = JSONResponse({"ok": True})
     resp.delete_cookie(config.SESSION_COOKIE, path="/")
+    resp.delete_cookie(accounts.ACCOUNTS_COOKIE, path="/")
     return resp
 
 
