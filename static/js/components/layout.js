@@ -22,7 +22,6 @@ const NAV = [
   { href: "/communities", icon: "community", label: "Сообщества", match: (p) => p.startsWith("/communities") || p.startsWith("/c/") },
   { href: "/invite", icon: "userAdd", label: "Пригласить", cls: "nav-invite", match: (p) => p === "/invite" },
   { href: () => `/u/${state.me.username}`, icon: "user", label: "Моя страница", match: (p) => p === `/u/${state.me.username}` },
-  { href: "/events", icon: "calendar", label: "Мероприятия", badge: "events", more: true, match: (p) => p.startsWith("/events") },
   { href: "/bookmarks", icon: "bookmark", label: "Закладки", more: true, match: (p) => p === "/bookmarks" },
   { href: "/search", icon: "search", label: "Поиск", cls: "nav-search", more: true, match: (p) => p.startsWith("/search") || p.startsWith("/tag/") },
   { href: "/settings", icon: "settings", label: "Настройки", more: true, match: (p) => p.startsWith("/settings") },
@@ -119,8 +118,6 @@ async function fillAside(aside) {
   const online = h("div.online-strip", h("div.skeleton", { style: { height: "36px", width: "100%" } }));
   const trends = h("div", h("div.skeleton", { style: { height: "80px" } }));
   const sugg = h("div.mini-people", h("div.skeleton", { style: { height: "80px" } }));
-  const events = h("div.mini-people");
-  const eventsWidget = widget("Ближайшие мероприятия", "calendar", events, h("a", { href: "/events" }, "Все"));
   const onlineTitle = h("span", "Друзья онлайн");
   const onlineWidget = widget(onlineTitle, "users", online);
   onlineWidget.classList.add("hidden");
@@ -134,7 +131,6 @@ async function fillAside(aside) {
   aside.replaceChildren(
     search,
     onlineWidget,
-    eventsWidget,
     widget("Возможно, вы знакомы", "userPlus", sugg, h("a", { href: "/friends?tab=suggestions" }, "Все")),
     widget("Актуальное", "trend", trends),
     h("footer.aside-footer", h("a", { href: "/privacy" }, "Конфиденциальность"), h("a", { href: "/terms" }, "Правила"), h("span", "© 2026 Круг")));
@@ -149,20 +145,6 @@ async function fillAside(aside) {
   };
   loadOnline();
   aside._reloadOnline = loadOnline;
-
-  eventsWidget.classList.add("hidden");
-  api.get("/api/events", { tab: "mine" }).then(async ({ items }) => {
-    if (!items.length) items = (await api.get("/api/events", { tab: "upcoming" })).items;
-    if (!items.length) return;
-    const MONTHS = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
-    events.replaceChildren(...items.slice(0, 3).map((e) => {
-      const d = new Date(e.starts_at);
-      return h("a.mini-person", { href: `/events/${e.id}` },
-        h("span.date-badge.sm", h("small", MONTHS[d.getMonth()]), h("b", String(d.getDate()))),
-        h("div.who", h("span.name", e.title), h("span.sub", e.place || `${e.going} идут`)));
-    }));
-    eventsWidget.classList.remove("hidden");
-  }).catch(() => {});
 
   api.get("/api/trends").then(({ items }) => {
     trends.replaceChildren(...(items.length ? items.slice(0, 5).map((t) => h("a.trend", { href: `/tag/${encodeURIComponent(t.tag)}` }, h("b", `#${t.tag}`), h("small", pl(t.n, ["запись", "записи", "записей"])))) : [h("p.muted", { style: { fontSize: "14px" } }, "Пока нет популярных тем")]));
