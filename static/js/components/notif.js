@@ -31,6 +31,7 @@ export function notifText(n, many = false) {
     case "reel_like": return "оценил(а) ваш клип ❤️";
     case "reel_comment": return `прокомментировал(а) ваш клип: «${n.extra?.text || ""}»`;
     case "support": return `поддержал(а) вашу запись: +${n.extra?.amount || ""} KC 🪙`;
+    case "gift": return `подарил(а) вам ${n.extra?.emoji || "🎁"} ${n.extra?.name || "подарок"}${n.extra?.note ? ` — «${n.extra.note}»` : ""}`;
     case "transfer": return `перевёл(а) вам ${n.extra?.amount || ""} KC${n.extra?.note ? ` — «${n.extra.note}»` : ""} 🪙`;
     case "item": return `Новый предмет в коллекции: «${n.extra?.name || ""}» ✨`;
     case "invite_joined": return "присоединился(-ась) к Кругу по вашему приглашению 🎉";

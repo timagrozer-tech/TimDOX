@@ -3671,3 +3671,36 @@ html.cst-open, html.cst-open body { overflow: hidden; }
 .support-btn.supported .icon { filter: drop-shadow(0 0 6px rgb(245 158 11 / .6)); }
 .support-own { color: #d97706; cursor: default; }
 .wl-actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
+
+/* ==========================================================================
+   Магазин оформления
+   ========================================================================== */
+.shop-page { gap: var(--s4); }
+.shop-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
+.shop-bal { font-size: 15px; padding: var(--s2) var(--s3); border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+.shop-note { margin: calc(var(--s2) * -1) 0 0; }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--s3); }
+.shop-card { display: grid; justify-items: center; gap: var(--s2); padding: var(--s4); text-align: center; border-radius: var(--radius); background: var(--glass-strong); border: 1px solid var(--border); }
+.shop-card.on { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.shop-card b { font-size: 14px; }
+.shop-card small { color: var(--text-3); font-size: 12px; min-height: 32px; }
+.shop-preview { height: 88px; display: grid; place-items: center; }
+.shop-preview.gift { font-size: 52px; }
+.shop-earn { display: inline-flex; align-items: center; gap: var(--s2); justify-self: center; font-weight: 700; }
+.profile-title { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; padding: 2px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 800; letter-spacing: .02em;
+  color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent); border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent); }
+.gift-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--s2); }
+.gift-chip { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font-size: 18px; text-decoration: none !important;
+  background: var(--surface-2); border: 1px solid var(--border); transition: transform .2s var(--spring-bouncy, ease); }
+.gift-chip:hover { transform: translateY(-2px) scale(1.08); }
+.gift-chip.add { color: var(--text-3); font-weight: 800; font-size: 16px; }
+.mini-person.on { background: color-mix(in srgb, var(--primary) 12%, transparent); border-radius: var(--radius-sm); }
+/* рамки из магазина */
+.avatar[data-frame="shop_frame_mint"]::before, .frame-dot[data-frame="shop_frame_mint"] { background: conic-gradient(from 20deg, #2dd4bf, #a7f3d0, #5eead4, #14b8a6, #2dd4bf); }
+.avatar[data-frame="shop_frame_sunset"]::before, .frame-dot[data-frame="shop_frame_sunset"] { background: conic-gradient(from 200deg, #f97316, #fb7185, #c084fc, #fbbf24, #f97316); }
+.avatar[data-frame="shop_frame_ice"]::before, .frame-dot[data-frame="shop_frame_ice"] { background: conic-gradient(from 0deg, #e0f2fe, #7dd3fc, #ffffff, #38bdf8, #e0f2fe); }
+.avatar[data-frame="shop_frame_ember"]::before, .frame-dot[data-frame="shop_frame_ember"] { background: conic-gradient(from 90deg, #7f1d1d, #ef4444, #fb923c, #fde047, #b91c1c, #7f1d1d); }
+.avatar[data-frame="shop_frame_aurora"]::before, .frame-dot[data-frame="shop_frame_aurora"] { background: conic-gradient(#22d3ee, #a78bfa, #34d399, #60a5fa, #22d3ee); animation: frame-spin 9s linear infinite; }
+.avatar[data-frame="shop_frame_cosmos"]::before, .frame-dot[data-frame="shop_frame_cosmos"] { background: radial-gradient(circle at 30% 30%, #fff 0 2%, transparent 3%), radial-gradient(circle at 70% 60%, #fff 0 1.5%, transparent 2.5%), conic-gradient(#1e1b4b, #7c3aed, #db2777, #1e3a8a, #1e1b4b); animation: frame-spin 7s linear infinite; }
+.shop-preview .avatar { background: var(--surface-2); }
+.shop-preview .avatar[data-frame]::before { inset: -6px; }

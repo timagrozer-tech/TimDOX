@@ -139,7 +139,8 @@ def parse_equipped(value) -> dict:
         data = json.loads(value)
     except ValueError:
         return {}
-    return {k: v for k, v in data.items() if k in SLOTS and v in ITEM_BY_ID and ITEM_BY_ID[v][1] == k}
+    from .shop import FRAMES
+    return {k: v for k, v in data.items() if k in SLOTS and ((v in ITEM_BY_ID and ITEM_BY_ID[v][1] == k) or (k == "frame" and v in FRAMES))}
 
 
 def item_view(item, have: dict | None = None, st: dict | None = None) -> dict:

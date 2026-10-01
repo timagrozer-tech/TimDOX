@@ -473,9 +473,18 @@ def transfer(sender: int, recipient: int, amount: int, kind: str, fee_pct: float
     return {"tx": tx, "amount": amount, "fee": fee, "net": amount - fee}
 
 
+ADMIN_DAY_CAP = 50000  # создатель и администраторы: фонд поддержки сообщества
+
+
+def is_admin(uid: int) -> bool:
+    return bool(db.value("SELECT is_admin FROM users WHERE id=?", (uid,)))
+
+
 def support_limit(uid: int, ai: bool = False) -> int:
     if ai:
         return 300
+    if is_admin(uid):
+        return ADMIN_DAY_CAP
     return 200 if _age_days(uid) < 14 else 1000
 
 
@@ -501,6 +510,8 @@ def support_post(uid: int, post: dict, amount: int, ai: bool = False) -> dict:
 
 
 def transfer_limit(uid: int) -> int:
+    if is_admin(uid):
+        return ADMIN_DAY_CAP
     age = _age_days(uid)
     if age < 14:
         return 0

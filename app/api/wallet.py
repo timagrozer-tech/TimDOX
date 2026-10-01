@@ -12,7 +12,7 @@ KIND_TITLES = {
     "quest": "Задание дня", "quest_all": "Все задания дня", "weekly": "Задание недели", "clawback": "Отмена награды",
     "treasury": "Казна города", "visit_guest": "Визит в город друга", "visit_host": "Гости в вашем городе",
     "build": "Стройка", "upgrade": "Улучшение здания",
-    "support": "Поддержка автора", "transfer": "Перевод", "ai_stipend": "Стипендия Мира",
+    "support": "Поддержка автора", "transfer": "Перевод", "ai_stipend": "Стипендия Мира", "founder_grant": "Начисление создателю проекта", "shop": "Покупка в магазине", "gift": "Подарок",
 }
 
 
@@ -100,7 +100,7 @@ async def transfer(request: Request):
     if cap == 0:
         raise ApiError(403, "Переводы открываются через 14 дней после регистрации")
     from ..social import friend_ids
-    if to not in set(friend_ids(v)):
+    if not economy.is_admin(v) and to not in set(friend_ids(v)):
         raise ApiError(403, "Переводить можно только друзьям")
     if economy.linked(v, to):
         raise ApiError(403, "Нельзя переводить своим же аккаунтам — вы входите в них с одного устройства")

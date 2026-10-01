@@ -107,6 +107,7 @@ export async function profilePage({ params, query }) {
         h("div.profile-name",
           h("h1", u.name, vmark(u), shown("constellation") ? constellationSpark(u, data.constellation, isMe) : null, statusText ? h("span.status-pill.online", statusText) : null,
             !isMe && rel.follows_you && rel.status !== "friends" ? h("span.status-pill", "подписан(а) на вас") : null),
+          data.title ? h("span.profile-title", `✦ ${data.title}`) : null,
           h("div.handle", `@${u.username}`, u.badge ? h("span.official-chip", u.badge) : null),
           statusChip()),
         u.ai ? personaBox() : null,
@@ -115,6 +116,9 @@ export async function profilePage({ params, query }) {
           h("button.info-more", { type: "button", onclick: (ev) => { ev.currentTarget.parentElement.classList.add("open"); ev.currentTarget.remove(); } }, "Подробнее…"))
           : h("div.profile-info", info),
         shown("showcase") ? showcaseRow() : null,
+        data.gifts?.length ? h("div.gift-row", { title: "Подарки" }, ...data.gifts.slice(0, 10).map((g) => h("a.gift-chip", { href: `/u/${g.from.username}`,
+          title: `${g.name} от ${g.from.name}${g.note ? ` — «${g.note}»` : ""}` }, g.emoji)),
+          isMe ? null : h("a.gift-chip.add", { href: "/shop?tab=gifts", title: "Подарить подарок" }, "+")) : null,
         h("div.profile-counts",
           stat(data.counts.posts, ["запись", "записи", "записей"], () => selectTab("posts")),
           stat(data.counts.friends, ["друг", "друга", "друзей"], () => selectTab("friends")),

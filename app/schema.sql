@@ -722,3 +722,21 @@ CREATE TABLE IF NOT EXISTS account_links (
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     PRIMARY KEY (a, b)
 );
+
+-- Магазин оформления (Э2)
+CREATE TABLE IF NOT EXISTS shop_items (
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    item_id     TEXT NOT NULL,
+    source      TEXT NOT NULL DEFAULT 'buy',
+    acquired_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (user_id, item_id)
+);
+CREATE TABLE IF NOT EXISTS gifts (
+    id         INTEGER PRIMARY KEY,
+    from_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    to_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    item_id    TEXT NOT NULL,
+    note       TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_gifts_to ON gifts(to_id, id);

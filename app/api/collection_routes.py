@@ -38,7 +38,12 @@ async def equip(request: Request):
     if slot not in collection.SLOTS:
         raise ApiError(400, "Неизвестный слот")
     equipped = collection.parse_equipped(db.value("SELECT equipped FROM profiles WHERE user_id=?", (uid,)))
-    if item_id:
+    from .. import shop
+    if item_id and slot == "frame" and item_id in shop.FRAMES:
+        if item_id not in shop.owned(uid):
+            raise ApiError(403, "Эту рамку нужно сначала купить в магазине")
+        equipped[slot] = item_id
+    elif item_id:
         item = collection.ITEM_BY_ID.get(item_id)
         if not item or item[1] != slot:
             raise ApiError(400, "Неизвестный предмет")

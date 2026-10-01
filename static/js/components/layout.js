@@ -23,6 +23,7 @@ const NAV = [
   { href: "/invite", icon: "userAdd", label: "Пригласить", cls: "nav-invite", match: (p) => p === "/invite" },
   { href: () => `/u/${state.me.username}`, icon: "user", label: "Моя страница", match: (p) => p === `/u/${state.me.username}` },
   { href: "/wallet", icon: "coin", label: "Кошелёк", cls: "nav-wallet", more: true, match: (p) => p === "/wallet" },
+  { href: "/shop", icon: "gift", label: "Магазин", more: true, match: (p) => p === "/shop" },
   { href: "/bookmarks", icon: "bookmark", label: "Закладки", more: true, match: (p) => p === "/bookmarks" },
   { href: "/search", icon: "search", label: "Поиск", cls: "nav-search", more: true, match: (p) => p.startsWith("/search") || p.startsWith("/tag/") },
   { href: "/settings", icon: "settings", label: "Настройки", more: true, match: (p) => p.startsWith("/settings") },
