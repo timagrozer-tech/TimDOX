@@ -251,8 +251,16 @@ async def bookmarks(request: Request):
     return JSONResponse({"items": items, "next_cursor": rows[PAGE - 1]["bid"] if len(rows) > PAGE else None})
 
 
+_trends_cache: tuple[float, list] = (float("-inf"), [])
+
+
 @auth()
 async def trends(request: Request):
+    """Популярные теги одинаковы для всех — считаем раз в минуту, а не на каждый запрос."""
+    global _trends_cache
+    import time
+    if time.monotonic() - _trends_cache[0] < 60:
+        return JSONResponse({"items": _trends_cache[1]})
     rows = db.all(f"""
         SELECT h.tag, count(*) AS n FROM post_hashtags ph
         JOIN hashtags h ON h.id = ph.hashtag_id JOIN posts p ON p.id = ph.post_id
@@ -264,6 +272,7 @@ async def trends(request: Request):
             JOIN hashtags h ON h.id = ph.hashtag_id JOIN posts p ON p.id = ph.post_id
             WHERE p.visibility = 'public' AND p.created_at >= ? AND {PUBLIC_COMMUNITY}
             GROUP BY h.id ORDER BY n DESC LIMIT 8""", (db.future(days=-7),))
+    _trends_cache = (time.monotonic(), rows)
     return JSONResponse({"items": rows})
 
 
