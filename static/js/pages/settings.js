@@ -228,50 +228,73 @@ export async function settingsPage({ query = {} } = {}) {
       } },
     ]);
   };
+  // шапка: обложка, аватар на её нижней кромке и имя рядом — один узел композиции
+  const idName = h("b.set-id-name", s.name);
+  const idLogin = h("span.set-id-login", `@${s.username}`);
   const mediaHead = h("div.set-media",
     coverBox,
     h("button.set-cover-btn", { type: "button", onclick: imageMenu("cover") }, icon("camera", "sm"), "Обложка"),
     h("div.set-av-wrap", avatarBox,
-      h("button.set-av-btn", { type: "button", "aria-label": "Изменить фото профиля", title: "Изменить фото профиля", onclick: imageMenu("avatar") }, icon("camera", "sm"))));
+      h("button.set-av-btn", { type: "button", "aria-label": "Изменить фото профиля", title: "Изменить фото профиля", onclick: imageMenu("avatar") }, icon("camera", "sm"))),
+    h("div.set-identity", idName, idLogin));
 
   const relOptions = ["", "Не женат / не замужем", "Встречаюсь", "Помолвлен(а)", "Женат / замужем", "В гражданском браке", "Всё сложно", "В активном поиске"];
-  const profileForm = h("form.stack",
+  const saveBtn = h("button.btn.primary", { type: "submit", disabled: true }, icon("check", "sm"), "Сохранить");
+  const resetBtn = h("button.btn.ghost", { type: "button", hidden: true }, "Отменить");
+  const saveNote = h("span.set-save-note", "Изменений нет");
+  const group = (title, ...rows) => h("div.set-group", h("div.set-group-title", title), ...rows);
+  const profileForm = h("form.set-form",
     mediaHead,
-    h("div.grid-2",
+    group("Основное",
       input("Имя и фамилия", "name", s.name, { maxlength: 60 }),
-      input("Логин", "username", s.username, { maxlength: 30, prefix: "@" })),
-    input("О себе", "bio", s.bio, { textarea: true, maxlength: 500 }),
-    h("div.grid-2",
+      input("Логин", "username", s.username, { maxlength: 30, prefix: "@" }),
+      input("О себе", "bio", s.bio, { textarea: true, maxlength: 500 }),
       input("Город", "city", s.city, { maxlength: 80, placeholder: "Например, Казань" }),
-      h("div.field", h("label", { for: "s-birth" }, "Дата рождения"), h("input.input", { id: "s-birth", name: "birth_date", type: "date", value: s.birth_date || "", max: new Date().toISOString().slice(0, 10) }),
-        h("label.check", h("input", { type: "checkbox", name: "show_birth_date", checked: s.show_birth_date }), "Показывать в профиле"))),
-    h("details.set-more", (s.school || s.university || s.work || s.relationship) ? { open: true } : {},
-      h("summary", icon("book", "sm"), "Учёба, работа, семейное положение", icon("down", "sm")),
-      h("div.stack",
-    h("div.grid-2",
+      h("div.field", h("label", { for: "s-birth" }, "Дата рождения"), h("input.input", { id: "s-birth", name: "birth_date", type: "date", value: s.birth_date || "", max: new Date().toISOString().slice(0, 10) })),
+      h("label.set-switch", h("span", "Показывать дату рождения в профиле"), h("input", { type: "checkbox", name: "show_birth_date", checked: s.show_birth_date, role: "switch" }))),
+    group("Учёба и работа",
       input("Школа", "school", s.school, { maxlength: 120, placeholder: "Например, «Лицей № 2»" }),
-      input("Год окончания школы", "school_year", s.school_year ?? "", { type: "number", placeholder: "2012" })),
-    h("div.grid-2",
+      input("Год окончания школы", "school_year", s.school_year ?? "", { type: "number", placeholder: "2012" }),
       input("Вуз или колледж", "university", s.university, { maxlength: 120, placeholder: "Например, «КФУ»" }),
-      input("Год окончания вуза", "university_year", s.university_year ?? "", { type: "number", placeholder: "2017" })),
-    h("p.field-hint", { style: { marginTop: "-6px" } }, "По школе и году выпуска вас смогут найти одноклассники."),
-    input("Работа", "work", s.work, { maxlength: 200, placeholder: "Компания и должность" }),
-    h("div.field", h("label", { for: "s-rel" }, "Семейное положение"),
-      h("select.select", { id: "s-rel", name: "relationship" }, relOptions.map((o) => h("option", { value: o, selected: o === s.relationship }, o || "Не указано")))))),
-    h("div.set-save", h("button.btn.primary", { type: "submit" }, icon("check", "sm"), "Сохранить")));
+      input("Год окончания вуза", "university_year", s.university_year ?? "", { type: "number", placeholder: "2017" }),
+      h("p.field-hint", "По школе и году выпуска вас смогут найти одноклассники."),
+      input("Работа", "work", s.work, { maxlength: 200, placeholder: "Компания и должность" }),
+      h("div.field", h("label", { for: "s-rel" }, "Семейное положение"),
+        h("select.select", { id: "s-rel", name: "relationship" }, relOptions.map((o) => h("option", { value: o, selected: o === s.relationship }, o || "Не указано"))))),
+    h("div.set-savebar", saveNote, h("div.spacer"), resetBtn, saveBtn));
+  // панель сохранения знает, есть ли изменения: кнопка активна только тогда, когда есть что сохранять
+  const FIELDS = ["name", "username", "bio", "city", "birth_date", "school", "school_year", "university", "university_year", "work", "relationship"];
+  const snapshot = () => JSON.stringify([...FIELDS.map((n) => profileForm.querySelector(`[name="${n}"]`).value), profileForm.querySelector('[name="show_birth_date"]').checked]);
+  let clean = snapshot();
+  const syncDirty = () => {
+    const dirty = snapshot() !== clean;
+    saveBtn.disabled = !dirty; resetBtn.hidden = !dirty;
+    saveNote.textContent = dirty ? "Есть несохранённые изменения" : "Изменений нет";
+    profileForm.classList.toggle("dirty", dirty);
+    idName.textContent = profileForm.querySelector('[name="name"]').value || " ";
+    idLogin.textContent = `@${profileForm.querySelector('[name="username"]').value}`;
+  };
+  profileForm.addEventListener("input", syncDirty);
+  profileForm.addEventListener("change", syncDirty);
+  resetBtn.addEventListener("click", () => {
+    for (const n of FIELDS) profileForm.querySelector(`[name="${n}"]`).value = s[n] ?? "";
+    profileForm.querySelector('[name="show_birth_date"]').checked = !!s.show_birth_date;
+    syncDirty();
+  });
   profileForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const f = (n) => profileForm.querySelector(`[name="${n}"]`);
     const data = {};
     for (const n of ["name", "username", "bio", "city", "birth_date", "school", "school_year", "university", "university_year", "work", "relationship"]) data[n] = f(n).value;
     data.show_birth_date = f("show_birth_date").checked;
-    busy(profileForm.querySelector("[type=submit]"), async () => {
+    busy(saveBtn, async () => {
       profileForm.querySelectorAll(".field-error").forEach((x) => { x.textContent = ""; });
       try {
         const res = await api.patch("/api/me/settings", data);
         Object.assign(s, res);
         state.me.name = res.name; state.me.username = res.username;
         refreshSidebarUser();
+        clean = snapshot(); syncDirty();
         toast("Профиль сохранён", { icon: "check" });
       } catch (err) {
         for (const [k, v] of Object.entries(err.fields || {})) {
@@ -280,7 +303,7 @@ export async function settingsPage({ query = {} } = {}) {
         }
         toastError(err);
       }
-    });
+    }).then(syncDirty);
   });
 
   // ---------------------------------------------------------------- Приватность
@@ -438,7 +461,7 @@ export async function settingsPage({ query = {} } = {}) {
 
   // ---------------------------------------------------------------- Разделы вкладками — без длинной прокрутки
   const TABS = [
-    ["profile", "Профиль", "user", () => [section("Профиль", null, profileForm)]],
+    ["profile", "Профиль", "user", () => [h("section.card.set-card", profileForm)]],
     ["look", "Вид", "sun", () => [appearanceSection(s)]],
     ["privacy", "Доступ", "lock", () => [
       section("Приватность", null,

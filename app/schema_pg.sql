@@ -642,6 +642,8 @@ CREATE TABLE IF NOT EXISTS referral_rewards (
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS invite_tier TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS invites_qualified INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS onboarding TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS constellation TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS space TEXT;
 
 -- Звонки: голос и видео (WebRTC), журнал участников
 CREATE TABLE IF NOT EXISTS calls (

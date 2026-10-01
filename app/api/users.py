@@ -6,7 +6,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
-from .. import collection, config, db, email_codes, mailer, media, social
+from .. import collection, config, constellation, db, email_codes, mailer, media, social
 from ..realtime import hub
 from ..security import censor, clean_text, verify_password
 from ..social import FRIEND_IDS_SQL
@@ -73,9 +73,11 @@ async def profile(request: Request):
         "equipped": collection.parse_equipped(p.get("equipped")),
         "can_verify": bool(request.state.user["is_admin"]),
     }
+    data["space"] = constellation.load_space(p.get("space"))
     if full:
         from .collection_routes import showcase
         data["showcase"] = showcase(uid)
+        data["constellation"] = constellation.public(uid, p.get("constellation"))
     if uid != v and not rel["blocked_by_me"]:
         from .people_extra import record_visit
         record_visit(uid, v)
@@ -697,7 +699,42 @@ async def onboarding_set(request: Request):
     return JSONResponse({"style": d.get("style"), "done": bool(d.get("done")), "tours": d.get("tours") or [], "sound": d.get("sound", True)})
 
 
+# ---------------------------------------------------------------- Constellation и пространство профиля
+@auth()
+async def constellation_get(request: Request):
+    v = request.state.user["id"]
+    raw = db.value("SELECT constellation FROM profiles WHERE user_id=?", (v,))
+    d = constellation.load(raw)
+    kinds = [{"kind": k, "label": x[0], "group": x[1], "needs_url": "*" in x[3] or k == "spotify"} for k, x in constellation.KINDS.items()]
+    return JSONResponse({"style": d["style"], "items": d["items"], "kinds": kinds, "styles": list(constellation.STYLES)})
+
+
+@auth()
+async def constellation_set(request: Request):
+    v = request.state.user["id"]
+    limit(request, "constellation")
+    data = await body(request)
+    try:
+        d = constellation.validate(data)
+    except constellation.Invalid as e:
+        raise ApiError(400, str(e))
+    db.run("UPDATE profiles SET constellation=? WHERE user_id=?", (json.dumps(d, ensure_ascii=False), v))
+    return JSONResponse(constellation.public(v, json.dumps(d)))
+
+
+@auth()
+async def space_set(request: Request):
+    v = request.state.user["id"]
+    data = await body(request)
+    d = constellation.load_space(json.dumps(data if isinstance(data, dict) else {}))
+    db.run("UPDATE profiles SET space=? WHERE user_id=?", (json.dumps(d), v))
+    return JSONResponse(d)
+
+
 routes = [
+    Route("/api/me/constellation", constellation_get, methods=["GET"]),
+    Route("/api/me/constellation", constellation_set, methods=["PUT"]),
+    Route("/api/me/space", space_set, methods=["PUT"]),
     Route("/api/onboarding", onboarding_get, methods=["GET"]),
     Route("/api/onboarding", onboarding_set, methods=["POST"]),
     Route("/api/users/{username}", profile, methods=["GET"]),

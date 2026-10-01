@@ -380,6 +380,11 @@ export function createStory(onDone) {
     q.addEventListener("input", draw);
     draw();
   }
+  async function addPlace() {
+    const t = await promptDialog({ title: "Местоположение", label: "Город, улица или место", placeholder: "Например, Казань, Кремль", value: state.me.city || "", confirm: "Добавить" });
+    const place = (t || "").trim().slice(0, 60);
+    if (place) addSticker({ type: "place", text: place });
+  }
   async function addTag() {
     const t = await promptDialog({ title: "Хэштег", placeholder: "лето", confirm: "Добавить" });
     const tag = (t || "").replace(/^#/, "").replace(/[^\p{L}\p{N}_]/gu, "").slice(0, 40);
@@ -391,6 +396,7 @@ export function createStory(onDone) {
       h("div.se-sticker-btns",
         h("button.se-chip.on", { type: "button", onclick: addLink }, icon("link", "sm"), "Ссылка"),
         h("button.se-chip", { type: "button", onclick: addMention }, icon("at", "sm"), "Упоминание"),
+        h("button.se-chip", { type: "button", onclick: addPlace }, icon("pin", "sm"), "Местоположение"),
         h("button.se-chip", { type: "button", onclick: addTag }, icon("hash", "sm"), "Хэштег"),
         h("button.se-chip", { type: "button", onclick: () => addSticker({ type: "time", text: now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }) }) }, "🕒 Время"),
         h("button.se-chip", { type: "button", onclick: () => addSticker({ type: "date", text: now.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) }) }, "📅 Дата")),

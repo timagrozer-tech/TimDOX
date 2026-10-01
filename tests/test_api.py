@@ -51,6 +51,9 @@ class Client:
     def patch(self, url, json=None):
         return self.c.patch(url, json=json, headers=self._h())
 
+    def put(self, url, json=None):
+        return self.c.put(url, json=json, headers=self._h())
+
     def delete(self, url, json=None):
         return self.c.request("DELETE", url, json=json, headers=self._h())
 

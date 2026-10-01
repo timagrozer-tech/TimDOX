@@ -115,6 +115,11 @@ export function stickerNode(s, { interactive = true, onNavigate } = {}) {
     el = interactive
       ? h(`a.st-sticker.st-chip.v-${v}`, { href: `/tag/${encodeURIComponent(s.tag)}`, onclick: () => onNavigate?.() }, ...inner)
       : h(`div.st-sticker.st-chip.v-${v}`, ...inner);
+  } else if (s.type === "place") {
+    const inner = [icon("pin", "sm"), h("span", s.text)];
+    el = interactive
+      ? h(`a.st-sticker.st-chip.v-${v}`, { href: `https://yandex.ru/maps/?text=${encodeURIComponent(s.text)}`, target: "_blank", rel: "noopener noreferrer nofollow", onclick: (e) => e.stopPropagation() }, ...inner)
+      : h(`div.st-sticker.st-chip.v-${v}`, ...inner);
   } else if (s.type === "time" || s.type === "date") {
     el = h(`div.st-sticker.st-clock.v-${v}`, s.text);
   } else {

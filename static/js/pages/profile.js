@@ -8,6 +8,8 @@ import { composer } from "../components/composer.js";
 import { postCard, report } from "../components/post.js";
 import { friendButton, openChat, personRow, defaultPersonActions } from "../components/people.js";
 import { uploadProfileImage } from "./settings.js";
+import { constellationSpark, constellationBlock } from "../components/constellation.js";
+import { openSpaceEditor, SPACE_MODES } from "../components/space.js";
 
 export async function profilePage({ params, query }) {
   let offPosted = null;
@@ -20,14 +22,20 @@ export async function profilePage({ params, query }) {
     return h("div.card.empty", icon("block"), h("h3", u.name), h("p", "Страница недоступна."));
   }
 
-  const root = h("div.stack");
+  const root = h("div.stack.profile-space");
   const header = h("section.card.profile-card");
+  // пространство профиля: режим и видимые блоки выбирает владелец
+  let space = data.space || { mode: "classic", order: [], hidden: [] };
+  const shown = (b) => !space.hidden.includes(b);
+  const extras = h("div.stack.space-blocks");
   const tabBar = h("div.tabs", { role: "tablist" });
   const content = h("div");
   const tabsCard = h("div.card", tabBar);
-  root.append(header, tabsCard, content);
+  root.append(header, extras, tabsCard, content);
+  root.dataset.mode = space.mode;
+  document.addEventListener("constellation:changed", (e) => { if (isMe && root.isConnected) { data.constellation = e.detail; renderHeader(); } });
 
-  function renderHeader() {
+  let renderHeader = function () {
     const rel = data.relation;
     const cover = h("div.cover", data.cover ? h("img", { src: data.cover, alt: "" }) : null,
       isMe ? h("button.btn.sm.cover-btn", { type: "button", onclick: () => uploadProfileImage("cover", (url) => { data.cover = url; renderHeader(); }) }, icon("camera", "sm"), h("span.cover-btn-text", data.cover ? "Изменить обложку" : "Добавить обложку")) : null);
@@ -39,6 +47,8 @@ export async function profilePage({ params, query }) {
     if (isMe) {
       actions.append(h("a.btn.outline", { href: "/settings", title: "Редактировать профиль" }, icon("edit", "sm"), h("span.pa-full", "Редактировать профиль"), h("span.pa-short", "Изменить")));
       actions.append(h("a.btn.soft.stats-btn", { href: "/stats", title: "Личная статистика" }, icon("chart", "sm"), h("span", "Статистика")));
+      actions.append(h("button.btn.ghost.icon-only.space-btn", { type: "button", "aria-label": "Настроить пространство", title: "Настроить пространство",
+        onclick: () => openSpaceEditor(space, (next) => { space = next; root.dataset.mode = space.mode; renderHeader(); }) }, icon("settings")));
       if (data.can_verify) {
         const more = h("button.btn.ghost.icon-only", { type: "button", "aria-label": "Ещё", "aria-haspopup": "menu" }, icon("more"));
         more.addEventListener("click", () => showMenu(more, adminItems.slice(1)));
@@ -94,16 +104,16 @@ export async function profilePage({ params, query }) {
       h("div.profile-main",
         h("div.profile-top", avatarWrap, actions),
         h("div.profile-name",
-          h("h1", u.name, vmark(u), statusText ? h("span.status-pill.online", statusText) : null,
+          h("h1", u.name, vmark(u), shown("constellation") ? constellationSpark(u, data.constellation, isMe) : null, statusText ? h("span.status-pill.online", statusText) : null,
             !isMe && rel.follows_you && rel.status !== "friends" ? h("span.status-pill", "подписан(а) на вас") : null),
           h("div.handle", `@${u.username}`, u.badge ? h("span.official-chip", u.badge) : null),
           statusChip()),
         u.ai ? personaBox() : null,
-        data.bio && !data.hidden ? h("p.profile-bio", data.bio) : null,
-        info.length > 3 ? h("div.profile-info.collapsible", ...info,
+        shown("about") && data.bio && !data.hidden ? h("p.profile-bio", data.bio) : null,
+        !shown("about") ? null : (info.length > 3 && space.mode !== "professional") ? h("div.profile-info.collapsible", ...info,
           h("button.info-more", { type: "button", onclick: (ev) => { ev.currentTarget.parentElement.classList.add("open"); ev.currentTarget.remove(); } }, "Подробнее…"))
           : h("div.profile-info", info),
-        showcaseRow(),
+        shown("showcase") ? showcaseRow() : null,
         h("div.profile-counts",
           stat(data.counts.posts, ["запись", "записи", "записей"], () => selectTab("posts")),
           stat(data.counts.friends, ["друг", "друга", "друзей"], () => selectTab("friends")),
@@ -317,8 +327,15 @@ export async function profilePage({ params, query }) {
   }
 
   tabBar.append(...TABS.map((t) => h("button", { type: "button", role: "tab", dataset: { tab: t.id }, onclick: () => selectTab(t.id) }, icon(t.icon, "sm"), t.label)));
+  const _renderHeader = renderHeader;
+  renderHeader = function () {
+    _renderHeader();
+    const blocks = { constellation: () => (!data.hidden && shown("constellation") ? constellationBlock(u, data.constellation, isMe) : null) };
+    extras.replaceChildren(...space.order.filter((b) => blocks[b]).map((b) => blocks[b]()).filter(Boolean));
+  };
   renderHeader();
-  selectTab(TABS.some((t) => t.id === query.tab) ? query.tab : "posts");
+  const firstTab = SPACE_MODES[space.mode]?.tab;
+  selectTab(TABS.some((t) => t.id === query.tab) ? query.tab : (firstTab && TABS.some((t) => t.id === firstTab) ? firstTab : "posts"));
 
   // статус «в сети» обновляется в реальном времени
   const offPresence = on("presence", ({ user_id, online }) => {

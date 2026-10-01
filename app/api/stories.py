@@ -67,6 +67,10 @@ def clean_style(raw: str | None, has_photo: bool) -> dict:
                 style["stickers"].append({"type": "emoji", "e": e, **pos})
         elif kind in ("time", "date"):
             style["stickers"].append({"type": kind, "text": clean_text(str(st.get("text") or ""), 20), **pos})
+        elif kind == "place":
+            place = clean_text(str(st.get("text") or ""), 60)
+            if place:
+                style["stickers"].append({"type": "place", "text": censor(place), **pos})
         elif kind == "tag":
             tag = re.sub(r"[^\w]", "", str(st.get("tag") or ""))[:40]
             if tag:

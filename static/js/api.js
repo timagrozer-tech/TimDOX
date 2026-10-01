@@ -70,6 +70,7 @@ export const api = {
   },
   post: (url, data = {}) => request("POST", url, data),
   patch: (url, data) => request("PATCH", url, data),
+  put: (url, data) => request("PUT", url, data),
   del: (url, data) => request("DELETE", url, data),
   form: (url, formData, method = "POST") => request(method, url, formData, true),
   /** Загрузка с прогрессом (0..1). Возвращает { promise, abort }. */
