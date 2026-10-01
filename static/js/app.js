@@ -69,6 +69,7 @@ import { statsPage } from "./pages/stats.js";
 import { invitePage } from "./pages/invite.js";
 import { welcomePage } from "./pages/welcome.js";
 import { queueTour, stopTour } from "./tour.js";
+import { initCalls } from "./call/call.js";
 import { musicPage, genrePage, playlistPage } from "./pages/music.js";
 import { initPlayer } from "./music/player.js";
 
@@ -206,6 +207,7 @@ on("logged-out", () => {
 // ---------------------------------------------------------------- Запуск
 restoreLook();
 initMotion();
+initCalls();
 initFx();
 initAvatarFallback();
 initPwa();

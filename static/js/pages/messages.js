@@ -1,4 +1,5 @@
 // Личные сообщения в реальном времени: список диалогов и окно переписки.
+import { startCall } from "../call/call.js";
 import { api, state, on, setCounters } from "../api.js";
 import { h, icon, avatar, vmark, shortTime, hm, dayLabel, richText, autosize, timeAgo } from "../dom.js";
 import { setTitle, toast, toastError, showMenu, modal, promptDialog, confirmDialog, lightbox } from "../ui.js";
@@ -192,6 +193,14 @@ export async function messagesPage({ params }) {
     body.addEventListener("dragover", (e) => { if (conv.can_write && e.dataTransfer?.types.includes("Files")) { e.preventDefault(); body.classList.add("drop"); } });
     body.addEventListener("dragleave", () => body.classList.remove("drop"));
     body.addEventListener("drop", (e) => { e.preventDefault(); body.classList.remove("drop"); if (conv.can_write) sendFiles([...e.dataTransfer.files]); });
+    // звонки: один на один и в беседах до 4 человек
+    const callButtons = () => {
+      const n = isGroup ? (conv.members || []).length : 2;
+      if (!conv.can_write || n > 4 || (!isGroup && !conv.user?.username)) return null;
+      return h("div.chat-calls",
+        h("button.btn.ghost.icon-only", { type: "button", "aria-label": "Позвонить", title: "Аудиозвонок", onclick: () => startCall(id, false) }, icon("phone")),
+        h("button.btn.ghost.icon-only", { type: "button", "aria-label": "Видеозвонок", title: "Видеозвонок", onclick: () => startCall(id, true) }, icon("video")));
+    };
     const groupMenu = isGroup ? h("button.btn.ghost.icon-only", { type: "button", "aria-label": "Настройки беседы", "aria-haspopup": "menu" }, icon("more")) : null;
     groupMenu?.addEventListener("click", () => showMenu(groupMenu, [
       { label: "Участники", icon: "users", onClick: showMembers },
@@ -206,6 +215,7 @@ export async function messagesPage({ params }) {
         isGroup ? convAvatar(conv) : conv.user.username ? h("a", { href: `/u/${conv.user.username}`, "aria-label": conv.user.name }, avatar(conv.user)) : avatar(conv.user),
         h("div.who", isGroup ? h("button.name.link-btn", { type: "button", onclick: showMembers }, conv.title)
           : conv.user.username ? h("a.name", { href: `/u/${conv.user.username}` }, conv.user.name, vmark(conv.user)) : h("span.name", conv.user.name), sub),
+        callButtons(),
         groupMenu),
       body, form);
 

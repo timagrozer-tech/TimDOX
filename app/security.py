@@ -96,6 +96,7 @@ LIMITS = {
     "register": (int(os.environ.get("REGISTER_PER_HOUR", "6")), 3600),      # новых аккаунтов с одного IP
     "register_day": (int(os.environ.get("REGISTER_PER_DAY", "20")), 86400),
     "new_dialogs": (int(os.environ.get("NEW_DIALOGS_NEW_ACCOUNT", "20")), 86400),  # новые переписки у аккаунтов младше суток
+    "call_signal": (900, 60),  # сигналинг звонков: ICE-кандидаты идут пачками
     "default": (300, 60),
 }
 
