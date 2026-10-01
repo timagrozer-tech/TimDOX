@@ -64,6 +64,7 @@ async def profile(request: Request):
             "followers": db.value("SELECT count(*) FROM follows WHERE followee_id=?", (uid,)),
             "following": db.value("SELECT count(*) FROM follows WHERE follower_id=?", (uid,)),
             "posts": db.value("SELECT count(*) FROM posts WHERE author_id=?", (uid,)) if full else None,
+            "invited": p.get("invites_qualified") or 0,
         },
         "mutual_friends": len(my_friends & their_friends) if uid != v else 0,
         "can_message": uid != v and not rel["blocked_by_me"] and (

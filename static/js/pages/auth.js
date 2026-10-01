@@ -1,6 +1,6 @@
 // Вход, регистрация, восстановление пароля, подтверждение почты.
 import { api, state } from "../api.js";
-import { h, icon, logo } from "../dom.js";
+import { h, icon, logo, avatar, vmark } from "../dom.js";
 import { busy, setTitle, toast } from "../ui.js";
 import { navigate } from "../router.js";
 import { afterLogin } from "../app-actions.js";
@@ -176,6 +176,15 @@ export async function registerPage({ query }) {
     submit,
     h("p.auth-switch", "Уже есть аккаунт? ", h("a", { href: "/login" }, "Войти")));
   const shownAt = performance.now();
+  // пришли по приглашению: показываем, кто зовёт — так регистрация ощущается личной
+  const ref = (query.ref || "").slice(0, 16);
+  if (ref) {
+    api.get(`/api/invites/code/${encodeURIComponent(ref)}`).then((d) => {
+      form.querySelector("h1").after(h("div.iv-invited",
+        avatar(d.inviter, "md"),
+        h("div", h("b", d.inviter.name, vmark(d.inviter)), h("small", "приглашает вас в Круг — после регистрации вы сразу будете на связи"))));
+    }).catch(() => {});
+  }
 
   // подсказка логина из имени
   const translit = { а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya" };
@@ -194,7 +203,7 @@ export async function registerPage({ query }) {
         await api.post("/api/auth/register", {
           name: $(form, "name").value, username: $(form, "username").value, email: $(form, "email").value,
           password: $(form, "password").value, consent: $(form, "consent").checked,
-          website: $(form, "website").value, t: Math.round(performance.now() - shownAt),
+          website: $(form, "website").value, t: Math.round(performance.now() - shownAt), ref: ref || undefined,
         });
         toast("Аккаунт создан! Мы отправили письмо для подтверждения e-mail.", { icon: "mail", duration: 6000 });
         await afterLogin(query.next || "/?welcome=1");

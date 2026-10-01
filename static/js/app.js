@@ -65,6 +65,7 @@ import { guestsPage } from "./pages/guests.js";
 import { adminPage } from "./pages/admin.js";
 import { worldPage } from "./pages/world.js";
 import { statsPage } from "./pages/stats.js";
+import { invitePage } from "./pages/invite.js";
 import { musicPage, genrePage, playlistPage } from "./pages/music.js";
 import { initPlayer } from "./music/player.js";
 
@@ -87,6 +88,7 @@ route("/notifications", notificationsPage);
 route("/search", searchPage);
 route("/tag/:tag", tagPage);
 route("/bookmarks", bookmarksPage);
+route("/invite", invitePage);
 route("/settings", settingsPage);
 route("/communities", communitiesPage);
 route("/c/:slug", communityPage);

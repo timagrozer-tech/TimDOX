@@ -9,7 +9,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from .. import config, db, email_codes, mailer, qr, social, twofa
+from .. import config, db, email_codes, mailer, qr, referrals, social, twofa
 from ..security import (DISPOSABLE_DOMAINS, LIMITS, USERNAME_RE, hash_password, new_token, rate_limiter, token_hash,
                         validate_password, verify_password)
 from ..web import ApiError, auth, body, client_ip, ip_prefix, limit, ok
@@ -160,9 +160,16 @@ async def register(request: Request):
     for bucket in ("register", "register_day"):
         rate_limiter.hit(f"{bucket}:{ip}", *LIMITS[bucket])
     log_login(request, uid, True, "register")
+    # пришёл по приглашению: запоминаем пригласившего и сразу подписываем на него
+    ref = str(data.get("ref") or request.cookies.get("krug_ref") or "")
+    inviter = referrals.attach(uid, ref, ip_prefix(ip)) if ref else None
+    if inviter:
+        db.run("INSERT OR IGNORE INTO follows (follower_id, followee_id) VALUES (?,?)", (uid, inviter))
     await _send_token_email(uid, email, "verify")
-    resp = JSONResponse({"ok": True}, status_code=201)
+    resp = JSONResponse({"ok": True, "invited_by": inviter}, status_code=201)
     _start_session(request, resp, uid)
+    if ref:
+        resp.delete_cookie("krug_ref", path="/")
     return resp
 
 

@@ -596,3 +596,48 @@ CREATE INDEX IF NOT EXISTS idx_login_events_user ON login_events(user_id, id DES
 CREATE INDEX IF NOT EXISTS idx_login_events_time ON login_events(created_at);
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ip_prefix TEXT;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_seen_at TEXT;
+
+-- Приглашения: коды, переходы, кто кого пригласил, дни активности, выданные награды
+CREATE TABLE IF NOT EXISTS invite_codes (
+    code        TEXT PRIMARY KEY,
+    user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    label       TEXT,
+    created_at  TEXT NOT NULL DEFAULT krug_now(),
+    disabled_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_invite_codes_user ON invite_codes(user_id);
+CREATE TABLE IF NOT EXISTS invite_clicks (
+    code    TEXT NOT NULL REFERENCES invite_codes(code) ON DELETE CASCADE,
+    day     TEXT NOT NULL,
+    visitor TEXT NOT NULL,
+    source  TEXT,
+    PRIMARY KEY (code, day, visitor)
+);
+CREATE TABLE IF NOT EXISTS referrals (
+    invitee_id    BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    inviter_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code          TEXT,
+    net           TEXT,
+    status        TEXT NOT NULL DEFAULT 'pending',
+    reject_reason TEXT,
+    created_at    TEXT NOT NULL DEFAULT krug_now(),
+    qualified_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_referrals_inviter ON referrals(inviter_id, status, qualified_at);
+CREATE INDEX IF NOT EXISTS idx_referrals_status ON referrals(status);
+CREATE TABLE IF NOT EXISTS user_active_days (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day     TEXT NOT NULL,
+    PRIMARY KEY (user_id, day)
+);
+CREATE TABLE IF NOT EXISTS referral_rewards (
+    id         BIGSERIAL PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL,
+    tier       TEXT,
+    payload    TEXT,
+    granted_at TEXT NOT NULL DEFAULT krug_now(),
+    UNIQUE (user_id, kind, tier)
+);
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS invite_tier TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS invites_qualified INTEGER NOT NULL DEFAULT 0;

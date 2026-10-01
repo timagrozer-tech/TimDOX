@@ -14,8 +14,8 @@ from starlette.responses import RedirectResponse, FileResponse, JSONResponse, Re
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from . import collection, config, db, media
-from .api import admin, auth_routes, collection_routes, reels, stickers, communities, events, messages, misc, music as music_api, people_extra, posts, stats, stories, users
+from . import collection, config, db, media, referrals
+from .api import admin, auth_routes, collection_routes, invites, reels, stickers, communities, events, messages, misc, music as music_api, people_extra, posts, stats, stories, users
 from .security import load_extra_banned
 from .world import api as world_api, engine as world_engine
 from .web import ApiError, load_session
@@ -85,6 +85,11 @@ class SecurityMiddleware:
                 receive = _limited_receive(receive, cap)
             load_session(request)
             media.current_user.set(request.state.user)
+            if request.state.user:
+                try:
+                    referrals.mark_active(request.state.user["id"])  # дни активности — для засчёта приглашений
+                except Exception:
+                    log.exception("Не удалось отметить активность")
             if scope["method"] not in SAFE_METHODS:
                 origin = request.headers.get("origin")
                 host = request.headers.get("host", "")
@@ -263,6 +268,7 @@ async def housekeeping():
     while True:
         try:
             removed = stories.cleanup_expired()
+            referrals.qualify_pending()
             db.run("DELETE FROM sessions WHERE expires_at < ?", (db.now(),))
             db.run("DELETE FROM profile_visits WHERE visited_at < ?", (db.future(days=-90),))
             db.run("DELETE FROM email_codes WHERE expires_at < ?", (db.now(),))
@@ -295,7 +301,7 @@ routes = [
     Route("/api/health", health),
     Route("/sw.js", service_worker),
     Route("/manifest.webmanifest", manifest),
-    *admin.routes, *world_api.routes, *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
+    *invites.routes, *admin.routes, *world_api.routes, *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
     *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *stats.routes, *music_api.routes, *collection_routes.routes, *reels.routes, *stickers.routes,
     Mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static"),
     Route("/uploads/{path:path}", uploads, methods=["GET", "HEAD"]),

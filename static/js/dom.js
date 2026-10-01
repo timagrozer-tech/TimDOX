@@ -88,6 +88,10 @@ const ICONS = {
   image: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
   send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
   x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  maximize: '<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>',
+  trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+  tree: '<circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="19" r="2.5"/><circle cx="19" cy="19" r="2.5"/><circle cx="12" cy="19" r="2.5"/><path d="M12 7.5v9M12 11l-6 5.6M12 11l6 5.6"/>',
+  userAdd: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>',
   key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 21 2"/><path d="m16 7 3 3"/><path d="m19 4 2 2"/>',
   globe: '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
   lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
@@ -172,8 +176,23 @@ export function vmark(u) {
     const t = u.badge ? `Официальный аккаунт · ${u.badge}` : "Официальный аккаунт";
     out.push(h("span.vbadge", { title: t, role: "img", "aria-label": t }));
   }
+  if (u?.tier) out.push(tierBadge(u.tier));
   if (u?.ai) out.push(h("span.ai-chip", { title: "Персонаж Мира Круга — искусственный интеллект" }, "ИИ"));
   return out.length ? out : null;
+}
+
+/** Галочка-достижение за приглашения: базовая · серебряная · золотая · легендарная */
+export const TIERS = {
+  base: { name: "Базовая галочка", need: 3 },
+  silver: { name: "Серебряная галочка", need: 10 },
+  gold: { name: "Золотая галочка", need: 50 },
+  legend: { name: "Легендарная галочка", need: 100 },
+};
+export function tierBadge(tier, size = "") {
+  const t = TIERS[tier];
+  if (!t) return null;
+  const title = `${t.name} — пригласил(а) в Круг ${t.need}+ друзей`;
+  return h(`span.tbadge.t-${tier}${size ? "." + size : ""}`, { title, role: "img", "aria-label": title });
 }
 
 export function avatar(user, size = "", opts = {}) {

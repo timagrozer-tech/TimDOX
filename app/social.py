@@ -127,7 +127,13 @@ def user_card(row: dict) -> dict:
         "verified": uid in vmap,
         "ai": uid in ai_ids(),
         "badge": vmap.get(uid) or None,
+        "tier": _tier_map().get(uid),  # галочка-достижение за приглашения (отдельно от синей «подтверждён»)
     }
+
+
+def _tier_map() -> dict[int, str]:
+    from .referrals import tier_map  # поздний импорт: referrals сам использует social
+    return tier_map()
 
 
 def status_of(row: dict) -> dict | None:

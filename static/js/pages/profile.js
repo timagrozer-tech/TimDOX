@@ -108,7 +108,9 @@ export async function profilePage({ params, query }) {
           stat(data.counts.posts, ["запись", "записи", "записей"], () => selectTab("posts")),
           stat(data.counts.friends, ["друг", "друга", "друзей"], () => selectTab("friends")),
           stat(data.counts.followers, ["подписчик", "подписчика", "подписчиков"], () => showFollows("followers")),
-          stat(data.counts.following, ["подписка", "подписки", "подписок"], () => showFollows("following"))),
+          stat(data.counts.following, ["подписка", "подписки", "подписок"], () => showFollows("following")),
+          data.counts.invited ? stat(data.counts.invited, ["приглашение", "приглашения", "приглашений"],
+            () => navigate(isMe ? "/invite?tab=tree" : "/invite?tab=board")) : null),
         !isMe && data.mutual_friends ? h("div.mutual-line", icon("users", "sm"), pl(data.mutual_friends, ["общий друг", "общих друга", "общих друзей"])) : null));
   }
 

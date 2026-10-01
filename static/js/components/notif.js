@@ -31,6 +31,9 @@ export function notifText(n, many = false) {
     case "reel_like": return "оценил(а) ваш клип ❤️";
     case "reel_comment": return `прокомментировал(а) ваш клип: «${n.extra?.text || ""}»`;
     case "item": return `Новый предмет в коллекции: «${n.extra?.name || ""}» ✨`;
+    case "invite_joined": return "присоединился(-ась) к Кругу по вашему приглашению 🎉";
+    case "invite_qualified": return `стал(а) активным участником — приглашение засчитано (всего: ${n.extra?.count || 1})`;
+    case "invite_tier": return `— благодаря этому приглашению у вас ${n.extra?.name || "новая галочка"}! 🏆`;
     default: return "новое событие";
   }
 }
@@ -43,6 +46,7 @@ export function notifLink(n) {
   if (n.type.startsWith("event_")) return `/events/${n.extra?.event_id}`;
   if (n.post_id) return `/post/${n.post_id}${n.comment_id ? "?comments=1" : ""}`;
   if (n.type === "friend_request") return "/friends?tab=requests";
+  if (n.type === "invite_tier" || n.type === "invite_qualified") return "/invite";
   return `/u/${n.actor.username}`;
 }
 
@@ -55,6 +59,7 @@ export function notifBadge(n) {
     follow: ["user", ""], repost: ["repeat", "green"], quote: ["quote", ""],
     community_request: ["users", "orange"], community_approved: ["users", "green"],
     event_invite: ["calendar", "orange"], event_going: ["calendar", "green"], item: ["gift", "gold"], reel_like: ["heart", ""], reel_comment: ["comment", ""],
+    invite_joined: ["userAdd", "green"], invite_qualified: ["check", "green"], invite_tier: ["trophy", "gold"],
   };
   const [ic, color] = map[n.type] || ["bell", ""];
   return h(`span.n-type${color ? "." + color : ""}`, icon(ic));
