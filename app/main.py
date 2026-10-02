@@ -318,9 +318,13 @@ async def lifespan(app):
     task = asyncio.create_task(housekeeping())
     world_task = asyncio.create_task(world_engine.loop()) if world_engine.ENABLED else None
     updates_task = asyncio.create_task(updates_loop()) if os.environ.get("KRUG_UPDATES_LOOP", "1") != "0" else None
+    from . import stickers2
+    tag_task = asyncio.create_task(stickers2.tagging_loop()) if os.environ.get("KRUG_UPDATES_LOOP", "1") != "0" else None
     log.info("«%s» запущен: %s", config.APP_NAME, config.APP_URL)
     yield
     task.cancel()
+    if tag_task:
+        tag_task.cancel()
     if updates_task:
         updates_task.cancel()
     if world_task:

@@ -43,7 +43,7 @@ function trapFocus(e, root) {
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 }
 
-export function modal({ title, body, footer, narrow = false, sheet = true, onClose }) {
+export function modal({ title, body, footer, narrow = false, wide = false, sheet = true, onClose }) {
   const prevFocus = document.activeElement;
   let closed = false, done = null;
   const close = () => {
@@ -61,7 +61,7 @@ export function modal({ title, body, footer, narrow = false, sheet = true, onClo
     if (e.key === "Escape") close();
     trapFocus(e, dialog);
   };
-  const dialog = h(`div.modal${narrow ? ".narrow" : ""}`, { role: "dialog", "aria-modal": "true", "aria-label": title || "Окно" },
+  const dialog = h(`div.modal${narrow ? ".narrow" : ""}${wide ? ".wide" : ""}`, { role: "dialog", "aria-modal": "true", "aria-label": title || "Окно" },
     title ? h("div.modal-head", h("h2", title),
       h("button.btn.ghost.icon-only", { type: "button", "aria-label": "Закрыть", onclick: close }, icon("x"))) : null,
     h("div.modal-body", body),

@@ -3,6 +3,7 @@
 // Этапы: затемнение → размытие профиля → частицы стягиваются к центру → миры выходят на орбиты.
 // Всё движение — transform/opacity на компоновщике, частицы — один canvas, на слабых устройствах их меньше.
 import { api, state } from "../api.js";
+import { stickerShowcase } from "./stickershowcase.js";
 import { h, icon, avatar } from "../dom.js";
 import { toast, toastError, modal, busy } from "../ui.js";
 import { pushOverlay, navigate } from "../router.js";
@@ -10,7 +11,7 @@ import { BRAND_PATHS } from "../brands.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 /** Знак мира: официальный логотип сервиса или значок для миров Круга, сайта и портфолио */
-const GLYPHS = { xbox: "gamepad", portfolio: "work", website: "globe", network: "users", communities: "community", gallery: "image", collection: "gift" };
+const GLYPHS = { xbox: "gamepad", portfolio: "work", website: "globe", network: "users", communities: "community", gallery: "image", collection: "gift", stickers: "sticker" };
 function mark(kind) {
   if (BRAND_PATHS[kind]) {
     const svg = document.createElementNS(SVG_NS, "svg");
@@ -51,8 +52,9 @@ const WORLDS = {
   communities: { type: "galaxy", name: "Скопление сообществ", label: "Сообщества", c: ["#9be7ff", "#2f80ed"] },
   gallery: { type: "crystal", name: "Кристалл памяти", label: "Галерея", c: ["#ffc1e3", "#c2185b"] },
   collection: { type: "comet", name: "Комета находок", label: "Коллекция", c: ["#ffe08a", "#f59e0b"] },
+  stickers: { type: "planet", ring: true, name: "Стикерная планета", label: "Стикеры", c: ["#ffd1f0", "#ff4fa3"] },
 };
-const KRUG = ["network", "communities", "gallery", "collection"];
+const KRUG = ["network", "communities", "gallery", "collection", "stickers"];
 const STYLE_NAMES = { cosmos: "Космос", neural: "Нейросеть", crystal: "Кристалл" };
 const pl = (n, f) => { const a = Math.abs(n) % 100, b = a % 10; return `${n} ${a > 10 && a < 20 ? f[2] : b > 1 && b < 5 ? f[1] : b === 1 ? f[0] : f[2]}`; };
 const reduced = () => document.documentElement.dataset.motion === "reduced" || matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -74,8 +76,10 @@ function worldInfo(it, user) {
     const facts = it.kind === "network" ? [pl(s.friends || 0, ["друг", "друга", "друзей"]), pl(s.followers || 0, ["подписчик", "подписчика", "подписчиков"])]
       : it.kind === "communities" ? [pl(s.count || 0, ["сообщество", "сообщества", "сообществ"])]
       : it.kind === "gallery" ? [pl(s.count || 0, ["фото", "фото", "фото"])]
+      : it.kind === "stickers" ? [pl(s.packs || 0, ["набор", "набора", "наборов"]), pl(s.stickers || 0, ["стикер", "стикера", "стикеров"]), s.created ? pl(s.created, ["свой", "своих", "своих"]) : null]
       : [pl(s.count || 0, ["находка", "находки", "находок"])];
     const href = it.kind === "network" ? `/u/${user.username}?tab=friends` : it.kind === "gallery" ? `/u/${user.username}?tab=photos`
+      : it.kind === "stickers" ? `/u/${user.username}?tab=stickers`
       : it.kind === "communities" ? "/communities" : `/u/${user.username}`;
     return { w, title: w.label, sub: w.name, facts, href, internal: true };
   }
@@ -141,6 +145,7 @@ export function openConstellation(user, data, isMe, origin) {
     card.hidden = false;
     if (it.kind === "steam" && it.handle) steamCard(it, info, mini);
     else if ((it.kind === "github" || it.kind === "telegram") && it.handle) liveCard(it, info, mini);
+    else if (it.kind === "stickers") card.insertBefore(h("div.cst-stickers", stickerShowcase(user, isMe, { compact: true })), card.querySelector(".cst-card-actions"));
   };
 
   // ---- Steam: живой мини-профиль вместо одного ника

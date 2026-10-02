@@ -6,7 +6,7 @@ import { refreshSidebarUser } from "../components/layout.js";
 import { decorate } from "../components/cosmetics.js";
 
 const fmt = (n) => Number(n || 0).toLocaleString("ru-RU");
-const TABS = [["frames", "Рамки"], ["auras", "Ауры"], ["names", "Имя"], ["titles", "Титулы"], ["gifts", "Подарки"]];
+const TABS = [["frames", "Рамки"], ["auras", "Ауры"], ["names", "Имя"], ["titles", "Титулы"], ["stickers", "Стикеры"], ["gifts", "Подарки"]];
 const FILTERS = [["all", "Все"], ["new", "Новинки"], ["top", "Эпические и выше"]];
 const NOTE = {
   frames: "Рамка видна везде, где есть ваш аватар: в ленте, комментариях и чатах.",
@@ -14,6 +14,7 @@ const NOTE = {
   names: "Эффект имени — анимация вашего имени в шапке профиля.",
   titles: "Титул — плашка под именем в профиле.",
   gifts: "Подарок появится у друга в профиле вместе с вашим именем.",
+  stickers: "Оформление панели стикеров, анимация её открытия и витрина коллекции в профиле.",
 };
 
 export async function shopPage({ query = {} } = {}) {
@@ -108,7 +109,21 @@ export async function shopPage({ query = {} } = {}) {
       h("button.btn.primary.sm", { type: "button", disabled: d.kc < it.price, onclick: () => sendGift(it) }, `${fmt(it.price)} KC`));
   }
 
-  const RENDER = { frames: frameCard, auras: auraCard, names: nameCard, titles: titleCard, gifts: giftCard };
+  // стикеры: тема панели, анимация открытия, витрина коллекции
+  const SLOT_NAME = { sp_theme: "Тема", sp_open: "Анимация", showcase: "Витрина" };
+  function stickerCard(it) {
+    const theme = it.slot === "sp_theme" ? `theme-${it.id.replace("sp_theme_", "")}` : "";
+    const anim = it.slot === "sp_open" ? `open-${it.id.replace("sp_open_", "")}` : "";
+    const prev = it.slot === "showcase"
+      ? h(`div.sc.mini.skin-${it.id.replace("showcase_", "")}`, h("div.sc-stats", h("div", h("b", "12"), h("small", "наборов")), h("div", h("b", "340"), h("small", "стикеров"))))
+      : h(`div.sp-mock.${theme || "theme-base"}${anim ? `.${anim}.demo` : ""}`, h("div.sp-mock-tabs", h("i"), h("i"), h("i")),
+        h("div.sp-mock-grid", ["😺", "🔥", "💜", "🐸", "✨", "🦊"].map((e) => h("span", e))));
+    const action = !it.owned ? buyBtn(it) : wearBtn(it, async () => {
+      done(await api.post("/api/shop/equip", { slot: it.slot, item_id: it.on ? null : it.id }), it.on ? "Снято" : `${SLOT_NAME[it.slot]} включена ✨`);
+    });
+    return card(it, prev, action, `${SLOT_NAME[it.slot]} · ${it.desc}`);
+  }
+  const RENDER = { frames: frameCard, auras: auraCard, names: nameCard, titles: titleCard, gifts: giftCard, stickers: stickerCard };
   function paint() {
     tabs.replaceChildren(...TABS.map(([k, t]) => h("button", { type: "button", role: "tab", "aria-selected": String(k === tab),
       onclick: () => { tab = k; history.replaceState(history.state, "", `/shop?tab=${k}`); paint(); } }, t,
@@ -116,7 +131,8 @@ export async function shopPage({ query = {} } = {}) {
     filters.hidden = tab === "gifts";
     filters.replaceChildren(...FILTERS.map(([k, t]) => h("button", { type: "button", "aria-pressed": String(filter === k), onclick: () => { filter = k; paint(); } }, t)));
     note.textContent = NOTE[tab];
-    let items = d[tab] || [];
+    let items = tab === "stickers" ? [...(d.sp_themes || []).map((x) => ({ ...x, slot: "sp_theme" })), ...(d.sp_open || []).map((x) => ({ ...x, slot: "sp_open" })),
+      ...(d.showcases || []).map((x) => ({ ...x, slot: "showcase" }))] : d[tab] || [];
     if (tab !== "gifts" && filter === "new") items = items.filter((x) => x.new);
     if (tab !== "gifts" && filter === "top") items = items.filter((x) => x.rarity === "epic" || x.rarity === "legendary");
     body.replaceChildren(...(items.length ? items.map(RENDER[tab]) : [h("p.muted", "Здесь пока пусто.")]));

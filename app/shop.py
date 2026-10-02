@@ -103,6 +103,30 @@ GIFTS = {
 }
 
 
+# Стикеры: оформление панели, анимация её открытия и витрина коллекции в профиле — только внешний вид
+SP_THEMES = {
+    "sp_theme_paper": ("Бумага", 400, "Тёплая светлая бумага с мягкой тенью"),
+    "sp_theme_midnight": ("Полночь", 500, "Глубокий синий с едва заметными звёздами"),
+    "sp_theme_aurora": ("Аврора", 700, "Зелёно-фиолетовое сияние за стеклом"),
+    "sp_theme_sakura": ("Сакура", 800, "Розовые лепестки и светлое стекло"),
+    "sp_theme_neon": ("Неон", 1200, "Тёмное стекло с неоновой подсветкой"),
+    "sp_theme_holo": ("Голограмма", 2500, "Радужный перелив, как у голографической наклейки"),
+}
+SP_OPEN = {
+    "sp_open_bloom": ("Распускание", 500, "Панель раскрывается, как цветок"),
+    "sp_open_cards": ("Веер", 800, "Стикеры разлетаются веером"),
+    "sp_open_warp": ("Варп", 1200, "Прыжок из гиперпространства"),
+    "sp_open_spark": ("Искры", 1500, "Открывается с россыпью искр"),
+}
+SHOWCASES = {
+    "showcase_glass": ("Стеклянная витрина", 1200, "Витрина стикеров в профиле за матовым стеклом"),
+    "showcase_gold": ("Золотая витрина", 3000, "Золотая рамка и блики для вашей коллекции"),
+    "showcase_holo": ("Голографическая витрина", 5000, "Переливается радугой при наведении"),
+    "showcase_cosmos": ("Космическая витрина", 8000, "Коллекция парит среди звёзд"),
+}
+NEW_ITEMS |= set(SP_THEMES) | set(SP_OPEN) | set(SHOWCASES)
+
+
 class ShopError(ValueError):
     pass
 
@@ -127,19 +151,22 @@ def catalog(uid: int) -> dict:
         "auras": [card(k, v[0], v[1], v[2], eq.get("aura") == k) for k, v in AURAS.items()],
         "names": [card(k, v[0], v[1], v[2], eq.get("namefx") == k) for k, v in NAMEFX.items()],
         "titles": [card(k, v[0], v[1], "Под именем в профиле", title == k, style=TITLE_STYLE.get(k)) for k, v in TITLES.items()],
+        "sp_themes": [card(k, v[0], v[1], v[2], eq.get("sp_theme") == k) for k, v in SP_THEMES.items()],
+        "sp_open": [card(k, v[0], v[1], v[2], eq.get("sp_open") == k) for k, v in SP_OPEN.items()],
+        "showcases": [card(k, v[0], v[1], v[2], eq.get("showcase") == k) for k, v in SHOWCASES.items()],
         "gifts": [{"id": k, "name": v[0], "emoji": v[1], "price": v[2], "rarity": rarity(v[2])[0]} for k, v in GIFTS.items()],
         "kc": economy.balances(uid)["KC"],
     }
 
 
 def price_of(item_id: str) -> int | None:
-    for table in (FRAMES, TITLES, AURAS, NAMEFX):
+    for table in (FRAMES, TITLES, AURAS, NAMEFX, SP_THEMES, SP_OPEN, SHOWCASES):
         if item_id in table:
             return table[item_id][1]
     return None
 
 
-SLOT_TABLE = {"aura": AURAS, "namefx": NAMEFX}
+SLOT_TABLE = {"aura": AURAS, "namefx": NAMEFX, "sp_theme": SP_THEMES, "sp_open": SP_OPEN, "showcase": SHOWCASES}
 
 
 def equip(uid: int, slot: str, item_id: str | None) -> dict:

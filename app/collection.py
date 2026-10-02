@@ -141,10 +141,11 @@ def parse_equipped(value) -> dict:
         return {}
     if not isinstance(data, dict):
         return {}
-    from .shop import AURAS, FRAMES, NAMEFX
+    from .shop import AURAS, FRAMES, NAMEFX, SHOWCASES, SP_OPEN, SP_THEMES
     return {k: v for k, v in data.items()
             if (k in SLOTS and ((v in ITEM_BY_ID and ITEM_BY_ID[v][1] == k) or (k == "frame" and v in FRAMES)))
-            or (k == "aura" and v in AURAS) or (k == "namefx" and v in NAMEFX)}
+            or (k == "aura" and v in AURAS) or (k == "namefx" and v in NAMEFX)
+            or (k == "sp_theme" and v in SP_THEMES) or (k == "sp_open" and v in SP_OPEN) or (k == "showcase" and v in SHOWCASES)}
 
 
 def item_view(item, have: dict | None = None, st: dict | None = None) -> dict:

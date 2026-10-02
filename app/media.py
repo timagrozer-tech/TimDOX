@@ -102,7 +102,7 @@ def _process(data: bytes, kind: str) -> dict:
 # supabase — Supabase Storage (отдельный бесплатный 1 ГБ, файлы раздаются через CDN).
 CONTENT_TYPES = {
     "webp": "image/webp", "png": "image/png", "jpg": "image/jpeg", "gif": "image/gif",
-    "mp4": "video/mp4", "webm": "video/webm", "mov": "video/quicktime",
+    "mp4": "video/mp4", "webm": "video/webm", "tgs": "application/x-tgsticker", "mov": "video/quicktime",
     "weba": "audio/webm", "mp3": "audio/mpeg", "m4a": "audio/mp4", "ogg": "audio/ogg", "oga": "audio/ogg", "wav": "audio/wav", "flac": "audio/flac",
 }
 
@@ -205,6 +205,24 @@ def read_file(rel: str) -> bytes | None:
     if config.UPLOAD_DIR.resolve() in p.parents and p.is_file():
         return p.read_bytes()
     return None
+
+
+def read_upload(url: str, limit: int = 8 * 1024 * 1024) -> bytes:
+    """Содержимое загруженного файла по его адресу /uploads/... — из папки, базы или CDN (для обработки на сервере)."""
+    if not url or not url.startswith("/uploads/") or ".." in url:
+        raise ApiError(404, "Файл не найден")
+    rel = url[len("/uploads/"):]
+    if config.MEDIA_STORAGE == "supabase":
+        import urllib.request
+        with urllib.request.urlopen(public_url(rel), timeout=30) as r:
+            data = r.read(limit + 1)
+    else:
+        data = read_file(rel)
+    if data is None:
+        raise ApiError(404, "Файл не найден")
+    if len(data) > limit:
+        raise ApiError(400, "Файл слишком большой")
+    return data
 
 
 # ---------------------------------------------------------------- Видео и музыка
@@ -370,6 +388,90 @@ async def save_sticker(upload) -> dict:
     if config.MEDIA_STORAGE == "supabase":
         return await run_in_threadpool(_store, result)
     return _store(result)
+
+
+# ---------------------------------------------------------------- Стикеры 2.0: TGS (Lottie), WEBM (видео) и всё остальное
+TGS_MAX, TGS_JSON_MAX, WEBM_MAX = 256 * 1024, 2 * 1024 * 1024, 2 * 1024 * 1024
+
+
+def _process_tgs(data: bytes) -> dict:
+    """Анимированный стикер Telegram: gzip с JSON-анимацией Lottie. Проверяем, что это действительно Lottie разумного размера."""
+    import gzip
+    import json
+    import zlib
+    if len(data) > TGS_MAX:
+        raise ApiError(400, "Анимированный стикер больше 256 КБ")
+    try:
+        d = zlib.decompressobj(16 + zlib.MAX_WBITS)
+        raw = d.decompress(data, TGS_JSON_MAX + 1)
+        if len(raw) > TGS_JSON_MAX or d.unconsumed_tail:
+            raise ApiError(400, "Анимация слишком большая")
+        anim = json.loads(raw)
+    except (zlib.error, ValueError, UnicodeDecodeError):
+        raise ApiError(400, "Файл TGS повреждён")
+    if not isinstance(anim, dict) or not isinstance(anim.get("layers"), list):
+        raise ApiError(400, "Это не анимация Lottie")
+    try:
+        w, h, fr = int(anim.get("w", 0)), int(anim.get("h", 0)), float(anim.get("fr", 0))
+        dur = (float(anim.get("op", 0)) - float(anim.get("ip", 0))) / fr if fr else 0
+    except (TypeError, ValueError):
+        raise ApiError(400, "Это не анимация Lottie")
+    if not (0 < w <= 1024 and 0 < h <= 1024 and 0 < fr <= 120 and 0 < dur <= 15):
+        raise ApiError(400, "Неподходящая анимация: размер до 1024 px, длина до 15 секунд")
+    # без внешних ресурсов: картинки и шрифты по ссылкам позволили бы следить за теми, кто смотрит стикер
+    anim.pop("fonts", None)
+    anim.pop("chars", None)
+    anim["assets"] = [a for a in anim.get("assets") or [] if isinstance(a, dict) and "layers" in a and not a.get("p") and not a.get("u")]
+    if '"t":{"d"' in json.dumps(anim, separators=(",", ":")):  # текстовые слои требуют шрифтов — у стикеров их не бывает
+        raise ApiError(400, "В анимации есть текстовые слои — такие стикеры не поддерживаются")
+    out = gzip.compress(json.dumps(anim, separators=(",", ":"), ensure_ascii=False).encode(), 9)
+    rel = f"{datetime.now().strftime('%Y/%m')}/st_{secrets.token_hex(10)}.tgs"
+    return {"path": f"/uploads/{rel}", "animated": True, "format": "tgs", "_files": {rel: out}}
+
+
+def _process_webm(data: bytes) -> dict:
+    """Видеостикер: WEBM (VP9) до 2 МБ. Проверяем заголовок EBML и тип документа."""
+    if len(data) > WEBM_MAX:
+        raise ApiError(400, "Видеостикер больше 2 МБ")
+    if data[:4] != b"\x1a\x45\xdf\xa3" or b"webm" not in data[:64]:
+        raise ApiError(400, "Это не видео WEBM")
+    rel = f"{datetime.now().strftime('%Y/%m')}/st_{secrets.token_hex(10)}.webm"
+    return {"path": f"/uploads/{rel}", "animated": True, "format": "webm", "_files": {rel: data}}
+
+
+def sniff_sticker(data: bytes) -> str:
+    if data[:2] == b"\x1f\x8b":
+        return "tgs"
+    if data[:4] == b"\x1a\x45\xdf\xa3":
+        return "webm"
+    return "image"
+
+
+def process_any_sticker(data: bytes) -> dict:
+    """Любой поддерживаемый формат → внутренний формат KRUG: картинки и GIF → WebP (анимация сохраняется), TGS и WEBM — как есть после проверки."""
+    if not data:
+        raise ApiError(400, "Пустой файл")
+    kind = sniff_sticker(data)
+    if kind == "tgs":
+        return _process_tgs(data)
+    if kind == "webm":
+        return _process_webm(data)
+    r = _process_sticker(data)
+    r["format"] = "webp"
+    return r
+
+
+async def save_any_sticker(data: bytes) -> dict:
+    charge_upload(len(data))
+    result = await run_in_threadpool(process_any_sticker, data)
+    if config.MEDIA_STORAGE == "supabase":
+        return await run_in_threadpool(_store, result)
+    return _store(result)
+
+
+def store_any_sticker(data: bytes) -> dict:
+    """Синхронно (фоновые задачи импорта, без квоты пользователя)."""
+    return _store(process_any_sticker(data))
 
 
 def store_sticker_bytes(data: bytes) -> dict:

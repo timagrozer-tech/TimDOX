@@ -38,7 +38,7 @@ KINDS = {
     "soundcloud": ("SoundCloud", "media", "https://soundcloud.com/{h}", ("soundcloud.com",)),
 }
 # миры Круга считаются автоматически
-KRUG_KINDS = ("network", "communities", "gallery", "collection")
+KRUG_KINDS = ("network", "communities", "gallery", "collection", "stickers")
 
 URL = re.compile(r"^https://([a-z0-9.\-]+\.[a-z]{2,})(/[^\s<>\"']*)?$", re.I)
 
@@ -129,8 +129,16 @@ def public(uid: int, raw) -> dict:
             "SELECT count(*) FROM post_media m JOIN posts p ON p.id=m.post_id WHERE p.author_id=?", (uid,))}
     if "collection" in kinds:
         stats["collection"] = {"count": db.value("SELECT count(*) FROM user_items WHERE user_id=?", (uid,))}
+    # Sticker Planet: появляется сама, как только у человека есть своя коллекция стикеров
+    st = {"packs": db.value("SELECT count(*) FROM user_sticker_packs u JOIN sticker_packs p ON p.id=u.pack_id WHERE u.user_id=? AND p.owner_id IS NOT NULL", (uid,)),
+          "created": db.value("SELECT count(*) FROM sticker_packs WHERE owner_id=? AND shared=0 AND source IN ('own','lab','remix','copy','avatar3d')", (uid,))}
+    st["stickers"] = db.value("SELECT count(*) FROM stickers s JOIN user_sticker_packs u ON u.pack_id=s.pack_id WHERE u.user_id=?", (uid,))
+    stats["stickers"] = st
+    items = list(d["items"])
+    if "stickers" not in kinds and (st["packs"] or st["created"]):
+        items.append({"kind": "stickers"})
     out = []
-    for i in d["items"]:
+    for i in items:
         if i["kind"] in KRUG_KINDS:
             out.append({"kind": i["kind"], "stats": stats.get(i["kind"], {})})
         else:

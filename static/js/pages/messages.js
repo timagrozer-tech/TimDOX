@@ -3,7 +3,8 @@ import { startCall } from "../call/call.js";
 import { api, state, on, setCounters } from "../api.js";
 import { h, icon, avatar, vmark, shortTime, hm, dayLabel, richText, autosize, timeAgo } from "../dom.js";
 import { setTitle, toast, toastError, showMenu, modal, promptDialog, confirmDialog, lightbox } from "../ui.js";
-import { openPanel } from "../components/stickerpanel.js";
+import { openPanel, loadCollection, stickerActions } from "../components/stickerpanel.js";
+import { stickerEl } from "../components/stickerview.js";
 import { report } from "../components/post.js";
 import { attachMentions } from "../components/mentions.js";
 import { audioPlayer, videoPlayer, voicePlayer, videoMeta, audioMeta, audioWaveform, parseTrackName, downsampleLevels, fmtDur } from "../components/mediakit.js";
@@ -38,10 +39,13 @@ function isBigEmoji(text) {
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "🙏"];
 
 /** Всплывающее меню сообщения: реакции + действия. items: [{label, icon, onClick, danger}] */
-function messageMenu(anchor, { onReact, current, items }) {
+function messageMenu(anchor, { onReact, current, items, stickers = [], onMore = null }) {
   document.querySelector(".msg-menu")?.remove();
   const menu = h("div.msg-menu", { role: "menu" },
-    onReact ? h("div.mm-reacts", QUICK_REACTIONS.map((e) => h(`button${e === current ? ".on" : ""}`, { type: "button", "aria-label": `Реакция ${e}`, onclick: () => { close(); onReact(e); } }, e))) : null,
+    onReact ? h("div.mm-reacts", QUICK_REACTIONS.map((e) => h(`button${e === current ? ".on" : ""}`, { type: "button", "aria-label": `Реакция ${e}`, onclick: () => { close(); onReact(e); } }, e)),
+      // свои реакции-стикеры и «ещё» — любой стикер из коллекции
+      stickers.slice(0, 6).map((s) => h(`button.mm-st${`st:${s.id}` === current ? ".on" : ""}`, { type: "button", "aria-label": `Реакция-стикер ${s.emoji}`, onclick: () => { close(); onReact(`st:${s.id}`); } }, stickerEl(s, { size: 30 }))),
+      onMore ? h("button.mm-more", { type: "button", "aria-label": "Другие реакции", title: "Любой эмодзи или стикер", onclick: () => { close(); onMore(); } }, icon("plus", "sm")) : null) : null,
     h("div.mm-items", items.filter(Boolean).map((it) => h(`button${it.danger ? ".danger" : ""}`, { type: "button", role: "menuitem", onclick: () => { close(); it.onClick(); } }, icon(it.icon), it.label))));
   document.body.append(menu);
   const r = anchor.getBoundingClientRect();
@@ -69,6 +73,7 @@ export function previewOf(m) {
   if (!m) return "";
   const cap = m.text ? ` ${m.text}` : "";
   switch (m.kind) {
+    case "gif": return "GIF";
     case "photo": return `📷 Фото${cap}`;
     case "video": return `🎬 Видео${cap}`;
     case "audio": return `🎵 ${m.media?.title || "Аудио"}${cap}`;
@@ -157,6 +162,9 @@ export async function messagesPage({ params }) {
     const micBtn = h("button.btn.primary.icon-only.mic-btn", { type: "button", "aria-label": "Записать голосовое сообщение", title: "Голосовое сообщение", disabled: !conv.can_write }, icon("mic"));
     const ctxBar = h("div.ctx-bar", { hidden: true });
     const form = h("form.chat-form", ctxBar, h("div.chat-input", attachBtn, ta, emojiBtn, send, micBtn), pickMedia, pickAudio, pickAny);
+    // реакции-стикеры для меню сообщения (из кэша коллекции — без лишних запросов)
+    let reactionStickers = [];
+    loadCollection().then((d) => { reactionStickers = d.reactions || []; }).catch(() => {});
     let replyTo = null, editing = null;
     const syncButtons = () => form.classList.toggle("has-text", !!ta.value.trim() || !!editing);
     ta.addEventListener("input", syncButtons);
@@ -184,6 +192,7 @@ export async function messagesPage({ params }) {
         if (!matchMedia("(pointer: coarse)").matches) ta.focus();
       },
       onSticker: (st) => sendSticker(st),
+      onGif: (g) => sendGif(g),
     }));
     attachBtn.addEventListener("click", () => showMenu(attachBtn, [
       { label: "Фото или видео", icon: "image", onClick: () => pickMedia.click() },
@@ -272,16 +281,21 @@ export async function messagesPage({ params }) {
       const quote = m.reply ? h("button.msg-quote", { type: "button", onclick: (e) => { e.stopPropagation(); jumpTo(m.reply.id); } },
         h("b", m.reply.sender_id === state.me.id ? "Вы" : (chat.senders[m.reply.sender_id]?.name || conv.user?.name || "Сообщение")),
         h("span", m.reply.text)) : null;
-      const reacts = m.reactions?.length ? h("div.msg-reacts", m.reactions.map((r) => h(`button${r.users.includes(state.me.id) ? ".mine" : ""}`, {
+      const reacts = m.reactions?.length ? h("div.msg-reacts", m.reactions.map((r) => h(`button${r.users.includes(state.me.id) ? ".mine" : ""}${r.sticker ? ".st" : ""}`, {
         type: "button", title: r.users.map((u) => (u === state.me.id ? "Вы" : chat.senders[u]?.name || conv.user?.name || "")).join(", "),
         onclick: (e) => { e.stopPropagation(); react(m, r.emoji); },
-      }, r.emoji, r.users.length > 1 ? h("span", String(r.users.length)) : null))) : null;
+      }, r.sticker ? stickerEl(r.sticker, { size: 24 }) : r.emoji, r.users.length > 1 ? h("span", String(r.users.length)) : null))) : null;
       if (m.kind === "deleted") {
         bubble = h(`div.msg.deleted${cls}`, { dataset: { id: m.id, sender: m.sender_id } }, h("span.del-text", "🚫 Сообщение удалено"), meta);
       } else if (m.kind === "sticker" && m.media) {
         bubble = h(`div.msg-sticker${cls}`, { dataset: { id: m.id, sender: m.sender_id } },
           h("button.sticker-img", { type: "button", title: `Набор «${m.media.pack?.title || ""}»`, onclick: () => showPackPreview(m.media.pack?.slug) },
-            h("img", { src: m.media.url, alt: m.media.emoji || "Стикер", loading: "lazy", draggable: false })), meta);
+            stickerEl({ url: m.media.url, format: m.media.format, thumb: m.media.thumb, emoji: m.media.emoji })), meta);
+        if (quote) bubble.prepend(quote);
+        if (reacts) bubble.append(reacts);
+      } else if (m.kind === "gif" && m.media) {
+        bubble = h(`div.msg-sticker.msg-gif${cls}`, { dataset: { id: m.id, sender: m.sender_id } },
+          h("div.gif-img", stickerEl({ url: m.media.url, format: m.media.format === "webm" ? "webm" : "webp" })), h("span.gif-badge", "GIF"), meta);
         if (quote) bubble.prepend(quote);
         if (reacts) bubble.append(reacts);
       } else if (big) {
@@ -414,6 +428,8 @@ export async function messagesPage({ params }) {
       const current = m.reactions?.find((r) => r.users.includes(state.me.id))?.emoji;
       messageMenu(bubble, {
         onReact: conv.can_write ? (e) => react(m, e) : null,
+        stickers: reactionStickers,
+        onMore: conv.can_write ? () => openPanel(form, { mode: "reaction", tab: "stickers", onEmoji: (e) => react(m, e), onSticker: (s) => react(m, `st:${s.id}`) }) : null,
         current,
         items: [
           conv.can_write ? { label: "Ответить", icon: "reply", onClick: () => startReply(m) } : null,
@@ -508,6 +524,15 @@ export async function messagesPage({ params }) {
         };
         rec.stop();
       }
+    }
+
+    async function sendGif(g) {
+      try {
+        const m = await api.post(`/api/conversations/${id}/messages`, { gif_id: g.id, reply_to: replyTo?.id });
+        replyTo = null; paintCtx();
+        chat.append(m);
+        upsertConv(id, m);
+      } catch (err) { toastError(err); }
     }
 
     async function sendSticker(st) {

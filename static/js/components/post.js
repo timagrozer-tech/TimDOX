@@ -5,6 +5,8 @@ import { toast, toastError, showMenu, modal, confirmDialog, promptDialog, lightb
 import { navigate } from "../router.js";
 import { VISIBILITY, visibilitySelect, openComposerModal } from "./composer.js";
 import { attachMentions } from "./mentions.js";
+import { openPanel } from "./stickerpanel.js";
+import { stickerEl } from "./stickerview.js";
 import { burst } from "../fx.js";
 import { musicAttachment } from "../music/kit.js";
 
@@ -349,14 +351,13 @@ function commentsSection(post, onCount) {
   autosize(ta);
   const replyLabel = h("div.reply-to.hidden");
   const send = h("button.btn.primary.icon-only.sm", { type: "submit", "aria-label": "Отправить комментарий" }, icon("send", "sm"));
-  const form = h("form.comment-form", {
-    onsubmit: async (e) => {
-      e.preventDefault();
+  const stBtn = h("button.btn.ghost.icon-only.sm.sp-toggle", { type: "button", "aria-label": "Эмодзи и стикеры", title: "Эмодзи и стикеры" }, icon("smile", "sm"));
+  const submit = async (stickerId = null) => {
       const text = ta.value.trim();
-      if (!text) return;
+      if (!text && !stickerId) return;
       send.disabled = true;
       try {
-        const c = await api.post(`/api/posts/${post.id}/comments`, { text, parent_id: replyTo?.id || null });
+        const c = await api.post(`/api/posts/${post.id}/comments`, { text, parent_id: replyTo?.id || null, ...(stickerId ? { sticker_id: stickerId } : {}) });
         ta.value = ""; ta.dispatchEvent(new Event("input"));
         if (c.parent_id) {
           const parentEl = list.querySelector(`[data-comment-id="${c.parent_id}"] .replies`);
@@ -369,8 +370,14 @@ function commentsSection(post, onCount) {
         setReply(null);
       } catch (err) { toastError(err); }
       send.disabled = false;
-    },
-  }, avatar(state.me, "sm", { presence: false }), h("div.input-wrap", ta, send));
+  };
+  const form = h("form.comment-form", { onsubmit: (e) => { e.preventDefault(); submit(); } },
+    avatar(state.me, "sm", { presence: false }), h("div.input-wrap", ta, stBtn, send));
+  // стикеры в комментариях: та же панель, что в чатах (без GIF)
+  stBtn.addEventListener("click", () => openPanel(form, {
+    onEmoji: (em) => { const pos = ta.selectionStart ?? ta.value.length; ta.value = ta.value.slice(0, pos) + em + ta.value.slice(ta.selectionEnd ?? pos); ta.dispatchEvent(new Event("input")); },
+    onSticker: (st) => { form.querySelector(".sp-panel")?.remove(); submit(st.id); },
+  }));
   ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
 
   function setReply(c) {
@@ -387,7 +394,9 @@ function commentsSection(post, onCount) {
     const el = h("div.comment", { dataset: { commentId: c.id } },
       h("a", { href: `/u/${c.author.username}`, "aria-label": c.author.name }, avatar(c.author, isReply ? "xs" : "sm")),
       h("div.grow",
-        h("div.bubble", h("a.name", { href: `/u/${c.author.username}` }, c.author.name, vmark(c.author)), richText(c.text)),
+        h(`div.bubble${c.sticker ? ".with-sticker" : ""}`, h("a.name", { href: `/u/${c.author.username}` }, c.author.name, vmark(c.author)),
+          c.sticker ? h("div.c-sticker", stickerEl({ url: c.sticker.url, format: c.sticker.format, thumb: c.sticker.thumb, emoji: c.sticker.emoji })) : null,
+          c.text ? richText(c.text) : null),
         h("div.c-meta",
           h("span", { title: fullDate(c.created_at) }, timeAgo(c.created_at)),
           h("button", { type: "button", onclick: () => setReply(isReply ? { ...c, id: c.parent_id } : c) }, "Ответить"),

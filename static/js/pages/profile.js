@@ -13,6 +13,7 @@ import { openSpaceEditor, SPACE_MODES } from "../components/space.js";
 import { cityView } from "../components/city.js";
 import { mount3D, bgCss } from "../components/avatar3d.js";
 import { openAvatar3DEditor, webglAvailable } from "../components/avatar3d-editor.js";
+import { stickerShowcase } from "../components/stickershowcase.js";
 
 let live3d = null; // живой 3D-аватар в шапке профиля (один на страницу)
 
@@ -292,6 +293,7 @@ export async function profilePage({ params, query }) {
     { id: "posts", label: "Записи", icon: "edit" },
     { id: "city", label: "Город", icon: "city" },
     { id: "photos", label: "Фото", icon: "image" },
+    { id: "stickers", label: "Коллекции", icon: "sticker" },
     { id: "friends", label: "Друзья", icon: "users" },
   ];
   let current = null;
@@ -336,6 +338,8 @@ export async function profilePage({ params, query }) {
         container: grid,
       });
       content.replaceChildren(h("div.card", { style: { overflow: "hidden" } }, list.el));
+    } else if (id === "stickers") {
+      content.replaceChildren(h("div.card.card-pad", stickerShowcase(u, isMe)));
     } else if (id === "reels") {
       const grid = h("div.reel-grid");
       const list = infiniteList({

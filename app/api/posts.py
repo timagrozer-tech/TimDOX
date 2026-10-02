@@ -597,9 +597,15 @@ async def bookmark(request: Request):
 # Комментарии
 # ----------------------------------------------------------------------------
 def _comment_view(r: dict, authors: dict, v: int, post_author: int) -> dict:
-    return {"id": r["id"], "post_id": r["post_id"], "parent_id": r["parent_id"], "text": r["text"],
-            "created_at": r["created_at"], "author": authors.get(r["author_id"]),
-            "can_delete": r["author_id"] == v or post_author == v}
+    out = {"id": r["id"], "post_id": r["post_id"], "parent_id": r["parent_id"], "text": r["text"],
+           "created_at": r["created_at"], "author": authors.get(r["author_id"]),
+           "can_delete": r["author_id"] == v or post_author == v}
+    if r.get("media"):
+        try:
+            out["sticker"] = json.loads(r["media"])
+        except (TypeError, ValueError):
+            pass
+    return out
 
 
 @auth()
@@ -628,7 +634,11 @@ async def add_comment(request: Request):
     post = get_visible_post(path_int(request), v)
     data = await body(request)
     text = censor(clean_text(data.get("text"), config.COMMENT_MAX_LEN))
-    if not text:
+    sticker = None
+    if data.get("sticker_id") is not None:  # стикер в комментарии (можно с подписью)
+        from .stickers import sticker_for_message
+        sticker = sticker_for_message(data["sticker_id"], v)
+    if not text and not sticker:
         raise ApiError(400, "Комментарий не может быть пустым")
     parent_id = data.get("parent_id")
     parent = None
@@ -638,8 +648,8 @@ async def add_comment(request: Request):
             raise ApiError(404, "Комментарий не найден")
         if parent["parent_id"]:  # только один уровень вложенности
             parent = db.one("SELECT * FROM comments WHERE id=?", (parent["parent_id"],))
-    cur = db.run("INSERT INTO comments (post_id, author_id, parent_id, text) VALUES (?,?,?,?)",
-                 (post["id"], v, parent["id"] if parent else None, text))
+    cur = db.run("INSERT INTO comments (post_id, author_id, parent_id, text, media) VALUES (?,?,?,?,?)",
+                 (post["id"], v, parent["id"] if parent else None, text, json.dumps(sticker, ensure_ascii=False) if sticker else None))
     cid = cur.lastrowid
     notified = {v}
     reply_to = None

@@ -798,3 +798,83 @@ CREATE TABLE IF NOT EXISTS market_listings (
 CREATE INDEX IF NOT EXISTS idx_market_active ON market_listings(status, id);
 CREATE INDEX IF NOT EXISTS idx_market_item ON market_listings(item_id, status, closed_at);
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar3d TEXT;
+
+-- Стикеры 2.0: избранное, реакции, недавние, папки, покупки, импорт, GIF
+CREATE TABLE IF NOT EXISTS sticker_saved (
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sticker_id BIGINT NOT NULL REFERENCES stickers(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL DEFAULT 'fav',
+    created_at TEXT NOT NULL DEFAULT krug_now(),
+    PRIMARY KEY (user_id, sticker_id, kind)
+);
+CREATE TABLE IF NOT EXISTS sticker_recent (
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sticker_id BIGINT NOT NULL REFERENCES stickers(id) ON DELETE CASCADE,
+    used_at    TEXT NOT NULL DEFAULT krug_now(),
+    PRIMARY KEY (user_id, sticker_id)
+);
+CREATE TABLE IF NOT EXISTS sticker_folders (
+    id         BIGSERIAL PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title      TEXT NOT NULL,
+    emoji      TEXT NOT NULL DEFAULT '📁',
+    position   INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE INDEX IF NOT EXISTS idx_sticker_folders_user ON sticker_folders(user_id, position);
+CREATE TABLE IF NOT EXISTS sticker_folder_items (
+    folder_id  BIGINT NOT NULL REFERENCES sticker_folders(id) ON DELETE CASCADE,
+    sticker_id BIGINT NOT NULL REFERENCES stickers(id) ON DELETE CASCADE,
+    added_at   TEXT NOT NULL DEFAULT krug_now(),
+    PRIMARY KEY (folder_id, sticker_id)
+);
+CREATE TABLE IF NOT EXISTS sticker_purchases (
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    pack_id    BIGINT NOT NULL REFERENCES sticker_packs(id) ON DELETE CASCADE,
+    price      INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT krug_now(),
+    PRIMARY KEY (user_id, pack_id)
+);
+CREATE TABLE IF NOT EXISTS sticker_imports (
+    id         BIGSERIAL PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source     TEXT NOT NULL,
+    ref        TEXT NOT NULL DEFAULT '',
+    title      TEXT NOT NULL DEFAULT '',
+    status     TEXT NOT NULL DEFAULT 'running',
+    total      INTEGER NOT NULL DEFAULT 0,
+    done       INTEGER NOT NULL DEFAULT 0,
+    pack_id    BIGINT,
+    error      TEXT,
+    created_at TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE INDEX IF NOT EXISTS idx_sticker_imports_user ON sticker_imports(user_id, id);
+CREATE TABLE IF NOT EXISTS user_gifs (
+    id         BIGSERIAL PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    file       TEXT NOT NULL,
+    format     TEXT NOT NULL DEFAULT 'webp',
+    width      INTEGER NOT NULL DEFAULT 0,
+    height     INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE INDEX IF NOT EXISTS idx_user_gifs_user ON user_gifs(user_id, id);
+ALTER TABLE sticker_packs ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'own';
+ALTER TABLE sticker_packs ADD COLUMN IF NOT EXISTS source_ref TEXT;
+ALTER TABLE sticker_packs ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
+ALTER TABLE sticker_packs ADD COLUMN IF NOT EXISTS cover_id BIGINT;
+ALTER TABLE sticker_packs ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'stickers';
+ALTER TABLE sticker_packs ADD COLUMN IF NOT EXISTS published INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sticker_packs ADD COLUMN IF NOT EXISTS price INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sticker_packs ADD COLUMN IF NOT EXISTS installs INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sticker_packs ADD COLUMN IF NOT EXISTS shared INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sticker_packs ADD COLUMN IF NOT EXISTS remix_of BIGINT;
+ALTER TABLE stickers ADD COLUMN IF NOT EXISTS format TEXT NOT NULL DEFAULT 'webp';
+ALTER TABLE stickers ADD COLUMN IF NOT EXISTS tags TEXT NOT NULL DEFAULT '';
+ALTER TABLE stickers ADD COLUMN IF NOT EXISTS ai_tagged INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE stickers ADD COLUMN IF NOT EXISTS thumb TEXT;
+ALTER TABLE stickers ADD COLUMN IF NOT EXISTS remix_of BIGINT;
+ALTER TABLE user_sticker_packs ADD COLUMN IF NOT EXISTS favorite INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS media TEXT;
+CREATE INDEX IF NOT EXISTS idx_packs_published ON sticker_packs(published, installs);
+CREATE INDEX IF NOT EXISTS idx_packs_source ON sticker_packs(source, source_ref);

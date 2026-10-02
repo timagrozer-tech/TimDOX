@@ -93,6 +93,23 @@ MIGRATIONS = [
     ("profiles", "space", "TEXT"),
     ("profiles", "shop_title", "TEXT"),
     ("profiles", "avatar3d", "TEXT"),
+    ("sticker_packs", "source", "TEXT NOT NULL DEFAULT 'own'"),
+    ("sticker_packs", "source_ref", "TEXT"),
+    ("sticker_packs", "description", "TEXT NOT NULL DEFAULT ''"),
+    ("sticker_packs", "cover_id", "INTEGER"),
+    ("sticker_packs", "kind", "TEXT NOT NULL DEFAULT 'stickers'"),
+    ("sticker_packs", "published", "INTEGER NOT NULL DEFAULT 0"),
+    ("sticker_packs", "price", "INTEGER NOT NULL DEFAULT 0"),
+    ("sticker_packs", "installs", "INTEGER NOT NULL DEFAULT 0"),
+    ("sticker_packs", "shared", "INTEGER NOT NULL DEFAULT 0"),
+    ("sticker_packs", "remix_of", "INTEGER"),
+    ("stickers", "format", "TEXT NOT NULL DEFAULT 'webp'"),
+    ("stickers", "tags", "TEXT NOT NULL DEFAULT ''"),
+    ("stickers", "ai_tagged", "INTEGER NOT NULL DEFAULT 0"),
+    ("stickers", "thumb", "TEXT"),
+    ("stickers", "remix_of", "INTEGER"),
+    ("user_sticker_packs", "favorite", "INTEGER NOT NULL DEFAULT 0"),
+    ("comments", "media", "TEXT"),
 ]
 POST_MIGRATION_SQL = """
 CREATE INDEX IF NOT EXISTS idx_posts_community ON posts(community_id, id DESC);
@@ -111,6 +128,8 @@ CREATE INDEX IF NOT EXISTS idx_story_views_viewer ON story_views(viewer_id);
 CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at);
 CREATE INDEX IF NOT EXISTS idx_posts_circle ON posts(circle_id);
 CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(status, target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_packs_published ON sticker_packs(published, installs);
+CREATE INDEX IF NOT EXISTS idx_packs_source ON sticker_packs(source, source_ref);
 """
 
 

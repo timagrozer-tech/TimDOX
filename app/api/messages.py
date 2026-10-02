@@ -48,7 +48,7 @@ def _preview_text(m: dict) -> str:
     if kind == "deleted":
         return "Сообщение удалено"
     labels = {"photo": "📷 Фото", "video": "🎬 Видео", "audio": "🎵 Музыка", "voice": "🎤 Голосовое", "sticker": "Стикер",
-              "file": "📎 Файл", "location": "📍 Местоположение", "contact": "👤 Контакт"}
+              "file": "📎 Файл", "location": "📍 Местоположение", "contact": "👤 Контакт", "gif": "GIF"}
     base = labels.get(kind, "")
     if kind in ("file", "contact") and m.get("media"):
         try:
@@ -71,11 +71,16 @@ def _enrich(views: list[dict]) -> list[dict]:
     for r in db.all(f"SELECT message_id, user_id, emoji FROM message_reactions WHERE message_id IN ({db.placeholders(ids)}) ORDER BY created_at",
                     tuple(ids)):
         reacts.setdefault(r["message_id"], {}).setdefault(r["emoji"], []).append(r["user_id"])
+    # реакции-стикеры: «st:<id>» → картинка стикера
+    st_ids = list({int(e[3:]) for d in reacts.values() for e in d if e.startswith("st:") and e[3:].isdigit()})
+    st_map = {r["id"]: {"url": r["file"], "format": r["format"], "thumb": r["thumb"], "emoji": r["emoji"]}
+              for r in db.all(f"SELECT id, file, format, thumb, emoji FROM stickers WHERE id IN ({db.placeholders(st_ids)})", tuple(st_ids))} if st_ids else {}
     reply_ids = list({v["reply_to"] for v in views if v.get("reply_to")})
     replies = {r["id"]: r for r in db.all(f"SELECT id, sender_id, text, kind FROM messages WHERE id IN ({db.placeholders(reply_ids)})",
                                           tuple(reply_ids))} if reply_ids else {}
     for v in views:
-        v["reactions"] = [{"emoji": e, "users": u} for e, u in reacts.get(v["id"], {}).items()]
+        v["reactions"] = [{"emoji": e, "users": u, **({"sticker": st_map.get(int(e[3:]))} if e.startswith("st:") else {})}
+                          for e, u in reacts.get(v["id"], {}).items()]
         if v.get("reply_to"):
             r = replies.get(v["reply_to"])
             v["reply"] = {"id": r["id"], "sender_id": r["sender_id"], "kind": r["kind"], "text": _preview_text(r)} if r \
@@ -382,8 +387,12 @@ async def send_message(request: Request):
     data = await body(request)
     if data.get("sticker_id") is not None:
         from .stickers import sticker_for_message
-        info = sticker_for_message(data["sticker_id"])
+        info = sticker_for_message(data["sticker_id"], v)
         return JSONResponse(deliver_message(conv_id, v, info["emoji"], "sticker", info, reply_to=_reply_id(data)), status_code=201)
+    if data.get("gif_id") is not None:
+        from .stickers import gif_for_message
+        info = gif_for_message(v, data["gif_id"])
+        return JSONResponse(deliver_message(conv_id, v, "", "gif", info, reply_to=_reply_id(data)), status_code=201)
     text = censor(clean_text(data.get("text"), config.MESSAGE_MAX_LEN))
     if not text:
         raise ApiError(400, "Пустое сообщение")
@@ -463,7 +472,10 @@ async def react_message(request: Request):
         raise ApiError(400, "На это сообщение нельзя отреагировать")
     data = await body(request)
     emoji = str(data.get("emoji") or "")
-    if emoji not in REACTION_EMOJI:
+    if emoji.startswith("st:"):  # любой доступный стикер — тоже реакция
+        from .stickers import usable_sticker
+        emoji = f"st:{usable_sticker(v, emoji[3:])['id']}"
+    elif emoji not in REACTION_EMOJI:
         raise ApiError(400, "Недопустимая реакция")
     current = db.value("SELECT emoji FROM message_reactions WHERE message_id=? AND user_id=?", (m["id"], v))
     if current == emoji:  # повторное нажатие снимает реакцию

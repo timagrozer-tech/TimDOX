@@ -357,6 +357,67 @@ CREATE TABLE IF NOT EXISTS user_sticker_packs (
     PRIMARY KEY (user_id, pack_id)
 );
 
+-- Стикеры 2.0: избранное, реакции, недавние, папки, покупки, импорт, GIF
+CREATE TABLE IF NOT EXISTS sticker_saved (
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sticker_id INTEGER NOT NULL REFERENCES stickers(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL DEFAULT 'fav',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (user_id, sticker_id, kind)
+);
+CREATE TABLE IF NOT EXISTS sticker_recent (
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sticker_id INTEGER NOT NULL REFERENCES stickers(id) ON DELETE CASCADE,
+    used_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (user_id, sticker_id)
+);
+CREATE TABLE IF NOT EXISTS sticker_folders (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title      TEXT NOT NULL,
+    emoji      TEXT NOT NULL DEFAULT '📁',
+    position   INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_sticker_folders_user ON sticker_folders(user_id, position);
+CREATE TABLE IF NOT EXISTS sticker_folder_items (
+    folder_id  INTEGER NOT NULL REFERENCES sticker_folders(id) ON DELETE CASCADE,
+    sticker_id INTEGER NOT NULL REFERENCES stickers(id) ON DELETE CASCADE,
+    added_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (folder_id, sticker_id)
+);
+CREATE TABLE IF NOT EXISTS sticker_purchases (
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    pack_id    INTEGER NOT NULL REFERENCES sticker_packs(id) ON DELETE CASCADE,
+    price      INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (user_id, pack_id)
+);
+CREATE TABLE IF NOT EXISTS sticker_imports (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source     TEXT NOT NULL,
+    ref        TEXT NOT NULL DEFAULT '',
+    title      TEXT NOT NULL DEFAULT '',
+    status     TEXT NOT NULL DEFAULT 'running',
+    total      INTEGER NOT NULL DEFAULT 0,
+    done       INTEGER NOT NULL DEFAULT 0,
+    pack_id    INTEGER,
+    error      TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_sticker_imports_user ON sticker_imports(user_id, id);
+CREATE TABLE IF NOT EXISTS user_gifs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    file       TEXT NOT NULL,
+    format     TEXT NOT NULL DEFAULT 'webp',
+    width      INTEGER NOT NULL DEFAULT 0,
+    height     INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_user_gifs_user ON user_gifs(user_id, id);
+
 -- Клипы (короткие вертикальные видео)
 CREATE TABLE IF NOT EXISTS reels (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
