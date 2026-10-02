@@ -93,7 +93,7 @@ export async function profilePage({ params, query }) {
     if (has3d) {
       avEl.classList.add("is-3d");
       avEl.style.background = bgCss(data.avatar3d);
-      mount3D(avEl, data.avatar3d, { interactive: true }).then((v) => {
+      mount3D(avEl, data.avatar3d, { interactive: true, tapEmote: true }).then((v) => {
         if (!v || !avEl.isConnected) { v?.destroy(); avEl.classList.remove("is-3d"); return; }
         live3d = v; avEl.classList.add("ready");
       }).catch(() => avEl.classList.remove("is-3d"));
