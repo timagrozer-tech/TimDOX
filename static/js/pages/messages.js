@@ -1,4 +1,5 @@
 // Личные сообщения в реальном времени: список диалогов и окно переписки.
+import { chatAI } from "../components/chatai.js";
 import { startCall } from "../call/call.js";
 import { api, state, on, setCounters } from "../api.js";
 import { h, icon, avatar, vmark, shortTime, hm, dayLabel, richText, autosize, timeAgo } from "../dom.js";
@@ -162,6 +163,7 @@ export async function messagesPage({ params }) {
     const micBtn = h("button.btn.primary.icon-only.mic-btn", { type: "button", "aria-label": "Записать голосовое сообщение", title: "Голосовое сообщение", disabled: !conv.can_write }, icon("mic"));
     const ctxBar = h("div.ctx-bar", { hidden: true });
     const form = h("form.chat-form", ctxBar, h("div.chat-input", attachBtn, ta, emojiBtn, send, micBtn), pickMedia, pickAudio, pickAny);
+    emojiBtn.before(chatAI({ id, conv, form, ta, fit, body }));
     // реакции-стикеры для меню сообщения (из кэша коллекции — без лишних запросов)
     let reactionStickers = [];
     loadCollection().then((d) => { reactionStickers = d.reactions || []; }).catch(() => {});

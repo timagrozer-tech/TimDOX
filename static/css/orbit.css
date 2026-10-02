@@ -4544,3 +4544,34 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
 @keyframes push-in { from { opacity: 0; transform: translateY(-8px) scale(.98); } }
 @media (max-width: 520px) { .push-invite-act { width: 100%; justify-content: flex-end; } }
 .push-box .small { font-size: 13px; }
+
+/* ---------------------------------------------------------------- ИИ в чате */
+.chat-input .ai-btn { color: var(--primary); }
+.chat-input .ai-btn svg { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--primary) 45%, transparent)); }
+.chat-input .ai-btn.busy svg { animation: ai-spin 1s linear infinite; }
+@keyframes ai-spin { to { transform: rotate(360deg); } }
+.ai-replies { position: absolute; left: 16px; right: 16px; bottom: calc(100% - 4px); z-index: 3; display: flex; gap: 6px; align-items: center;
+  overflow-x: auto; scrollbar-width: none; padding: 8px; border-radius: 18px; background: var(--glass-strong); box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.ai-replies[hidden] { display: none; }
+.chat-input { min-width: 0; }
+.chat-input textarea { min-width: 0; }
+@media (max-width: 440px) {
+  .chat-input .btn.icon-only.ai-btn, .chat-input .btn.icon-only.emoji-btn, .chat-input .btn.icon-only.attach-btn { width: 34px; min-width: 34px; padding: 0; }
+  .chat-input { gap: 2px; }
+}
+.ai-replies::-webkit-scrollbar { display: none; }
+.ai-label { flex: none; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--primary); }
+.ai-chip { flex: none; max-width: 78vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 7px 12px; border-radius: 999px;
+  font-size: 13.5px; font-weight: 600; background: color-mix(in srgb, var(--primary) 12%, var(--surface, transparent));
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent); color: var(--text); animation: push-in .35s ease both; }
+.ai-chip:nth-child(3) { animation-delay: .05s; } .ai-chip:nth-child(4) { animation-delay: .1s; }
+.ai-chip:hover { background: color-mix(in srgb, var(--primary) 20%, var(--surface, transparent)); }
+.ai-x { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--text-3); }
+.ai-unread { display: flex; align-items: center; gap: 8px; margin: 6px 10px 0; padding: 8px 10px 8px 12px; border-radius: 14px; font-size: 13.5px; font-weight: 600;
+  background: color-mix(in srgb, var(--primary) 12%, transparent); border: 1px solid color-mix(in srgb, var(--primary) 26%, transparent); color: var(--text); }
+.ai-unread > span { flex: 1; }
+.ai-unread > svg { color: var(--primary); }
+.ai-summary-text { white-space: pre-wrap; line-height: 1.6; font-size: 15px; }
+.ai-thinking { display: flex; align-items: center; gap: 10px; color: var(--text-2); padding: 12px 0; }
+.ai-summary .small { font-size: 12.5px; margin-top: 12px; }

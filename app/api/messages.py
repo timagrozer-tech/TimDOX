@@ -124,7 +124,7 @@ def _conv_view(conv_id: int, v: int) -> dict:
     # «прочитано», если прочитал хотя бы один собеседник
     other_read = max((r["last_read_id"] for r in others), default=0)
     base = {"id": conv_id, "is_group": bool(conv["is_group"]), "last_message": _msg_view(last) if last else None,
-            "unread": unread, "other_last_read_id": other_read}
+            "unread": unread, "other_last_read_id": other_read, "my_last_read_id": me["last_read_id"]}
     if last and conv["is_group"]:
         base["last_sender"] = social.cards_by_ids([last["sender_id"]]).get(last["sender_id"])
     if conv["is_group"]:
@@ -239,15 +239,11 @@ def deliver_message(conv_id: int, sender: int, text: str, kind: str = "text", me
     return msg
 
 
-_KIND_LABEL = {"image": "📷 Фото", "voice": "🎙 Голосовое", "video": "🎬 Видео", "sticker": "Стикер", "gif": "GIF",
-               "file": "📎 Файл", "location": "📍 Место", "contact": "👤 Контакт", "audio": "🎵 Аудио"}
-
-
 def _tg_notify(conv_id: int, sender: int, sender_card: dict, text: str, kind: str) -> None:
     """Сообщение тем, кого нет на сайте: push на телефон/компьютер и в Telegram (если привязан)."""
     try:
         from .. import tgbot, webpush
-        preview = (text or "").strip() or _KIND_LABEL.get(kind, "Новое сообщение")
+        preview = _preview_text({"kind": kind, "text": text}) or "Новое сообщение"
         name = sender_card.get("name") or sender_card.get("username") or "KRUG"
         for uid in member_ids(conv_id):
             if uid != sender:
