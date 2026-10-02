@@ -27,7 +27,38 @@ export function decorate(avatarEl, equipped = {}) {
     if (equipped.animation === "anim_orbit") wrap.append(h("i.sat.s1"), h("i.sat.s2"), h("i.sat.s3"));
     if (["anim_pulse", "anim_vortex", "anim_aurora"].includes(equipped.animation)) wrap.prepend(h("i.halo"));
   }
+  if (equipped.aura) wrap.append(auraLayer(equipped.aura));
   return wrap;
+}
+
+// ---------------------------------------------------------------- ауры из магазина: частицы вокруг аватара
+const AURA_SPEC = {
+  aura_bubbles: { n: 10, ch: [""] },
+  aura_snow: { n: 14, ch: ["❄", "❅", "•"] },
+  aura_hearts: { n: 9, ch: ["❤", "💗", "💕"] },
+  aura_notes: { n: 8, ch: ["♪", "♫", "♬", "♩"] },
+  aura_sparkles: { n: 12, ch: ["✦", "✧", "⋆"] },
+  aura_fire: { n: 11, ch: ["🔥"] },
+  aura_planets: { n: 3, ch: ["", "", ""] },
+  aura_lightning: { n: 6, ch: ["⚡"] },
+  aura_crown: { n: 8, ch: ["✦"], top: "👑" },
+  aura_galaxy: { n: 28, ch: [""] },
+};
+/** Детерминированный «случай»: одна и та же аура выглядит одинаково при каждом открытии */
+function auraRnd(seed) { const x = Math.sin(seed * 9301 + 49297) * 233280; return x - Math.floor(x); }
+
+export function auraLayer(id) {
+  const spec = AURA_SPEC[id];
+  if (!spec) return null;
+  const layer = h("span.aura", { dataset: { aura: id }, "aria-hidden": "true" });
+  for (let i = 0; i < spec.n; i++) {
+    const r1 = auraRnd(i + 1), r2 = auraRnd(i + 17), r3 = auraRnd(i + 33);
+    layer.append(h("i", { style: { "--i": i, "--n": spec.n, "--x": `${Math.round(r1 * 100)}%`, "--d": `${(r2 * 4).toFixed(2)}s`,
+      "--t": `${(2.6 + r3 * 2.4).toFixed(2)}s`, "--s": (0.7 + r2 * 0.7).toFixed(2), "--a": `${Math.round((360 / spec.n) * i)}deg` } },
+    spec.ch[i % spec.ch.length]));
+  }
+  if (spec.top) layer.append(h("b.aura-top", spec.top));
+  return layer;
 }
 
 /** Питомец: сидит у аватара, реагирует на нажатие. */

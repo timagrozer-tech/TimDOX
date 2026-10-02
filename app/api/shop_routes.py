@@ -37,6 +37,15 @@ async def title(request: Request):
 
 
 @auth()
+async def equip(request: Request):
+    v = request.state.user["id"]
+    limit(request, "write")
+    d = await body(request)
+    _run(shop.equip, v, str(d.get("slot") or ""), d.get("item_id") or None)
+    return JSONResponse(shop.catalog(v))
+
+
+@auth()
 async def gift(request: Request):
     v = request.state.user["id"]
     limit(request, "write")
@@ -62,6 +71,7 @@ async def user_gifts(request: Request):
 routes = [
     Route("/api/shop", get_shop, methods=["GET"]),
     Route("/api/shop/buy", buy, methods=["POST"]),
+    Route("/api/shop/equip", equip, methods=["POST"]),
     Route("/api/shop/title", title, methods=["POST"]),
     Route("/api/shop/gift", gift, methods=["POST"]),
     Route("/api/users/{username}/gifts", user_gifts, methods=["GET"]),

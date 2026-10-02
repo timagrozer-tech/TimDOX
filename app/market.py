@@ -24,7 +24,13 @@ def item_info(item_id: str) -> dict | None:
         return {"id": item_id, "kind": "frame", "name": n, "base": price, "desc": desc}
     if item_id in shop.TITLES:
         n, price = shop.TITLES[item_id]
-        return {"id": item_id, "kind": "title", "name": n, "base": price, "desc": "Титул под именем в профиле"}
+        return {"id": item_id, "kind": "title", "name": n, "base": price, "desc": "Титул под именем в профиле", "style": shop.TITLE_STYLE.get(item_id)}
+    if item_id in shop.AURAS:
+        n, price, desc = shop.AURAS[item_id]
+        return {"id": item_id, "kind": "aura", "name": n, "base": price, "desc": desc}
+    if item_id in shop.NAMEFX:
+        n, price, desc = shop.NAMEFX[item_id]
+        return {"id": item_id, "kind": "namefx", "name": n, "base": price, "desc": desc}
     return None
 
 
@@ -86,12 +92,12 @@ def create(uid: int, item_id: str, price: int) -> int:
     # снимаем с профиля, если было надето
     if info["kind"] == "title" and db.value("SELECT shop_title FROM profiles WHERE user_id=?", (uid,)) == item_id:
         db.run("UPDATE profiles SET shop_title=NULL WHERE user_id=?", (uid,))
-    if info["kind"] == "frame":
+    if info["kind"] in ("frame", "aura", "namefx"):
         from .collection import parse_equipped
         import json
         eq = parse_equipped(db.value("SELECT equipped FROM profiles WHERE user_id=?", (uid,)))
-        if eq.get("frame") == item_id:
-            eq.pop("frame")
+        if eq.get(info["kind"]) == item_id:
+            eq.pop(info["kind"])
             db.run("UPDATE profiles SET equipped=? WHERE user_id=?", (json.dumps(eq) if eq else None, uid))
     return lid
 

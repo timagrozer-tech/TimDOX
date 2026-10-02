@@ -12,7 +12,58 @@ FRAMES = {
     "shop_frame_ember": ("Угли", 1500, "Тлеющий красно-оранжевый жар"),
     "shop_frame_aurora": ("Аврора", 3000, "Медленно переливается, как северное сияние"),
     "shop_frame_cosmos": ("Космос", 6000, "Вращающаяся туманность со звёздами"),
+    # анимированные (осень 2026)
+    "shop_frame_ocean": ("Океан", 700, "Перекатывающиеся волны бирюзы и синевы"),
+    "shop_frame_candy": ("Леденец", 900, "Сладкая спираль, которая медленно крутится"),
+    "shop_frame_heart": ("Сердцебиение", 1800, "Розовое кольцо бьётся, как сердце"),
+    "shop_frame_radar": ("Радар", 2200, "Зелёный луч обегает аватар по кругу"),
+    "shop_frame_holo": ("Голограмма", 2500, "Радужный перелив, как у голографической наклейки"),
+    "shop_frame_matrix": ("Матрица", 3000, "Бегущий зелёный код вокруг аватара"),
+    "shop_frame_flame": ("Пламя", 3500, "Живой огонь: мерцает и светится"),
+    "shop_frame_electro": ("Электро", 4000, "Разряды тока носятся по кольцу"),
+    "shop_frame_glitch": ("Глитч", 5000, "Цифровые сбои: красно-синие сдвиги"),
+    "shop_frame_goldflow": ("Жидкое золото", 8000, "Блик бежит по золотому кольцу"),
+    "shop_frame_blackhole": ("Чёрная дыра", 12000, "Раскалённый диск закручивается вокруг тьмы"),
+    "shop_frame_prism": ("Призма", 15000, "Самая яркая: радуга, свечение и пульс"),
 }
+
+# Ауры — анимированные частицы вокруг аватара в профиле
+AURAS = {
+    "aura_bubbles": ("Пузыри", 800, "Мыльные пузыри поднимаются вверх"),
+    "aura_snow": ("Снегопад", 1000, "Тихо падают снежинки"),
+    "aura_hearts": ("Сердечки", 1200, "Сердца всплывают и тают"),
+    "aura_notes": ("Музыка", 1500, "Ноты кружат вокруг — для меломанов"),
+    "aura_sparkles": ("Искры", 1800, "Звёздочки вспыхивают то тут, то там"),
+    "aura_fire": ("Огненный венец", 4000, "Пламенный венец над головой"),
+    "aura_planets": ("Планеты", 5000, "Три планеты на своих орбитах"),
+    "aura_lightning": ("Молнии", 6000, "Сверкающие разряды и вспышки"),
+    "aura_crown": ("Корона", 9000, "Парящая корона и золотые искры"),
+    "aura_galaxy": ("Галактика", 12000, "Спиральная галактика вращается вокруг вас"),
+}
+
+# Эффекты имени в профиле
+NAMEFX = {
+    "name_flow": ("Перелив", 1500, "Цвета вашей темы плавно текут по имени"),
+    "name_ice": ("Лёд", 2000, "Холодный блеск и искорки"),
+    "name_neon": ("Неон", 2500, "Неоновая вывеска с лёгким мерцанием"),
+    "name_rainbow": ("Радуга", 3000, "Все цвета радуги бегут по буквам"),
+    "name_fire": ("Огонь", 4000, "Имя горит и светится"),
+    "name_glitch": ("Глитч", 6000, "Киберсбой: буквы двоятся красным и синим"),
+    "name_gold": ("Золото", 7000, "Блестящее золото с бегущим бликом"),
+    "name_galaxy": ("Космос", 9000, "Звёздное небо внутри букв"),
+}
+
+NEW_ITEMS = {k for k in list(FRAMES)[6:]} | set(AURAS) | set(NAMEFX) | {
+    "title_legend", "title_cyber", "title_star", "title_fire", "title_memes", "title_agent", "title_pixel", "title_guardian"}
+
+RARITY = (("legendary", "Легендарный", 8000), ("epic", "Эпический", 3000), ("rare", "Редкий", 1000), ("common", "Обычный", 0))
+
+
+def rarity(price: int) -> tuple[str, str]:
+    for key, label, floor in RARITY:
+        if price >= floor:
+            return key, label
+    return "common", "Обычный"
 TITLES = {
     "title_dreamer": ("Мечтатель", 1000),
     "title_traveler": ("Путешественник", 1000),
@@ -20,7 +71,19 @@ TITLES = {
     "title_owl": ("Ночная сова", 1500),
     "title_architect": ("Архитектор", 2500),
     "title_stargazer": ("Звездочёт", 5000),
+    "title_pixel": ("Пиксель-мастер", 1800),
+    "title_memes": ("Король мемов", 2000),
+    "title_agent": ("Тайный агент", 2500),
+    "title_fire": ("Хранитель огня", 3500),
+    "title_cyber": ("Киберпанк", 4000),
+    "title_guardian": ("Страж Круга", 5500),
+    "title_star": ("Звезда Круга", 6000),
+    "title_legend": ("Легенда", 10000),
 }
+# анимированный стиль плашки титула
+TITLE_STYLE = {"title_stargazer": "stars", "title_architect": "blueprint", "title_pixel": "pixel", "title_memes": "bounce",
+               "title_agent": "agent", "title_fire": "fire", "title_cyber": "cyber", "title_guardian": "shield",
+               "title_star": "rainbow", "title_legend": "gold"}
 GIFTS = {
     "gift_rose": ("Роза", "🌹", 20),
     "gift_coffee": ("Кофе", "☕", 30),
@@ -29,6 +92,14 @@ GIFTS = {
     "gift_rocket": ("Ракета", "🚀", 500),
     "gift_diamond": ("Бриллиант", "💎", 1000),
     "gift_crown": ("Корона", "👑", 3000),
+    "gift_tulip": ("Тюльпаны", "🌷", 25),
+    "gift_cookie": ("Печенька", "🍪", 15),
+    "gift_cat": ("Котик", "🐱", 80),
+    "gift_balloon": ("Шарик", "🎈", 40),
+    "gift_star": ("Звезда", "🌟", 250),
+    "gift_unicorn": ("Единорог", "🦄", 700),
+    "gift_trophy": ("Кубок", "🏆", 1500),
+    "gift_planet": ("Планета", "🪐", 5000),
 }
 
 
@@ -44,16 +115,54 @@ def catalog(uid: int) -> dict:
     have = owned(uid)
     title = db.value("SELECT shop_title FROM profiles WHERE user_id=?", (uid,))
     frame = social._frame_of(db.value("SELECT equipped FROM profiles WHERE user_id=?", (uid,)))
+    from .collection import parse_equipped
+    eq = parse_equipped(db.value("SELECT equipped FROM profiles WHERE user_id=?", (uid,)))
+
+    def card(k, name, price, desc, on, **extra):
+        r, rl = rarity(price)
+        return {"id": k, "name": name, "price": price, "desc": desc, "owned": k in have, "on": on, "rarity": r,
+                "rarity_label": rl, "new": k in NEW_ITEMS, **extra}
     return {
-        "frames": [{"id": k, "name": v[0], "price": v[1], "desc": v[2], "owned": k in have, "on": frame == k} for k, v in FRAMES.items()],
-        "titles": [{"id": k, "name": v[0], "price": v[1], "owned": k in have, "on": title == k} for k, v in TITLES.items()],
-        "gifts": [{"id": k, "name": v[0], "emoji": v[1], "price": v[2]} for k, v in GIFTS.items()],
+        "frames": [card(k, v[0], v[1], v[2], frame == k) for k, v in FRAMES.items()],
+        "auras": [card(k, v[0], v[1], v[2], eq.get("aura") == k) for k, v in AURAS.items()],
+        "names": [card(k, v[0], v[1], v[2], eq.get("namefx") == k) for k, v in NAMEFX.items()],
+        "titles": [card(k, v[0], v[1], "Под именем в профиле", title == k, style=TITLE_STYLE.get(k)) for k, v in TITLES.items()],
+        "gifts": [{"id": k, "name": v[0], "emoji": v[1], "price": v[2], "rarity": rarity(v[2])[0]} for k, v in GIFTS.items()],
         "kc": economy.balances(uid)["KC"],
     }
 
 
+def price_of(item_id: str) -> int | None:
+    for table in (FRAMES, TITLES, AURAS, NAMEFX):
+        if item_id in table:
+            return table[item_id][1]
+    return None
+
+
+SLOT_TABLE = {"aura": AURAS, "namefx": NAMEFX}
+
+
+def equip(uid: int, slot: str, item_id: str | None) -> dict:
+    """Надеть ауру или эффект имени из магазина (рамки — через /api/collection/equip, титулы — set_title)."""
+    import json
+    from .collection import parse_equipped
+    if slot not in SLOT_TABLE:
+        raise ShopError("Неизвестный слот")
+    eq = parse_equipped(db.value("SELECT equipped FROM profiles WHERE user_id=?", (uid,)))
+    if item_id:
+        if item_id not in SLOT_TABLE[slot]:
+            raise ShopError("Такого предмета нет")
+        if item_id not in owned(uid):
+            raise ShopError("Сначала купите этот предмет")
+        eq[slot] = item_id
+    else:
+        eq.pop(slot, None)
+    db.run("UPDATE profiles SET equipped=? WHERE user_id=?", (json.dumps(eq) if eq else None, uid))
+    return eq
+
+
 def buy(uid: int, item_id: str) -> None:
-    price = FRAMES.get(item_id, (None, None))[1] or TITLES.get(item_id, (None, None))[1]
+    price = price_of(item_id)
     if not price:
         raise ShopError("Такого предмета нет")
     if item_id in owned(uid):
@@ -73,6 +182,10 @@ def set_title(uid: int, item_id: str | None) -> None:
 
 def title_of(item_id: str | None) -> str | None:
     return TITLES[item_id][0] if item_id in TITLES else None
+
+
+def title_style(item_id: str | None) -> str | None:
+    return TITLE_STYLE.get(item_id) if item_id in TITLES else None
 
 
 def gift(sender: int, recipient: int, item_id: str, note: str = "") -> dict:

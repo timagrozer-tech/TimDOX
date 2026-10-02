@@ -139,8 +139,12 @@ def parse_equipped(value) -> dict:
         data = json.loads(value)
     except ValueError:
         return {}
-    from .shop import FRAMES
-    return {k: v for k, v in data.items() if k in SLOTS and ((v in ITEM_BY_ID and ITEM_BY_ID[v][1] == k) or (k == "frame" and v in FRAMES))}
+    if not isinstance(data, dict):
+        return {}
+    from .shop import AURAS, FRAMES, NAMEFX
+    return {k: v for k, v in data.items()
+            if (k in SLOTS and ((v in ITEM_BY_ID and ITEM_BY_ID[v][1] == k) or (k == "frame" and v in FRAMES)))
+            or (k == "aura" and v in AURAS) or (k == "namefx" and v in NAMEFX)}
 
 
 def item_view(item, have: dict | None = None, st: dict | None = None) -> dict:

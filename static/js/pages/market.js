@@ -2,6 +2,7 @@
 import { api, state } from "../api.js";
 import { h, icon, avatar, timeAgo } from "../dom.js";
 import { setTitle, toast, toastError, busy, modal, confirmDialog } from "../ui.js";
+import { decorate } from "../components/cosmetics.js";
 
 const fmt = (n) => Number(n || 0).toLocaleString("ru-RU");
 const TABS = [["buy", "Купить"], ["mine", "Мои лоты"]];
@@ -12,7 +13,9 @@ function preview(item) {
     a.dataset.frame = item.id;
     return h("div.shop-preview", a);
   }
-  return h("div.shop-preview.title", h("span.profile-title", `✦ ${item.name}`));
+  if (item.kind === "aura") return h("div.shop-preview", h("div.shop-aura-stage", decorate(avatar(state.me, "xl", { presence: false, frame: false }), { aura: item.id })));
+  if (item.kind === "namefx") return h("div.shop-preview", h("span.pname.shop-name", { dataset: { namefx: item.id } }, state.me?.name || "Имя"));
+  return h("div.shop-preview.title", h("span.profile-title", { dataset: item.style ? { style: item.style } : {} }, item.name));
 }
 
 export async function marketPage({ query = {} } = {}) {
@@ -86,7 +89,7 @@ export async function marketPage({ query = {} } = {}) {
     tabs.replaceChildren(...TABS.map(([k, t]) => h("button", { type: "button", role: "tab", "aria-selected": String(k === tab),
       onclick: () => { tab = k; history.replaceState(history.state, "", `/market?tab=${k}`); paint(); } }, t)));
     filters.replaceChildren(...(tab === "buy" ? [
-      h("div.segmented", ...[["", "Всё"], ["frame", "Рамки"], ["title", "Титулы"]].map(([k, t]) => h("button", { type: "button", "aria-pressed": String(kind === k), onclick: () => { kind = k; paint(); } }, t))),
+      h("div.segmented", ...[["", "Всё"], ["frame", "Рамки"], ["aura", "Ауры"], ["namefx", "Имя"], ["title", "Титулы"]].map(([k, t]) => h("button", { type: "button", "aria-pressed": String(kind === k), onclick: () => { kind = k; paint(); } }, t))),
       h("div.segmented", ...[["new", "Новые"], ["cheap", "Дешевле"], ["deal", "Выгоднее"]].map(([k, t]) => h("button", { type: "button", "aria-pressed": String(sort === k), onclick: () => { sort = k; paint(); } }, t))),
     ] : []));
     tab === "buy" ? loadBuy() : loadMine();

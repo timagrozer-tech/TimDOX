@@ -76,6 +76,7 @@ async def profile(request: Request):
     data["space"] = constellation.load_space(p.get("space"))
     from .. import shop
     data["title"] = shop.title_of(p.get("shop_title"))
+    data["title_style"] = shop.title_style(p.get("shop_title"))
     data["gifts"] = shop.gifts_of(uid, 12)
     if full:
         from .collection_routes import showcase
