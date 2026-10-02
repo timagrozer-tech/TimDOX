@@ -103,6 +103,10 @@ export async function profilePage({ params, query }) {
       { label: data.avatar3d ? "Изменить 3D-аватар" : "Создать 3D-аватар", icon: "sparkle", onClick: () => openAvatar3DEditor(data.avatar3d, (spec, url) => {
         data.avatar3d = spec; data.user.avatar = url; renderHeader();
       }) },
+      data.avatar3d && webglAvailable() ? { label: "Обновить 3D-стикеры", icon: "smile", onClick: () => {
+        toast("Рисуем стикеры с эмоциями…", { icon: "sparkle", duration: 1800 });
+        import("../components/avatar3d-stickers.js").then((m) => m.buildAvatarStickers(data.avatar3d));
+      } } : null,
       data.avatar3d ? { label: "Оставить снимок вместо живого 3D", icon: "camera", onClick: async () => {
         try { await api.del("/api/me/avatar3d"); data.avatar3d = null; renderHeader(); } catch (e) { toastError(e); }
       } } : null,

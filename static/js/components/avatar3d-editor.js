@@ -159,8 +159,10 @@ export async function openAvatar3DEditor(current, onSaved) {
       state.me.avatar = res.avatar;
       refreshSidebarUser();
       close();
-      toast("3D-аватар сохранён ✨", { icon: "check" });
+      toast("3D-аватар сохранён ✨ Делаем стикеры…", { icon: "check" });
       onSaved?.(r.avatar3d, res.avatar);
+      // набор стикеров с эмоциями персонажа — в фоне, после закрытия редактора
+      setTimeout(() => import("./avatar3d-stickers.js").then((m) => m.buildAvatarStickers(r.avatar3d)), 400);
     } catch (e) { toastError(e); }
   }));
 }

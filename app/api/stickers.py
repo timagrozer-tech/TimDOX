@@ -64,7 +64,7 @@ async def create_pack(request: Request):
     title = censor(clean_text(str(data.get("title", "")), 64)).strip()
     if len(title) < 2:
         raise ApiError(422, "Название — от 2 до 64 символов")
-    if db.value("SELECT count(*) FROM sticker_packs WHERE owner_id=?", (v,)) >= MAX_OWN_PACKS:
+    if db.value("SELECT count(*) FROM sticker_packs WHERE owner_id=? AND slug<>?", (v, avatar_pack_slug(v))) >= MAX_OWN_PACKS:
         raise ApiError(400, f"Можно создать не больше {MAX_OWN_PACKS} наборов")
     slug = secrets.token_hex(5)
     cur = db.run("INSERT INTO sticker_packs (owner_id, slug, title) VALUES (?,?,?)", (v, slug, title))
@@ -159,6 +159,51 @@ async def install(request: Request):
     return JSONResponse(pack_view(p, v, with_stickers=False))
 
 
+# 3D-стикеры: эмоции персонажа пользователя, отрисованные в браузере (тот же список эмоций, что в avatar3d)
+AVATAR_EMOJI = {"neutral": "🙂", "happy": "😄", "smirk": "😏", "cool": "😎", "surprised": "😮", "love": "😍",
+                "laugh": "😂", "wink": "😉", "angry": "😠", "sad": "😢", "sleepy": "😴"}
+
+
+def avatar_pack_slug(user_id: int) -> str:
+    return f"a3d{user_id}"
+
+
+@auth()
+async def avatar_stickers(request: Request):
+    """Набор «<имя> · 3D»: при каждом сохранении 3D-аватара браузер присылает снимки эмоций — набор пересобирается.
+    Старые файлы не удаляются: на них ссылаются уже отправленные сообщения."""
+    limit(request, "upload")
+    u = request.state.user
+    v = u["id"]
+    if not db.value("SELECT avatar3d FROM profiles WHERE user_id=?", (v,)):
+        raise ApiError(400, "Сначала создайте 3D-аватар")
+    form = await request.form(max_files=len(AVATAR_EMOJI), max_fields=len(AVATAR_EMOJI) * 2 + 4)
+    try:
+        files, emotions = form.getlist("file"), [str(x) for x in form.getlist("emotion")]
+        if not files or len(files) != len(emotions):
+            raise ApiError(400, "Нет стикеров")
+        if len(set(emotions)) != len(emotions) or any(e not in AVATAR_EMOJI for e in emotions):
+            raise ApiError(400, "Неизвестная эмоция")
+        saved = [await media.save_sticker(f) for f in files]
+    finally:
+        await form.close()
+    slug = avatar_pack_slug(v)
+    first = ((u["name"] or u["username"] or "").split() or ["Мой"])[0]
+    title = censor(clean_text(f"{first} · 3D", 64)).strip() or "Мой 3D"
+    p = db.one("SELECT * FROM sticker_packs WHERE slug=?", (slug,))
+    if p:
+        db.run("UPDATE sticker_packs SET title=? WHERE id=?", (title, p["id"]))
+        db.run("DELETE FROM stickers WHERE pack_id=?", (p["id"],))
+        pid = p["id"]
+    else:
+        pid = db.run("INSERT INTO sticker_packs (owner_id, slug, title) VALUES (?,?,?)", (v, slug, title)).lastrowid
+    for i, (em, st) in enumerate(zip(emotions, saved)):
+        db.run("INSERT INTO stickers (pack_id, file, emoji, animated, position) VALUES (?,?,?,?,?)",
+               (pid, st["path"], AVATAR_EMOJI[em], 1 if st["animated"] else 0, i))
+    db.run("INSERT OR IGNORE INTO user_sticker_packs (user_id, pack_id) VALUES (?,?)", (v, pid))
+    return JSONResponse(pack_view(_pack(pid), v), status_code=201)
+
+
 def sticker_for_message(sticker_id) -> dict:
     try:
         sid = int(sticker_id)
@@ -173,6 +218,7 @@ def sticker_for_message(sticker_id) -> dict:
 
 routes = [
     Route("/api/stickers", my_stickers, methods=["GET"]),
+    Route("/api/avatar3d-stickers", avatar_stickers, methods=["PUT"]),
     Route("/api/sticker-packs", create_pack, methods=["POST"]),
     Route("/api/sticker-packs/by-slug/{slug}", get_pack, methods=["GET"]),
     Route("/api/sticker-packs/{id:int}", update_pack, methods=["PATCH"]),

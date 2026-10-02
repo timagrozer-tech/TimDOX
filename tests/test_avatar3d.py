@@ -67,6 +67,29 @@ class Avatar3DTest(unittest.TestCase):
         defaults = js[js.index("export const DEFAULT_SPEC = {"):js.index("};", js.index("export const DEFAULT_SPEC = {"))]
         self.assertEqual(sorted(re.findall(r"(\w+): ", defaults)), sorted(avatar3d.DEFAULT))
 
+    def test_avatar_sticker_pack(self):
+        c = Client().register("av3d_st", "Стикер Мастер")
+        files = lambda ems: [("file", (f"{e}.png", io.BytesIO(png()), "image/png")) for e in ems]
+        put = lambda ems, data=None: c.c.put("/api/avatar3d-stickers", headers=c._h(), files=files(ems),
+                                             data=data if data is not None else {"emotion": ems})
+        self.assertEqual(put(["happy"]).status_code, 400)                      # нет 3D-аватара
+        self.assertEqual(c.put("/api/me/avatar3d", {"spec": {"hair": "afro"}}).status_code, 200)
+        self.assertEqual(put(["happy", "evil"]).status_code, 400)              # неизвестная эмоция
+        self.assertEqual(put(["happy", "happy"]).status_code, 400)             # повтор
+        self.assertEqual(put(["happy", "sad"], {"emotion": ["happy"]}).status_code, 400)
+        r = put(["neutral", "happy", "laugh"])
+        self.assertEqual(r.status_code, 201, r.text)
+        pack = r.json()
+        self.assertEqual((pack["title"], pack["count"], pack["mine"]), ("Стикер · 3D", 3, True))
+        self.assertEqual([s["emoji"] for s in pack["stickers"]], ["🙂", "😄", "😂"])
+        # пересборка заменяет стикеры в том же наборе; набор в «моих стикерах»
+        r2 = put(["cool"]).json()
+        self.assertEqual((r2["id"], r2["count"]), (pack["id"], 1))
+        mine = c.get("/api/stickers").json()["packs"]
+        self.assertIn(pack["id"], [p["id"] for p in mine])
+        # стикер можно отправить в чат; набор не занимает лимит своих наборов
+        self.assertEqual(c.post("/api/sticker-packs", {"title": "Ещё набор"}).status_code, 201)
+
     def test_flow(self):
         spec = {"skin": 5, "hair": "curly", "hairColor": 3, "acc": "headphones", "mouth": "grin", "bg": 2}
         self.assertEqual(self.a.put("/api/me/avatar3d", {"spec": {"hair": "wig"}}).status_code, 400)

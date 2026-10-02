@@ -1259,6 +1259,68 @@ export async function mount3D(container, spec, { interactive = true, snapshotabl
       char.rotation.set(0, keep.y, keep.z); ud.head.rotation.set(keep.hx, keep.hy, keep.hz); char.position.y = keep.py;
       return new Promise((res) => out.toBlob(res, "image/png"));
     },
+    /**
+     * Стикеры: голова и плечи на прозрачном фоне, по одному на эмоцию, с лёгким наклоном головы.
+     * Возвращает [[эмоция, Blob PNG], …].
+     */
+    async stickers(size = 512, list = EMOTION_KEYS) {
+      const POSE = { neutral: [0, 0, 0], happy: [-.06, .1, .08], smirk: [.02, -.18, -.1], cool: [-.08, .22, .06], surprised: [-.12, 0, 0],
+        love: [.04, .12, .14], laugh: [-.16, -.08, -.1], wink: [0, .2, .12], angry: [.12, -.1, 0], sad: [.16, .1, -.12], sleepy: [.12, .15, .2] };
+      const cam = camera.clone();
+      const out = [];
+      const w0 = canvas.width, h0 = canvas.height;
+      cancelAnimationFrame(raf); raf = 0;
+      clearTimeout(emoteTimer);
+      renderer.setPixelRatio(1); renderer.setSize(size, size, false);
+      const copy = document.createElement("canvas"); copy.width = copy.height = size;
+      const cx = copy.getContext("2d");
+      const silC = document.createElement("canvas"); silC.width = silC.height = size;
+      const sil = silC.getContext("2d");
+      try {
+        for (const em of list) {
+          char.userData.setEmotion(em);
+          const ud = char.userData;
+          if (ud.fx) ud.fx.group.visible = false;
+          if (ud.pet) ud.pet.visible = false;
+          char.rotation.set(0, 0, 0); char.position.set(0, 0, 0); char.scale.set(1, 1, 1);
+          ud.head.rotation.set(0, 0, 0); ud.lids.forEach((e) => { e.scale.y = 1; }); ud.mouth.scale.set(1, 1, 1);
+          char.updateMatrixWorld(true);
+          // кадр: вся голова со шляпой и верх плеч
+          const box = new T.Box3().setFromObject(ud.head);
+          const top = box.max.y + .12, bottom = -1.55;
+          const half = Math.max((top - bottom) / 2, (box.max.x - box.min.x) / 2 + .1);
+          const cy = (top + bottom) / 2;
+          cam.aspect = 1; cam.position.set(0, cy, half / Math.tan(T.MathUtils.degToRad(14)) + 1.2); cam.lookAt(0, cy, 0); cam.updateProjectionMatrix();
+          const [px, py, pz] = POSE[em] || POSE.neutral;
+          ud.head.rotation.set(px, py, pz);
+          renderer.render(scene, cam);
+          // как настоящий стикер: белая обводка по силуэту и мягко растворяющийся низ
+          cx.clearRect(0, 0, size, size);
+          sil.clearRect(0, 0, size, size); sil.globalCompositeOperation = "source-over";
+          sil.drawImage(canvas, 0, 0, size, size);
+          sil.globalCompositeOperation = "source-in"; sil.fillStyle = "#ffffff"; sil.fillRect(0, 0, size, size);
+          const r = Math.max(2, Math.round(size / 85));
+          for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; cx.drawImage(silC, Math.cos(a) * r, Math.sin(a) * r); }
+          cx.drawImage(canvas, 0, 0, size, size);
+          cx.globalCompositeOperation = "destination-in";
+          const fade = cx.createLinearGradient(0, size * .78, 0, size);
+          fade.addColorStop(0, "rgba(0,0,0,1)"); fade.addColorStop(1, "rgba(0,0,0,0)");
+          cx.fillStyle = fade; cx.fillRect(0, 0, size, size);
+          cx.globalCompositeOperation = "source-over";
+          out.push([em, await new Promise((res) => copy.toBlob(res, "image/png"))]);
+        }
+      } finally {
+        char.userData.setEmotion(cur.emotion || "neutral");
+        if (char.userData.fx) char.userData.fx.group.visible = true;
+        if (char.userData.pet) char.userData.pet.visible = true;
+        char.userData.head.rotation.set(0, 0, 0);
+        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+        renderer.setSize(w0 / Math.min(devicePixelRatio || 1, 2), h0 / Math.min(devicePixelRatio || 1, 2), false);
+        resize();
+        if (visible) raf = requestAnimationFrame(frame);
+      }
+      return out;
+    },
     destroy() {
       cancelAnimationFrame(raf); ro.disconnect(); io.disconnect();
       document.removeEventListener("visibilitychange", onVis);
