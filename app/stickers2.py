@@ -383,7 +383,7 @@ VISION_PROMPT = ("Это стикер для мессенджера. Переч�
                  "эмоция, действие. Только JSON: {\"tags\": [\"кот\", \"радость\", ...]}")
 
 
-_vision = {"model": None, "checked": 0.0, "failed": set()}
+_vision = {"model": None, "checked": 0.0, "failed": set(), "pause_until": 0.0}
 VISION_HINTS = ("llama-4-scout", "llama-4-maverick", "vision", "-vl", "llava", "pixtral", "gemma-3", "qwen3")
 
 
@@ -417,6 +417,8 @@ def vision_model() -> str | None:
 
 def vision_chat(prompt: str, image: bytes, mime: str = "image/png", max_tokens: int = 160, temperature: float = .3) -> str | None:
     import base64
+    if time.time() < _vision["pause_until"]:
+        return None
     key, model = os.environ.get("GROQ_API_KEY"), vision_model()
     if not key or not model:
         return None
@@ -430,6 +432,8 @@ def vision_chat(prompt: str, image: bytes, mime: str = "image/png", max_tokens: 
         with urllib.request.urlopen(req, timeout=40) as r:
             return json.loads(r.read())["choices"][0]["message"]["content"]
     except urllib.error.HTTPError as e:
+        if e.code == 429:  # лимит провайдера — делаем паузу, чтобы не мешать другим функциям ИИ
+            _vision["pause_until"] = time.time() + 30 * 60
         if e.code in (400, 404):  # модель убрали или она не видит картинки — попробуем другую
             _vision["failed"].add(model)
             _vision.update(model=None, checked=0.0)
@@ -457,7 +461,7 @@ def vision_tags(image_png: bytes) -> list[str] | None:
 
 def tag_some(n: int = 6) -> int:
     """Фоновая разметка: берём несколько ещё не размеченных картинок (или миниатюр анимаций) и просим модель подписать."""
-    if not os.environ.get("GROQ_API_KEY"):
+    if not os.environ.get("GROQ_API_KEY") or time.time() < _vision["pause_until"]:
         return 0
     from PIL import Image
     done = 0
