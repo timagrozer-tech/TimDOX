@@ -10,6 +10,7 @@ os.environ["DB_PATH"] = os.path.join(_tmp, "test.db")
 os.environ["UPLOAD_DIR"] = os.path.join(_tmp, "uploads")
 os.environ["DATA_DIR"] = _tmp
 os.environ["SMTP_HOST"] = ""
+os.environ["KRUG_UPDATES_LOOP"] = "0"  # фоновый ИИ-профиль в тестах вызывается вручную
 os.environ.setdefault("REGISTER_PER_HOUR", "100000")  # в тестах все аккаунты создаются с одного адреса
 os.environ.setdefault("REGISTER_PER_DAY", "100000")
 os.environ.setdefault("NEW_DIALOGS_NEW_ACCOUNT", "100000")

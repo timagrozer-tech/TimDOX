@@ -22,6 +22,12 @@ export function friendButton(user, relation, onChange, { small = false } = {}) {
     } catch (e) { toastError(e); }
   };
   const id = user.id;
+  // официальные профили (новости Круга) — не «в друзья», а подписка
+  if (user.badge === "Официальный" && relation.status !== "friends") {
+    return relation.following
+      ? h(`button.btn.outline${sz}`, { type: "button", onclick: () => act(() => api.del(`/api/people/${id}/follow`), "Вы отписались") }, icon("check", "sm"), "Вы подписаны")
+      : h(`button.btn.primary${sz}`, { type: "button", onclick: () => act(() => api.post(`/api/people/${id}/follow`), "Вы подписаны") }, icon("bell", "sm"), "Подписаться");
+  }
   switch (relation.status) {
     case "friends": {
       const b = h(`button.btn.outline${sz}`, { type: "button", "aria-haspopup": "menu" }, icon("userCheck", "sm"), "В друзьях");

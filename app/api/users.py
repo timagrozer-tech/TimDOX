@@ -152,6 +152,8 @@ async def friend_request(request: Request):
     uid = _target(request)
     if social.blocked_between(v, uid):
         raise ApiError(403, "Действие недоступно")
+    if db.value("SELECT badge FROM profiles WHERE user_id=?", (uid,)) == "Официальный":
+        raise ApiError(400, "Это официальный профиль — на него можно подписаться")
     fr = db.one("SELECT * FROM friendships WHERE user_low=least(?,?) AND user_high=greatest(?,?)", (v, uid, v, uid))
     if fr and fr["status"] == "pending" and fr["addressee_id"] == v:
         return await _accept(v, uid)
@@ -264,6 +266,7 @@ async def suggestions(request: Request):
           AND p.user_id NOT IN (SELECT * FROM mine)
           AND NOT EXISTS (SELECT 1 FROM friendships f2 WHERE f2.user_low=least(:v,p.user_id) AND f2.user_high=greatest(:v,p.user_id))
           AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id=:v AND b.blocked_id=p.user_id) OR (b.blocker_id=p.user_id AND b.blocked_id=:v))
+          AND coalesce(p.badge, '') <> 'Официальный'
         ORDER BY mutual DESC,
                  (p.school != '' AND p.school = :school AND p.school_year IS :syear) DESC,
                  (p.university != '' AND p.university = :uni) DESC,

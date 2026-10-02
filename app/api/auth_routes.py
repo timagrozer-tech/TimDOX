@@ -168,6 +168,8 @@ async def register(request: Request):
     inviter = referrals.attach(uid, ref, ip_prefix(ip)) if ref else None
     if inviter:
         db.run("INSERT OR IGNORE INTO follows (follower_id, followee_id) VALUES (?,?)", (uid, inviter))
+    from .. import updates
+    updates.follow_new_user(uid)  # официальный канал обновлений
     await _send_token_email(uid, email, "verify")
     resp = JSONResponse({"ok": True, "invited_by": inviter}, status_code=201)
     _start_session(request, resp, uid)

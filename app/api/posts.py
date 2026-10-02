@@ -658,6 +658,8 @@ async def add_comment(request: Request):
             notified.add(uid)
     row = db.one("SELECT * FROM comments WHERE id=?", (cid,))
     economy.on_comment(v, cid, text, post["author_id"])
+    from .. import updates
+    updates.on_comment(post["author_id"], post["id"], cid, v)
     view = _comment_view(row, social.cards_by_ids([v]), v, post["author_id"])
     view["replies"] = []
     return JSONResponse(view, status_code=201)

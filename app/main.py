@@ -300,6 +300,15 @@ async def housekeeping():
         await asyncio.sleep(600)
 
 
+async def updates_loop():
+    """Официальный ИИ-профиль: после выкладки публикует новые обновления (по одному, с паузой)."""
+    from . import updates
+    await asyncio.sleep(25)
+    while True:
+        await asyncio.to_thread(updates.run_once)
+        await asyncio.sleep(300)
+
+
 @asynccontextmanager
 async def lifespan(app):
     db.connect()
@@ -308,9 +317,12 @@ async def lifespan(app):
     await asyncio.to_thread(ensure_starter_pack)
     task = asyncio.create_task(housekeeping())
     world_task = asyncio.create_task(world_engine.loop()) if world_engine.ENABLED else None
+    updates_task = asyncio.create_task(updates_loop()) if os.environ.get("KRUG_UPDATES_LOOP", "1") != "0" else None
     log.info("«%s» запущен: %s", config.APP_NAME, config.APP_URL)
     yield
     task.cancel()
+    if updates_task:
+        updates_task.cancel()
     if world_task:
         world_task.cancel()
 

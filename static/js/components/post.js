@@ -22,15 +22,18 @@ export const REACTION = Object.fromEntries(REACTIONS.map((r) => [r.type, r]));
 export function gallery(media, { compact = false } = {}) {
   if (!media?.length) return null;
   const n = media.length;
-  const shown = media.slice(0, 4);
-  const cls = `gallery n${Math.min(n, 4)}`;
+  // широкая первая картинка + ещё несколько: первая во всю ширину без обрезки, остальные — полосой снизу
+  const f = media[0];
+  const lead = !compact && n >= 2 && f.width && f.height && f.width / f.height >= 1.3;
+  const shown = media.slice(0, lead ? 5 : 4);
+  const cls = lead ? `gallery lead s${Math.min(n - 1, 4)}` : `gallery n${Math.min(n, 4)}`;
   const el = h("div", { class: cls });
   shown.forEach((m, i) => {
-    const single = n === 1 && !compact;
+    const single = (n === 1 || (lead && i === 0)) && !compact;
     const img = h("img", { src: single ? m.url : m.thumb, alt: m.alt || "Фото", loading: "lazy" });
     if (single && m.width && m.height) img.style.aspectRatio = `${m.width} / ${m.height}`;
     el.append(h("button", { type: "button", "aria-label": `Открыть фото ${i + 1} из ${n}`, onclick: () => lightbox(media, i) },
-      img, i === 3 && n > 4 ? h("span.more-overlay", `+${n - 4}`) : null));
+      img, i === shown.length - 1 && n > shown.length ? h("span.more-overlay", `+${n - shown.length}`) : null));
   });
   return el;
 }

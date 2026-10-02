@@ -3917,3 +3917,12 @@ a.cst-st-game:hover { background: rgb(255 255 255 / .12); }
 .contact-actions { display: flex; gap: 8px; }
 .contact-actions .btn { flex: 1; justify-content: center; }
 .msg.mine .contact-actions .btn { background: rgb(255 255 255 / .2); color: #fff; }
+
+/* галерея: широкая первая картинка во всю ширину, остальные — полосой (обложки не режутся) */
+.gallery.lead { display: grid; grid-template-columns: repeat(var(--cols, 4), 1fr); gap: 3px; aspect-ratio: auto; }
+.gallery.lead.s1 { --cols: 1; } .gallery.lead.s2 { --cols: 2; } .gallery.lead.s3 { --cols: 3; } .gallery.lead.s4 { --cols: 4; }
+.gallery.lead button:first-child { grid-column: 1 / -1; }
+.gallery.lead button:first-child img { height: auto; max-height: 560px; object-fit: cover; }
+.gallery.lead button:not(:first-child) { aspect-ratio: 4 / 5; }
+.gallery.lead.s1 button:not(:first-child) { aspect-ratio: 16 / 9; }
+.gallery.lead button:not(:first-child) img { object-position: top; }
