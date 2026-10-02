@@ -913,3 +913,13 @@ CREATE TABLE IF NOT EXISTS tg_seen_sets (
     seen_at  TEXT NOT NULL DEFAULT krug_now(),
     PRIMARY KEY (user_id, name)
 );
+
+-- Наборы KRUG, отправленные в Telegram настоящими стикерпаками
+CREATE TABLE IF NOT EXISTS tg_exports (
+    pack_id     BIGINT PRIMARY KEY REFERENCES sticker_packs(id) ON DELETE CASCADE,
+    user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    set_name    TEXT NOT NULL,
+    version     INTEGER NOT NULL DEFAULT 1,
+    count       INTEGER NOT NULL DEFAULT 0,
+    exported_at TEXT NOT NULL DEFAULT krug_now()
+);

@@ -844,3 +844,13 @@ CREATE TABLE IF NOT EXISTS market_listings (
 );
 CREATE INDEX IF NOT EXISTS idx_market_active ON market_listings(status, id);
 CREATE INDEX IF NOT EXISTS idx_market_item ON market_listings(item_id, status, closed_at);
+
+-- Наборы KRUG, отправленные в Telegram настоящими стикерпаками
+CREATE TABLE IF NOT EXISTS tg_exports (
+    pack_id     INTEGER PRIMARY KEY REFERENCES sticker_packs(id) ON DELETE CASCADE,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    set_name    TEXT NOT NULL,
+    version     INTEGER NOT NULL DEFAULT 1,
+    count       INTEGER NOT NULL DEFAULT 0,
+    exported_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);

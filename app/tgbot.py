@@ -83,6 +83,11 @@ def _upload(method: str, fields: dict, file_field: str, filename: str, data: byt
     try:
         with urllib.request.urlopen(req, timeout=40) as r:
             return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        try:
+            return json.loads(e.read())
+        except ValueError:
+            return {"ok": False, "description": str(e.code)}
     except (urllib.error.URLError, OSError, ValueError, TimeoutError) as e:
         log.warning("Telegram %s (файл) недоступен: %s", method, e)
         return None
@@ -149,6 +154,7 @@ def setup() -> None:
         {"command": "start", "description": "Что я умею"},
         {"command": "packs", "description": "Моя коллекция в KRUG"},
         {"command": "all", "description": "Перенести все наборы разом"},
+        {"command": "export", "description": "Мои наборы KRUG → в Telegram"},
         {"command": "notify", "description": "Уведомления из KRUG"},
         {"command": "link", "description": "Привязать аккаунт KRUG"},
         {"command": "unlink", "description": "Отвязать аккаунт"},
@@ -215,6 +221,7 @@ def _menu(cid: int, link: dict | None) -> None:
                   "• пришлите стикер или ссылку на набор — сразу добавлю его в KRUG;\n"
                   "• пришлите фото (можно с подписью) — сделаю стикер и сохраню в KRUG;\n"
                   "• /all — как перенести все свои наборы разом;\n"
+                  "• /export — ваши наборы KRUG (и 3D-стикеры) настоящим стикерпаком в Telegram;\n"
                   "• /packs — ваша коллекция, /notify — уведомления.", MAIN_ROWS_LINKED())
     else:
         send(cid, "Привет! Я мост между Telegram и <b>KRUG</b> 💜\n\n"
@@ -384,6 +391,17 @@ def _zip(cid: int, tg_id: int, name: str) -> None:
     _send_document(cid, f"{safe}.zip", buf.getvalue(), f"📦 <b>{esc(s.get('title') or name)}</b> — {n} стикеров")
 
 
+def _export_menu(cid: int, link: dict) -> None:
+    rows = db.all("""SELECT p.id, p.title, (SELECT count(*) FROM stickers s WHERE s.pack_id=p.id) AS n FROM sticker_packs p
+                     WHERE p.owner_id=? AND COALESCE(p.source,'own')<>'telegram' ORDER BY p.id DESC LIMIT 12""", (link["user_id"],))
+    rows = [r for r in rows if r["n"]]
+    if not rows:
+        return send(cid, "У вас пока нет своих наборов в KRUG. Создайте 3D-аватар — и получите набор стикеров с вашим персонажем 😎",
+                    [[("Создать в KRUG", "app:/stickers")]])
+    send(cid, "📤 Какой набор KRUG отправить в Telegram? Я создам настоящий стикерпак — он будет вашим.",
+         [[(f"{r['title'][:40]} · {r['n']}", f"ex:{r['id']}")] for r in rows])
+
+
 def _notify_rows(link: dict) -> list:
     on = lambda v: "🔔" if v else "🔕"  # noqa: E731
     return [[(f"{on(link['notify_messages'])} Сообщения", "n:m")], [(f"{on(link['notify_social'])} Друзья и упоминания", "n:s")],
@@ -423,6 +441,8 @@ def handle(update: dict) -> None:
         return
     if text in ("/start", "/help") or text.startswith("/start "):
         return _menu(cid, link)
+    if text == "/export":
+        return _export_menu(cid, link) if link else send(cid, "Сначала привяжите аккаунт KRUG.", [[("Привязать", "app:/settings?tab=telegram")]])
     if text == "/all":
         return send(cid, ALL_HOWTO)
     if text == "/link":
@@ -475,6 +495,18 @@ def _callback(q: dict) -> None:
             link = link_of_tg(frm["id"])
             _call("editMessageReplyMarkup", {"chat_id": cid, "message_id": mid, "reply_markup": _kb(_notify_rows(link))})
             note = "Сохранено"
+    elif data.startswith("ex:") and data[3:].isdigit():
+        from . import tgexport
+        p = db.one("SELECT * FROM sticker_packs WHERE id=? AND owner_id=?", (int(data[3:]), link["user_id"]))
+        if not p:
+            note = "Набор не найден"
+        else:
+            try:
+                tgexport.start(link["user_id"], p)
+                note = "Собираю набор…"
+                send(cid, f"⏳ Отправляю <b>{esc(p['title'])}</b> в Telegram — это займёт около минуты.")
+            except ApiError as e:
+                note = (e.args[1] if len(e.args) > 1 else "Не получилось")[:190]
     elif data == "u:yes":
         db.run("DELETE FROM tg_links WHERE user_id=?", (link["user_id"],))
         edit(cid, mid, "Аккаунт отвязан. Привязать снова можно в настройках KRUG.")

@@ -57,6 +57,9 @@ def pack_view(p: dict, v: int | None = None, with_stickers: bool = True, preview
     if not cover:
         cover = rows[0] if rows else db.one("SELECT * FROM stickers WHERE pack_id=? ORDER BY position, id LIMIT 1", (p["id"],))
     data["cover"] = sticker_view(cover) if cover else None
+    if with_stickers:
+        from .. import tgexport
+        data["tg_url"] = tgexport.tg_url(p)
     if v is not None:
         link = db.one("SELECT favorite FROM user_sticker_packs WHERE user_id=? AND pack_id=?", (v, p["id"]))
         data["installed"] = p["owner_id"] is None or bool(link)
@@ -591,6 +594,18 @@ async def tg_set_hide(request: Request):
 
 
 @auth()
+async def pack_to_telegram(request: Request):
+    """Свой набор → настоящий стикерпак Telegram (POST — запустить, GET — ход и ссылка)."""
+    from .. import tgexport
+    v = request.state.user["id"]
+    p = _own_pack(path_int(request, "id"), v, edit=False)
+    if request.method == "GET":
+        return JSONResponse(tgexport.status(p["id"]))
+    limit(request, "sticker_lab")
+    return JSONResponse(await run_in_threadpool(tgexport.start, v, p), status_code=202)
+
+
+@auth()
 async def file_import(request: Request):
     """ZIP-архив или пачка файлов (PNG, WEBP, GIF, JPEG, TGS, WEBM) → новый набор или дополнение своего."""
     limit(request, "upload")
@@ -1052,6 +1067,7 @@ routes = [
     Route("/api/avatar3d-stickers", avatar_stickers, methods=["PUT"]),
     Route("/api/sticker-packs", create_pack, methods=["POST"]),
     Route("/api/sticker-packs/by-slug/{slug}", get_pack, methods=["GET"]),
+    Route("/api/sticker-packs/{id:int}/telegram", pack_to_telegram, methods=["GET", "POST"]),
     Route("/api/sticker-packs/{id:int}", update_pack, methods=["PATCH"]),
     Route("/api/sticker-packs/{id:int}", delete_pack, methods=["DELETE"]),
     Route("/api/sticker-packs/{id:int}/stickers", add_sticker, methods=["POST"]),

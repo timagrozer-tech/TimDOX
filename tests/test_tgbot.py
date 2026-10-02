@@ -188,6 +188,38 @@ class TgBotTest(unittest.TestCase):
         self.assertEqual(self.user.post("/api/sticker-import/tg-sets", {"text": "привет"}).status_code, 400)
         self.user.delete("/api/telegram")
 
+    def test_export_pack_to_telegram(self):
+        from app import media, tgexport
+        pid = stickers2._new_pack(self.uid, "Мой 3D", "avatar3d")
+        for i in range(3):
+            stickers2._add(pid, media.store_any_sticker(sticker_png()), "😎", i)
+        tg_export_id = "krug_export"
+        # без привязки — понятная ошибка
+        r = self.user.post(f"/api/sticker-packs/{pid}/telegram", {})
+        self.assertEqual(r.json().get("code"), "tg_not_linked")
+        self.link(tg=5151)
+        tgbot._upload = lambda method, fields, ff, fn, data, mime: self.uploads.append((method, len(data))) or {"ok": True, "result": {"file_id": tg_export_id}}
+        r = self.user.post(f"/api/sticker-packs/{pid}/telegram", {})
+        self.assertEqual(r.status_code, 202, r.text)
+        self.assertTrue(self.wait(lambda: self.user.get(f"/api/sticker-packs/{pid}/telegram").json().get("status") == "done"))
+        st = self.user.get(f"/api/sticker-packs/{pid}/telegram").json()
+        self.assertTrue(st["url"].startswith("https://t.me/addstickers/krug") and st["url"].endswith("v1_by_krug_test_bot"))
+        self.assertFalse(st["stale"])
+        create = [p for m, p in self.sent if m == "createNewStickerSet"][-1]
+        self.assertEqual(len(create["stickers"]), 3)
+        self.assertEqual(create["stickers"][0]["emoji_list"], ["😎"])
+        self.assertTrue(all(n <= 500 * 1024 for m, n in self.uploads if m == "uploadStickerFile"))
+        self.assertIn("теперь в Telegram", self.texts()[-1])
+        slug = db.value("SELECT slug FROM sticker_packs WHERE id=?", (pid,))
+        self.assertEqual(self.user.get(f"/api/sticker-packs/by-slug/{slug}").json()["tg_url"], st["url"])
+        # повторный экспорт — старая версия удаляется, новая с v2
+        tgexport._state.clear()
+        self.user.post(f"/api/sticker-packs/{pid}/telegram", {})
+        self.assertTrue(self.wait(lambda: "v2_by" in (self.user.get(f"/api/sticker-packs/{pid}/telegram").json().get("url") or "")))
+        self.assertIn("deleteStickerSet", [m for m, p in self.sent])
+        self.assertEqual(tgexport._emoji("abc"), "🙂")
+        self.user.delete("/api/telegram")
+
     def test_link_inside_mini_app(self):
         tg_user = {"id": 999, "first_name": "Внутри", "username": "inside"}
         r = self.user.post("/api/telegram/link", {"init_data": init_data(tg_user, token="9:x")})

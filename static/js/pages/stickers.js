@@ -1,6 +1,6 @@
 // Студия стикеров KRUG: мои наборы, коллекция (избранное, реакции, папки), каталог (бесплатно и за KC),
 // импорт (Telegram по ссылке, архивы, перетаскивание файлов) и AI Sticker Lab. Плюс окно набора и страница по ссылке.
-import { linkTelegram } from "../components/tglink.js";
+import { linkTelegram, inTelegram } from "../components/tglink.js";
 import { api, emit, on, state } from "../api.js";
 import { h, icon, pl } from "../dom.js";
 import { setTitle, toast, toastError, modal, promptDialog, confirmDialog, busy, showMenu } from "../ui.js";
@@ -34,7 +34,8 @@ export async function showPackPreview(slug) {
   const body = h("div.pack-preview", h("div.spinner"));
   const addBtn = h("button.btn.primary", { type: "button", disabled: true }, "Добавить набор");
   const copyBtn = h("button.btn.ghost", { type: "button", hidden: true }, icon("copy", "sm"), "Своя версия");
-  const m = modal({ title: "Набор стикеров", body, footer: [copyBtn, addBtn] });
+  const tgBtn = h("button.btn.soft", { type: "button", hidden: true }, icon("send", "sm"), "В Telegram");
+  const m = modal({ title: "Набор стикеров", body, footer: [tgBtn, copyBtn, addBtn] });
   try {
     const p = await api.get(`/api/sticker-packs/by-slug/${encodeURIComponent(slug)}`);
     m.dialog.querySelector("h2")?.replaceChildren(p.title);
@@ -70,6 +71,7 @@ export async function showPackPreview(slug) {
         paint();
       } catch (e) { toastError(e); }
     });
+    setupTgExport(p, tgBtn);
     copyBtn.onclick = () => busy(copyBtn, async () => {
       try {
         const c = await api.post(`/api/sticker-packs/${p.id}/copy`, {});
@@ -79,6 +81,56 @@ export async function showPackPreview(slug) {
       } catch (e) { toastError(e); }
     });
   } catch (e) { body.replaceChildren(h("p.muted", e.message)); }
+}
+
+// ---------------------------------------------------------------- набор → настоящий стикерпак Telegram
+function openTg(url) {
+  if (inTelegram()) location.href = url; else window.open(url, "_blank", "noopener");
+}
+
+function setupTgExport(p, btn) {
+  const label = (t, ic = "send") => btn.replaceChildren(icon(ic, "sm"), t);
+  const canExport = p.mine && p.source !== "telegram";
+  if (!canExport) {
+    if (p.tg_url) { btn.hidden = false; label("Открыть в Telegram"); btn.onclick = () => openTg(p.tg_url); }
+    return;
+  }
+  btn.hidden = false;
+  let timer = 0;
+  const show = (st) => {
+    clearTimeout(timer);
+    if (st.status === "running") {
+      btn.disabled = true;
+      label(`Отправляем ${st.done || 0}/${st.total || "…"}`, "upload");
+      timer = setTimeout(async () => {
+        if (!btn.isConnected) return;
+        const st2 = await api.get(`/api/sticker-packs/${p.id}/telegram`).catch(() => ({}));
+        show(st2.status === "running" ? st2 : { ...st2, justDone: true });
+      }, 1500);
+      return;
+    }
+    btn.disabled = false;
+    if (st.status === "error" && st.justDone) toast(st.error || "Не получилось", { error: true });
+    if (st.url && !st.stale) {
+      label("Добавить в Telegram");
+      btn.onclick = () => openTg(st.url);
+      if (st.status === "done" && st.justDone) toast("Набор в Telegram готов — бот прислал ссылку 🎉", { icon: "check" });
+      return;
+    }
+    label(st.url ? "Обновить в Telegram" : "В Telegram");
+    btn.onclick = () => busy(btn, async () => {
+      try {
+        const r = await api.post(`/api/sticker-packs/${p.id}/telegram`, {});
+        setTimeout(() => show(r.status === "running" ? r : { ...r, justDone: true }), 0); // после того как busy вернёт кнопку
+      } catch (e) {
+        if (e.code === "tg_not_linked") {
+          toast("Сначала привяжите Telegram — это займёт секунду", { icon: "send" });
+          navigate("/settings?tab=telegram");
+        } else toastError(e);
+      }
+    });
+  };
+  api.get(`/api/sticker-packs/${p.id}/telegram`).then(show).catch(() => show({}));
 }
 
 function emojiPicker(current, onPick) {
