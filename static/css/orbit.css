@@ -4506,3 +4506,26 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
   background: linear-gradient(135deg, #37bbfe, #1e96d1); box-shadow: 0 6px 18px rgba(42, 171, 238, .35); }
 .tg-hero.ok .tg-hero-ic { background: linear-gradient(135deg, #34d399, #10b981); box-shadow: 0 6px 18px rgba(16, 185, 129, .3); }
 .tg-box .small { font-size: 13px; }
+
+/* ---------------------------------------------------------------- Ваши наборы из Telegram */
+.stk-badge.run { background: color-mix(in srgb, #3b82f6 18%, transparent); color: #2563eb; animation: stk-pulse 1.4s ease-in-out infinite; }
+@keyframes stk-pulse { 50% { opacity: .55; } }
+.stk-howto { margin: 4px 0 10px; padding-left: 22px; display: grid; gap: 6px; color: var(--text-2); }
+.stk-howto li::marker { color: var(--accent, #4f46e5); font-weight: 800; }
+.stk-tgsets-area { width: 100%; min-height: 76px; resize: vertical; font-size: 14px; }
+.stk-tgsets-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 10px; margin-top: 10px; }
+.stk-tgset { position: relative; display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 16px; min-width: 0;
+  background: var(--surface-2, rgba(127, 127, 127, .06)); border: 1px solid var(--border, rgba(127, 127, 127, .14)); }
+.stk-tgset.done { opacity: .75; }
+.stk-tgset-thumbs { flex: none; width: 56px; height: 56px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; place-items: center; font-size: 26px; }
+.stk-tgset-thumbs img { width: 27px; height: 27px; object-fit: contain; }
+.stk-tgset-thumbs img:only-child { grid-column: span 2; grid-row: span 2; width: 52px; height: 52px; }
+.stk-tgset-info { flex: 1; min-width: 0; display: grid; }
+.stk-tgset-info b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stk-tgsets-x { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  opacity: 0; color: var(--text-2); transition: opacity .15s; }
+.stk-tgset:hover .stk-tgsets-x, .stk-tgsets-x:focus-visible { opacity: 1; }
+@media (hover: none) { .stk-tgsets-x { opacity: .6; } }
+.stk-tgsets-more { margin-top: 12px; }
+.stk-tgsets-more summary { cursor: pointer; font-weight: 700; color: var(--text-2); padding: 6px 0; }
+.stk-tgsets .small { font-size: 13px; margin: 6px 0 4px; }

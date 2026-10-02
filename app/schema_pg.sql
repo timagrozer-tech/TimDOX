@@ -900,3 +900,16 @@ ALTER TABLE tg_links ADD COLUMN IF NOT EXISTS notify_messages INTEGER NOT NULL D
 ALTER TABLE tg_links ADD COLUMN IF NOT EXISTS notify_social INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE tg_links ADD COLUMN IF NOT EXISTS webapp_login INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE tg_links ADD COLUMN IF NOT EXISTS linked_at TEXT NOT NULL DEFAULT krug_now();
+
+-- Наборы из Telegram-аккаунта, которые человек показал боту
+CREATE TABLE IF NOT EXISTS tg_seen_sets (
+    user_id  BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name     TEXT NOT NULL,
+    title    TEXT NOT NULL DEFAULT '',
+    kind     TEXT NOT NULL DEFAULT 'stickers',
+    count    INTEGER NOT NULL DEFAULT 0,
+    thumbs   TEXT,
+    hidden   INTEGER NOT NULL DEFAULT 0,
+    seen_at  TEXT NOT NULL DEFAULT krug_now(),
+    PRIMARY KEY (user_id, name)
+);

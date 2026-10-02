@@ -47,7 +47,7 @@ class TgBotTest(unittest.TestCase):
         tgbot.BOT["username"] = "krug_test_bot"
         tgbot._call = lambda method, payload: self.sent.append((method, payload)) or {"ok": True, "result": {"message_id": len(self.sent)}}
         tgbot._upload = lambda method, fields, ff, fn, data, mime: self.uploads.append((method, fn)) or {"ok": True}
-        stickers2.tg_set = lambda name: TSET
+        stickers2.tg_set = lambda name: TSET if name == "FunnyCats" else {**TSET, "name": name, "title": "Набор " + name}
         stickers2._tg_download = lambda fid, limit=0: FILES[fid]
         tgbot._send_document = lambda chat, fn, data, cap: self.docs.append((fn, data))
         tgbot._enqueue = lambda fn, *a: fn(*a)
@@ -163,6 +163,29 @@ class TgBotTest(unittest.TestCase):
         self.user.patch("/api/telegram", {"webapp_login": False})
         r = TestClient(app).post("/api/auth/telegram", json={"init_data": init_data(tg_user)})
         self.assertEqual(r.status_code, 403)
+        self.user.delete("/api/telegram")
+
+    def test_many_sets_bot_and_site(self):
+        shared = "Мои наборы:\nhttps://t.me/addstickers/PackOne\nhttps://t.me/addstickers/PackTwo\nt.me/addemoji/PackThree"
+        self.assertEqual(stickers2.parse_tg_refs(shared), ["PackOne", "PackTwo", "PackThree"])
+        # без привязки — предложение привязать и перенести всё на сайте
+        self.msg(shared, uid=4242)
+        self.assertIn("Нашёл <b>3</b>", self.texts()[-1])
+        self.assertIn("PackOne%2CPackTwo", self.last_kb()[0]["web_app"]["url"])
+        # с привязкой — переносит все по одному и пишет итог
+        self.link(tg=4243)
+        self.msg(shared, uid=4243)
+        self.assertIn("3</b> из 3", self.texts()[-1])
+        items = self.user.get("/api/sticker-import/tg-sets").json()["items"]
+        self.assertLessEqual({"PackOne", "PackTwo", "PackThree"}, {x["name"] for x in items if x["status"] == "done"})
+        # сайт: вставка ссылок и «скрыть»
+        r = self.user.post("/api/sticker-import/tg-sets", {"text": "https://t.me/addstickers/PackFour https://t.me/addstickers/PackOne"})
+        self.assertEqual(r.status_code, 201, r.text)
+        self.assertTrue(self.wait(lambda: any(x["name"] == "PackFour" and x["status"] == "done"
+                                              for x in self.user.get("/api/sticker-import/tg-sets").json()["items"])))
+        self.user.delete("/api/sticker-import/tg-sets/PackFour")
+        self.assertNotIn("PackFour", [x["name"] for x in self.user.get("/api/sticker-import/tg-sets").json()["items"]])
+        self.assertEqual(self.user.post("/api/sticker-import/tg-sets", {"text": "привет"}).status_code, 400)
         self.user.delete("/api/telegram")
 
     def test_link_inside_mini_app(self):

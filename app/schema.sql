@@ -434,6 +434,18 @@ CREATE TABLE IF NOT EXISTS tg_link_codes (
     user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     expires_at TEXT NOT NULL
 );
+-- Наборы из Telegram-аккаунта, которые человек показал боту (или вставил ссылками) — список «Ваши наборы из Telegram»
+CREATE TABLE IF NOT EXISTS tg_seen_sets (
+    user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name     TEXT NOT NULL,
+    title    TEXT NOT NULL DEFAULT '',
+    kind     TEXT NOT NULL DEFAULT 'stickers',
+    count    INTEGER NOT NULL DEFAULT 0,
+    thumbs   TEXT,
+    hidden   INTEGER NOT NULL DEFAULT 0,
+    seen_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (user_id, name)
+);
 
 -- Клипы (короткие вертикальные видео)
 CREATE TABLE IF NOT EXISTS reels (

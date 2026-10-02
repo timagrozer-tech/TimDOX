@@ -148,6 +148,7 @@ def setup() -> None:
     _call("setMyCommands", {"commands": [
         {"command": "start", "description": "Что я умею"},
         {"command": "packs", "description": "Моя коллекция в KRUG"},
+        {"command": "all", "description": "Перенести все наборы разом"},
         {"command": "notify", "description": "Уведомления из KRUG"},
         {"command": "link", "description": "Привязать аккаунт KRUG"},
         {"command": "unlink", "description": "Отвязать аккаунт"},
@@ -200,11 +201,20 @@ def _bind_user(uid: int, frm: dict) -> dict | None:
 MAIN_ROWS_LINKED = lambda: [[("Открыть KRUG", "app:/")], [("Мои стикеры", "app:/stickers"), ("Сообщения", "app:/messages")]]  # noqa: E731
 
 
+ALL_HOWTO = ("📚 <b>Как перенести все наборы разом</b>\n\n"
+             "1. Telegram → Настройки → «Стикеры и эмодзи».\n"
+             "2. Зажмите любой набор (на iPhone — «Изменить»), затем отметьте остальные.\n"
+             "3. Нажмите «Поделиться» и выберите этот чат.\n\n"
+             "Я получу ссылки на все наборы сразу и перенесу их в KRUG. Если в вашей версии Telegram нет выделения — "
+             "просто пересылайте мне по одному стикеру из каждого набора.")
+
+
 def _menu(cid: int, link: dict | None) -> None:
     if link:
         send(cid, f"Привет, <b>{esc(link['name'])}</b>! Аккаунт KRUG <b>@{esc(link['username'])}</b> привязан 💜\n\n"
                   "• пришлите стикер или ссылку на набор — сразу добавлю его в KRUG;\n"
                   "• пришлите фото (можно с подписью) — сделаю стикер и сохраню в KRUG;\n"
+                  "• /all — как перенести все свои наборы разом;\n"
                   "• /packs — ваша коллекция, /notify — уведомления.", MAIN_ROWS_LINKED())
     else:
         send(cid, "Привет! Я мост между Telegram и <b>KRUG</b> 💜\n\n"
@@ -234,6 +244,7 @@ def _import(cid: int, link: dict | None, name: str) -> None:
              [[("Перенести в KRUG", "app:/stickers?tab=import&ref=" + urllib.parse.quote(name))],
               [("📦 Скачать ZIP", f"zip:{name}"), ("Привязать аккаунт", "app:/settings?tab=telegram")]])
         return
+    stickers2.remember_sets(link["user_id"], [s["name"]])
     try:
         job = stickers2.start_tg_import(link["user_id"], name)
     except ApiError as e:
@@ -245,6 +256,42 @@ def _import(cid: int, link: dict | None, name: str) -> None:
         return
     mid = send(cid, f"⏳ Переношу <b>{esc(title)}</b>\n{_bar(0, job['total'] or count)}")
     threading.Thread(target=_watch, args=(cid, mid, job["id"], title), daemon=True).start()
+
+
+def _import_many(cid: int, link: dict | None, names: list[str]) -> None:
+    n = len(names)
+    if not link:
+        refs = ",".join(names)
+        rows = [[("Привязать аккаунт", "app:/settings?tab=telegram")]]
+        if len(refs) < 900:
+            rows.insert(0, [("Перенести все на сайте", "app:/stickers?tab=import&ref=" + urllib.parse.quote(refs))])
+        send(cid, f"Нашёл <b>{n}</b> наборов ✨\n\nПривяжите аккаунт KRUG — и я перенесу их все разом, а на сайте они появятся "
+                  "в списке «Ваши наборы из Telegram».", rows)
+        return
+    uid = link["user_id"]
+    mid = send(cid, f"📥 Нашёл <b>{n}</b> наборов — запоминаю…")
+    sets = stickers2.remember_sets(uid, names)
+    if not sets:
+        edit(cid, mid, "😕 Эти наборы не нашлись в Telegram.") if mid else None
+        return
+    total = len(sets)
+    state = {"last": 0.0}
+
+    def progress(i, todo, name, ok):
+        if mid and (time.time() - state["last"] > 2.5 or i == todo):
+            state["last"] = time.time()
+            edit(cid, mid, f"⏳ Переношу наборы в KRUG\n{_bar(i, todo)}\nСейчас: {esc(name)}")
+
+    if mid:
+        edit(cid, mid, f"⏳ Переношу <b>{total}</b> наборов в KRUG — по одному, это займёт пару минут.\n{_bar(0, total)}")
+    r = stickers2.import_many(uid, [x["name"] for x in sets], progress)
+    lines = [f"✅ Готово: в вашем KRUG <b>{r['done']}</b> из {r['total']} наборов."]
+    if r["already"]:
+        lines.append(f"Уже были раньше: {r['already']}.")
+    if r["failed"]:
+        lines.append(f"Не получилось: {r['failed']} ({esc(r['errors'][0]) if r['errors'] else 'ошибка'}).")
+    rows = [[("Открыть коллекцию", "app:/stickers?tab=collection")], [("Ваши наборы из Telegram", "app:/stickers?tab=import")]]
+    edit(cid, mid, "\n".join(lines), rows) if mid else send(cid, "\n".join(lines), rows)
 
 
 def _watch(cid: int, mid: int | None, job_id: int, title: str) -> None:
@@ -376,6 +423,8 @@ def handle(update: dict) -> None:
         return
     if text in ("/start", "/help") or text.startswith("/start "):
         return _menu(cid, link)
+    if text == "/all":
+        return send(cid, ALL_HOWTO)
     if text == "/link":
         return send(cid, "Откройте настройки KRUG и нажмите «Привязать Telegram» — займёт секунду.", [[("Привязать", "app:/settings?tab=telegram")]])
     if text == "/packs":
@@ -387,6 +436,11 @@ def handle(update: dict) -> None:
         if not link:
             return send(cid, "Аккаунт и так не привязан.")
         return send(cid, f"Отвязать аккаунт <b>@{esc(link['username'])}</b>? Уведомления перестанут приходить.", [[("Да, отвязать", "u:yes")]])
+    # «Поделиться» несколькими наборами из настроек Telegram — приходит одно сообщение со множеством ссылок
+    urls = [e.get("url", "") for e in (msg.get("entities") or []) + (msg.get("caption_entities") or []) if e.get("type") == "text_link"]
+    many = stickers2.parse_tg_refs(text, caption, *urls)
+    if len(many) >= 2:
+        return _import_many(cid, link, many)
     sticker = msg.get("sticker")
     if sticker:
         if sticker.get("set_name"):

@@ -560,6 +560,37 @@ async def tg_import(request: Request):
 
 
 @auth()
+async def tg_sets(request: Request):
+    """«Ваши наборы из Telegram»: GET — список, POST {text|names, all} — запомнить и перенести (по одному, в фоне)."""
+    v = request.state.user["id"]
+    if request.method == "GET":
+        return JSONResponse({"items": await run_in_threadpool(stickers2.seen_sets, v)})
+    limit(request, "upload")
+    data = await body(request)
+    names = stickers2.parse_tg_refs(str(data.get("text") or ""))
+    names += [n for n in (data.get("names") or []) if isinstance(n, str) and stickers2.TG_NAME.match(n)][:100]
+    if data.get("all"):
+        names += [r["name"] for r in db.all("SELECT name FROM tg_seen_sets WHERE user_id=? AND hidden=0", (v,))]
+    names = list(dict.fromkeys(names))[:100]
+    if not names:
+        raise ApiError(400, "Не нашли ссылок на наборы — вставьте ссылки вида t.me/addstickers/Название")
+    remembered = await run_in_threadpool(stickers2.remember_sets, v, names)
+    if not remembered:
+        raise ApiError(404, "Эти наборы не нашлись в Telegram")
+    import threading
+    todo = [s["name"] for s in remembered]
+    stickers2._queued[v] = list(dict.fromkeys(stickers2._queued.get(v, []) + todo))
+    threading.Thread(target=stickers2.import_many, args=(v, todo), daemon=True).start()
+    return JSONResponse({"items": await run_in_threadpool(stickers2.seen_sets, v), "started": len(remembered)}, status_code=201)
+
+
+@auth()
+async def tg_set_hide(request: Request):
+    db.run("UPDATE tg_seen_sets SET hidden=1 WHERE user_id=? AND name=?", (request.state.user["id"], request.path_params["name"]))
+    return ok()
+
+
+@auth()
 async def file_import(request: Request):
     """ZIP-архив или пачка файлов (PNG, WEBP, GIF, JPEG, TGS, WEBM) → новый набор или дополнение своего."""
     limit(request, "upload")
@@ -1039,6 +1070,8 @@ routes = [
     Route("/api/sticker-import/telegram", tg_import, methods=["POST"]),
     Route("/api/sticker-import/tg-thumb", tg_thumb, methods=["GET"]),
     Route("/api/sticker-import/files", file_import, methods=["POST"]),
+    Route("/api/sticker-import/tg-sets", tg_sets, methods=["GET", "POST"]),
+    Route("/api/sticker-import/tg-sets/{name}", tg_set_hide, methods=["DELETE"]),
     Route("/api/sticker-import/{id:int}", import_status, methods=["GET"]),
     Route("/api/sticker-lab/remix", lab_remix, methods=["POST"]),
     Route("/api/sticker-lab/upload", lab_upload, methods=["POST"]),

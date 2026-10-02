@@ -25,7 +25,7 @@ MAX_PACK = 200
 TG_NAME = re.compile(r"^[A-Za-z0-9_]{1,64}$")
 ZIP_MAX_FILES, ZIP_MAX_TOTAL, FILE_MAX = 200, 80 * 1024 * 1024, 5 * 1024 * 1024
 STICKER_EXT = (".png", ".webp", ".gif", ".jpg", ".jpeg", ".tgs", ".webm")
-IMPORTS_PER_DAY = 15
+IMPORTS_PER_DAY = 40
 
 
 # ---------------------------------------------------------------- Telegram
@@ -118,6 +118,106 @@ def tg_preview(name: str) -> dict:
             "static": len(items) - anim - video, "size": sum(int(x.get("file_size") or 0) for x in items),
             "kind": "emoji" if s.get("sticker_type") == "custom_emoji" else "stickers", "thumbs": thumbs,
             "ready": bool(existing), "slug": existing["slug"] if existing else None}
+
+
+# ---------------------------------------------------------------- наборы из Telegram-аккаунта
+LINK_RE = re.compile(r"(?:(?:https?://)?(?:t(?:elegram)?\.me|telegram\.dog)/add(?:stickers|emoji)/|tg://add(?:stickers|emoji)\?set=)([A-Za-z0-9_]{1,64})", re.I)
+_queued: dict[int, list[str]] = {}
+
+
+def parse_tg_refs(*texts: str) -> list[str]:
+    """Все ссылки на наборы из текста (в том числе «Поделиться» несколькими наборами сразу) — без повторов, до 100."""
+    out, seen = [], set()
+    for t in texts:
+        for m in LINK_RE.finditer(t or ""):
+            n = m.group(1)
+            if n.lower() not in seen:
+                seen.add(n.lower())
+                out.append(n)
+    return out[:100]
+
+
+def _thumb_ids(s: dict, n: int = 4) -> list[str]:
+    out = []
+    for x in s.get("stickers") or []:
+        t = (x.get("thumbnail") or x.get("thumb") or {}).get("file_id") or (x["file_id"] if not (x.get("is_animated") or x.get("is_video")) else None)
+        if t:
+            out.append(t)
+        if len(out) >= n:
+            break
+    return out
+
+
+def remember_sets(uid: int, names: list[str]) -> list[dict]:
+    """Запоминаем наборы человека (название, состав, обложки) — для списка «Ваши наборы из Telegram»."""
+    got = []
+    for name in names:
+        try:
+            s = tg_set(name)
+        except ApiError:
+            continue
+        db.run("DELETE FROM tg_seen_sets WHERE user_id=? AND lower(name)=lower(?)", (uid, s["name"]))
+        db.run("INSERT INTO tg_seen_sets (user_id, name, title, kind, count, thumbs) VALUES (?,?,?,?,?,?)",
+               (uid, s["name"], (s.get("title") or s["name"])[:64], "emoji" if s.get("sticker_type") == "custom_emoji" else "stickers",
+                len(s.get("stickers") or []), json.dumps(_thumb_ids(s))))
+        got.append(s)
+    return got
+
+
+def seen_sets(uid: int) -> list[dict]:
+    rows = db.all("SELECT * FROM tg_seen_sets WHERE user_id=? AND hidden=0 ORDER BY seen_at DESC LIMIT 300", (uid,))
+    have = {r["ref"].lower() for r in db.all(
+        "SELECT p.source_ref AS ref FROM user_sticker_packs u JOIN sticker_packs p ON p.id=u.pack_id WHERE u.user_id=? AND p.source='telegram'", (uid,))
+        if r["ref"]}
+    running = {r["ref"].lower() for r in db.all(
+        "SELECT ref FROM sticker_imports WHERE user_id=? AND source='telegram' AND status IN ('running','waiting') AND created_at>=?",
+        (uid, db.future(minutes=-20)))}
+    queued = {n.lower() for n in _queued.get(uid, [])}
+    out = []
+    for r in rows:
+        key = r["name"].lower()
+        status = "done" if key in have else "running" if key in running else "queued" if key in queued else None
+        thumbs = [f"/api/sticker-import/tg-thumb?set={urllib.parse.quote(r['name'])}&f={urllib.parse.quote(t)}"
+                  for t in json.loads(r["thumbs"] or "[]")]
+        out.append({"name": r["name"], "title": r["title"], "kind": r["kind"], "count": r["count"], "thumbs": thumbs, "status": status})
+    return out
+
+
+def import_many(uid: int, names: list[str], progress=None) -> dict:
+    """Переносим наборы по одному (чтобы не перегружать Telegram), прогресс — в progress(i, всего, название, ок)."""
+    have = {r["ref"].lower() for r in db.all(
+        "SELECT p.source_ref AS ref FROM user_sticker_packs u JOIN sticker_packs p ON p.id=u.pack_id WHERE u.user_id=? AND p.source='telegram'", (uid,))
+        if r["ref"]}
+    todo = [n for n in names if n.lower() not in have]
+    _queued[uid] = list(dict.fromkeys(_queued.get(uid, []) + todo))
+    done, failed, errors = len(names) - len(todo), 0, []
+    try:
+        for i, name in enumerate(todo, 1):
+            ok = False
+            try:
+                job = start_tg_import(uid, name)
+                end = time.time() + 300
+                while job["status"] not in ("done", "error") and time.time() < end:
+                    time.sleep(1.5)
+                    job = job_view(db.one("SELECT * FROM sticker_imports WHERE id=?", (job["id"],)))
+                ok = job["status"] == "done"
+                if not ok:
+                    errors.append(job.get("error") or "ошибка")
+            except ApiError as e:
+                errors.append(e.args[1] if len(e.args) > 1 else "ошибка")
+                if e.args and e.args[0] == 429:  # дневной лимит — дальше нет смысла
+                    failed += len(todo) - i + 1
+                    break
+            done += ok
+            failed += not ok
+            with _lock:
+                if name in _queued.get(uid, []):
+                    _queued[uid].remove(name)
+            if progress:
+                progress(i, len(todo), name, ok)
+    finally:
+        _queued.pop(uid, None)
+    return {"total": len(names), "done": done, "failed": failed, "already": len(names) - len(todo), "errors": errors[:3]}
 
 
 def tg_thumb(name: str, file_id: str) -> bytes:

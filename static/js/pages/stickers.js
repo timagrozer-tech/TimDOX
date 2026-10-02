@@ -392,6 +392,70 @@ function botCard(connect) {
   return box;
 }
 
+// «Ваши наборы из Telegram»: наборы, которые вы показали боту или вставили ссылками, — перенос одной кнопкой
+const TG_HOWTO = [
+  "Telegram → Настройки → «Стикеры и эмодзи»",
+  "Зажмите любой набор (на iPhone — «Изменить») и отметьте остальные",
+  "«Поделиться» → выберите бота KRUG — он перенесёт всё сам",
+];
+
+function tgSetsCard(bot, prefill = []) {
+  const box = h("section.card.card-pad.stk-import.stk-tgsets", { id: "tg-sets" }, h("div.spinner"));
+  const area = h("textarea.input.stk-tgsets-area", { rows: 3, placeholder: "Вставьте сюда ссылки на наборы — хоть все сразу, каждая с новой строки",
+    "aria-label": "Ссылки на наборы Telegram" });
+  let poll = 0;
+  const send = async (payload, btn) => {
+    try {
+      const r = await api.post("/api/sticker-import/tg-sets", payload);
+      toast(`Переносим ${pl(r.started, ["набор", "набора", "наборов"])} — можно закрыть страницу, всё продолжится само`, { icon: "check", duration: 4000 });
+      area.value = "";
+      paint(r.items);
+    } catch (e) { toastError(e); }
+  };
+  const addBtn = h("button.btn.soft", { type: "button", onclick: (e) => busy(e.currentTarget, () => send({ text: area.value })) }, icon("download", "sm"), "Перенести");
+  const pasteRow = h("div.stack.stk-tgsets-paste", area, h("div.row", addBtn));
+  const STATUS = { done: ["✓ В KRUG", "ok"], running: ["Переносим…", "run"], queued: ["В очереди", "run"] };
+
+  function paint(items) {
+    clearTimeout(poll);
+    if (!box.isConnected && items) { /* первая отрисовка до вставки — ок */ }
+    const left = items.filter((x) => x.status !== "done");
+    const head = h("div.stk-import-head", h("span.stk-logo.tg", "📚"),
+      h("div", h("h3", "Ваши наборы из Telegram"),
+        h("p.muted", items.length ? `${pl(items.length, ["набор", "набора", "наборов"])} из вашего Telegram · в KRUG уже ${items.length - left.length}`
+          : "Telegram не показывает сайтам ваши наборы, но их можно передать боту за 10 секунд — все сразу.")));
+    if (!items.length) {
+      box.replaceChildren(head,
+        h("ol.stk-howto", TG_HOWTO.map((t) => h("li", t))),
+        bot ? h("div.row", h("a.btn.primary", { href: `https://t.me/${bot}`, target: "_blank", rel: "noopener" }, icon("send", "sm"), "Открыть бота")) : null,
+        h("p.muted.small", "Или вставьте ссылки сами:"), pasteRow);
+      return;
+    }
+    const all = left.some((x) => !x.status) ? h("button.btn.primary", { type: "button",
+      onclick: (e) => busy(e.currentTarget, () => send({ all: true })) }, icon("download", "sm"), `Перенести все (${left.filter((x) => !x.status).length})`) : null;
+    const grid = h("div.stk-tgsets-grid", items.map((x) => {
+      const st = STATUS[x.status];
+      const act = st ? h(`span.stk-badge.${st[1]}`, st[0])
+        : h("button.btn.soft.sm", { type: "button", onclick: (e) => busy(e.currentTarget, () => send({ names: [x.name] })) }, "Перенести");
+      const hide = h("button.stk-tgsets-x", { type: "button", "aria-label": "Скрыть", title: "Скрыть из списка", onclick: async () => {
+        try { await api.del(`/api/sticker-import/tg-sets/${encodeURIComponent(x.name)}`); load(); } catch (e) { toastError(e); }
+      } }, icon("x", "sm"));
+      return h(`div.stk-tgset${x.status === "done" ? ".done" : ""}`,
+        h("div.stk-tgset-thumbs", x.thumbs.length ? x.thumbs.slice(0, 4).map((u) => h("img", { src: u, alt: "", loading: "lazy" })) : h("span", "🗂")),
+        h("div.stk-tgset-info", h("b", x.title), h("small.muted", `${nStickers(x.count)}${x.kind === "emoji" ? " · эмодзи" : ""}`)),
+        act, x.status === "done" ? null : hide);
+    }));
+    box.replaceChildren(head, all ? h("div.row", all) : null, grid,
+      h("details.stk-tgsets-more", h("summary", "Добавить ещё наборы"), h("ol.stk-howto", TG_HOWTO.map((t) => h("li", t))), pasteRow));
+    if (items.some((x) => x.status === "running" || x.status === "queued")) {
+      poll = setTimeout(() => { if (box.isConnected) load(); }, 2500);
+    } else if (items.length && !left.length) emit("stickers-changed");
+  }
+  const load = () => api.get("/api/sticker-import/tg-sets").then((r) => paint(r.items)).catch((e) => box.replaceChildren(h("p.stk-error", e.message)));
+  if (prefill.length) send({ names: prefill }); else load();
+  return box;
+}
+
 async function tabImport(root, ref = "", connect = false) {
   const { items: jobs, telegram } = await api.get("/api/sticker-import");
   // ---- Telegram
@@ -402,6 +466,18 @@ async function tabImport(root, ref = "", connect = false) {
   async function preview() {
     const ref = link.value.trim();
     if (!ref) { tgBox.replaceChildren(); return; }
+    if ((ref.match(/add(stickers|emoji)/gi) || []).length > 1) {
+      tgBox.replaceChildren(h("div.spinner"));
+      try {
+        const r = await api.post("/api/sticker-import/tg-sets", { text: ref });
+        link.value = "";
+        tgBox.replaceChildren(h("p.muted", `Переносим ${pl(r.started, ["набор", "набора", "наборов"])} — следите за ними в «Ваши наборы из Telegram» выше.`));
+        const card = root.querySelector("#tg-sets");
+        card?.replaceWith(tgSetsCard(bot));
+        root.querySelector("#tg-sets")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (e) { tgBox.replaceChildren(h("p.stk-error", e.message)); }
+      return;
+    }
     tgBox.replaceChildren(h("div.spinner"));
     try {
       const p = await api.get("/api/sticker-import/telegram", { ref });
@@ -451,8 +527,13 @@ async function tabImport(root, ref = "", connect = false) {
   drop.addEventListener("dragleave", () => drop.classList.remove("over"));
   drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); run([...e.dataTransfer.files]); });
 
+  const many = ref.includes(",") ? ref.split(",").filter(Boolean) : [];
+  if (many.length) ref = "";
+  let bot = null;
+  try { bot = (await api.get("/api/telegram")).bot; } catch { /* бот не подключён */ }
   root.replaceChildren(
     botCard(connect),
+    tgSetsCard(bot, many),
     h("section.card.card-pad.stk-import",
       h("div.stk-import-head", h("span.stk-logo.tg", "✈️"), h("div", h("h3", "Из Telegram"), h("p.muted", "Вставьте ссылку на набор или его @название — покажем превью и перенесём в один клик. Анимированные и видеостикеры тоже."))),
       telegram ? null : h("p.stk-warn", "Импорт по ссылке почти готов: администратору осталось подключить бота Telegram. Пока можно загрузить стикеры архивом или файлами ниже."),
