@@ -4529,3 +4529,18 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
 .stk-tgsets-more { margin-top: 12px; }
 .stk-tgsets-more summary { cursor: pointer; font-weight: 700; color: var(--text-2); padding: 6px 0; }
 .stk-tgsets .small { font-size: 13px; margin: 6px 0 4px; }
+
+/* ---------------------------------------------------------------- push-уведомления */
+.push-hero, .push-invite { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 18px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent, #7c3aed) 16%, transparent), color-mix(in srgb, var(--accent, #7c3aed) 4%, transparent));
+  border: 1px solid color-mix(in srgb, var(--accent, #7c3aed) 28%, transparent); }
+.push-hero .label-block, .push-invite .label-block { flex: 1; min-width: 0; }
+.push-hero .label-block small, .push-invite .label-block small { display: block; line-height: 1.4; }
+.push-hero-ic { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, #8b5cf6, #ec4899); box-shadow: 0 6px 18px rgba(139, 92, 246, .35); }
+.push-hero.ok .push-hero-ic { background: linear-gradient(135deg, #34d399, #10b981); box-shadow: 0 6px 18px rgba(16, 185, 129, .3); }
+.push-invite { flex-wrap: wrap; animation: push-in .5s cubic-bezier(.2, .9, .3, 1.2) both; }
+.push-invite-act { display: flex; gap: 6px; margin-left: auto; }
+@keyframes push-in { from { opacity: 0; transform: translateY(-8px) scale(.98); } }
+@media (max-width: 520px) { .push-invite-act { width: 100%; justify-content: flex-end; } }
+.push-box .small { font-size: 13px; }

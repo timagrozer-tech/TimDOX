@@ -10,6 +10,7 @@ import { installButton } from "../pwa.js";
 import { refreshSidebarUser } from "../components/layout.js";
 import { logout } from "../app-actions.js";
 import { linkTelegram } from "../components/tglink.js";
+import { pushSettingsBox } from "../push.js";
 
 /** Выбор и загрузка аватара или обложки */
 export function uploadProfileImage(kind, onDone) {
@@ -530,6 +531,8 @@ export async function settingsPage({ query = {} } = {}) {
       section("Пароль", null, h("details.set-more", h("summary", icon("lock", "sm"), "Сменить пароль", icon("down", "sm")), pwForm)),
       section("Где выполнен вход", "Если видите незнакомое устройство — завершите сеанс и смените пароль.", sessionsBox()),
       section("Журнал входов", "Все входы и неудачные попытки за 90 дней. Мы показываем сеть, а не точный адрес.", loginsBox())]],
+    ["notify", "Уведомления", "bell", () => [
+      section("Уведомления на этом устройстве", "Пуш-уведомления приходят, даже когда KRUG закрыт. Включаются отдельно на телефоне и на компьютере.", pushSettingsBox())]],
     ["telegram", "Telegram", "send", () => [
       section("Telegram", "Бот KRUG: уведомления, стикеры и быстрый вход.", telegramBox())]],
     ["more", "Ещё", "more", () => [

@@ -16,6 +16,12 @@ export function onInstallChange(fn) { listeners.add(fn); return () => listeners.
 export function initPwa() {
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
+    // нажали на уведомление, а KRUG уже открыт — переходим внутри приложения, без перезагрузки
+    navigator.serviceWorker.addEventListener("message", (e) => {
+      if (e.data?.type !== "open" || !e.data.url) return;
+      const u = new URL(e.data.url);
+      if (u.origin === location.origin) import("./router.js").then((r) => r.navigate(u.pathname + u.search));
+    });
   }
   addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();

@@ -923,3 +923,17 @@ CREATE TABLE IF NOT EXISTS tg_exports (
     count       INTEGER NOT NULL DEFAULT 0,
     exported_at TEXT NOT NULL DEFAULT krug_now()
 );
+
+-- Web Push: подписки устройств на уведомления
+CREATE TABLE IF NOT EXISTS push_subs (
+    id              BIGSERIAL PRIMARY KEY,
+    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    endpoint        TEXT NOT NULL UNIQUE,
+    p256dh          TEXT NOT NULL,
+    auth            TEXT NOT NULL,
+    ua              TEXT NOT NULL DEFAULT '',
+    notify_messages INTEGER NOT NULL DEFAULT 1,
+    notify_social   INTEGER NOT NULL DEFAULT 1,
+    created_at      TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subs(user_id);

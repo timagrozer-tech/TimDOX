@@ -244,15 +244,16 @@ _KIND_LABEL = {"image": "📷 Фото", "voice": "🎙 Голосовое", "vi
 
 
 def _tg_notify(conv_id: int, sender: int, sender_card: dict, text: str, kind: str) -> None:
+    """Сообщение тем, кого нет на сайте: push на телефон/компьютер и в Telegram (если привязан)."""
     try:
-        from .. import tgbot
-        if not tgbot.enabled():
-            return
+        from .. import tgbot, webpush
         preview = (text or "").strip() or _KIND_LABEL.get(kind, "Новое сообщение")
         name = sender_card.get("name") or sender_card.get("username") or "KRUG"
         for uid in member_ids(conv_id):
             if uid != sender:
-                tgbot.notify_message(uid, name, conv_id, preview)
+                webpush.notify_message(uid, name, conv_id, preview, sender_card.get("avatar"))
+                if tgbot.enabled():
+                    tgbot.notify_message(uid, name, conv_id, preview)
     except Exception:  # noqa: BLE001 — уведомления никогда не ломают отправку
         pass
 

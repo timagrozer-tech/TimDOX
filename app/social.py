@@ -274,11 +274,14 @@ def notify(user_id: int, actor_id: int, type_: str, post_id: int | None = None,
     hub.publish(user_id, "notification", notification_view(row))
     push_counters(user_id)
     try:
-        from . import tgbot
-        if tgbot.enabled() and type_ in tgbot.SOCIAL:
-            actor = db.one("SELECT name, username FROM profiles WHERE user_id=?", (actor_id,))
-            tgbot.notify_social(user_id, (actor and (actor["name"] or actor["username"])) or "Кто-то", type_, post_id)
-    except Exception:  # noqa: BLE001
+        from . import tgbot, webpush
+        if type_ in webpush.SOCIAL or (tgbot.enabled() and type_ in tgbot.SOCIAL):
+            actor = db.one("SELECT name, username, avatar FROM profiles WHERE user_id=?", (actor_id,))
+            name = (actor and (actor["name"] or actor["username"])) or "Кто-то"
+            webpush.notify_social(user_id, name, type_, post_id, actor and actor["avatar"])
+            if tgbot.enabled() and type_ in tgbot.SOCIAL:
+                tgbot.notify_social(user_id, name, type_, post_id)
+    except Exception:  # noqa: BLE001 — уведомления никогда не ломают основное действие
         pass
 
 

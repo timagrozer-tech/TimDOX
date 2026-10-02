@@ -20,7 +20,7 @@ from .api import wallet as wallet_api
 from .api import city as city_api
 from .api import shop_routes
 from .api import market_routes
-from . import tgbot
+from . import tgbot, webpush
 from .api import accounts, admin, auth_routes, calls, collection_routes, invites, reels, stickers, communities, events, messages, misc, music as music_api, people_extra, posts, stats, stories, users
 from .security import load_extra_banned
 from .world import api as world_api, engine as world_engine
@@ -337,7 +337,7 @@ routes = [
     Route("/sw.js", service_worker),
     Route("/manifest.webmanifest", manifest),
     *wallet_api.routes, *city_api.routes, *shop_routes.routes, *market_routes.routes, *invites.routes, *accounts.routes, *calls.routes, *admin.routes, *world_api.routes, *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
-    *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *stats.routes, *music_api.routes, *collection_routes.routes, *reels.routes, *stickers.routes, *tgbot.routes,
+    *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *stats.routes, *music_api.routes, *collection_routes.routes, *reels.routes, *stickers.routes, *tgbot.routes, *webpush.routes,
     Mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static"),
     Route("/uploads/{path:path}", uploads, methods=["GET", "HEAD"]),
     Route("/{path:path}", spa, methods=["GET"]),

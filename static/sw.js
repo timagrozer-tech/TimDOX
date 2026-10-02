@@ -1,5 +1,5 @@
 // Сервис-воркер «Круга»: приложение открывается мгновенно и работает без сети (показывает сохранённое).
-const VERSION = "krug-v77";
+const VERSION = "krug-v78";
 const SHELL = ["/", "/static/css/app.css?v=7", "/static/css/orbit.css?v=36", "/static/js/app.js?v=36", "/static/js/theme-init.js",
   "/static/img/icon-192.png", "/static/manifest.webmanifest"];
 
@@ -35,4 +35,31 @@ self.addEventListener("fetch", (e) => {
       return res;
     }).catch(() => caches.match(req)));
   }
+});
+
+// ---------------------------------------------------------------- push-уведомления (даже когда сайт закрыт)
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { body: e.data && e.data.text() }; }
+  e.waitUntil((async () => {
+    // если KRUG открыт и виден — уведомление не нужно, там уже всплыло сообщение
+    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    if (d.tag !== "test" && d.tag !== "hello" && wins.some((w) => w.visibilityState === "visible" && w.focused)) return;
+    await self.registration.showNotification(d.title || "KRUG", {
+      body: d.body || "", tag: d.tag || undefined, renotify: !!d.tag, data: { url: d.url || "/" },
+      icon: d.icon || "/static/img/icon-192.png", badge: "/static/img/badge-96.png",
+      vibrate: [60, 40, 60], timestamp: Date.now(),
+    });
+  })());
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || "/", self.location.origin).href;
+  e.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const w = wins.find((c) => new URL(c.url).origin === self.location.origin);
+    if (w) { await w.focus(); w.postMessage({ type: "open", url }); return; }
+    await self.clients.openWindow(url);
+  })());
 });

@@ -3,5 +3,6 @@ uvicorn[standard]==0.46.0
 sse-starlette==3.3.4
 python-multipart==0.0.26
 pillow==12.2.0
+cryptography>=42   # Web Push: шифрование уведомлений и подпись VAPID
 psycopg[binary]>=3.2,<4   # PostgreSQL (Supabase); без DATABASE_URL используется SQLite
 httpx==0.28.1  # только для тестов
