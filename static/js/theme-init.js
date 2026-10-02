@@ -4,6 +4,18 @@
   try {
     var t = localStorage.getItem("krug-theme") || "system";
     var dark = t === "dark" || (t === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    // открыто в Telegram: «как в системе» = как в Telegram (по цвету фона его темы)
+    var tp = /tgWebAppThemeParams=([^&]+)/.exec(location.hash);
+    if (tp && t === "system") {
+      var bg = (JSON.parse(decodeURIComponent(tp[1])).bg_color || "").replace("#", "");
+      if (bg.length === 6) {
+        var n = parseInt(bg, 16), lum = 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+        dark = lum < 128;
+        try { sessionStorage.setItem("krug:tgDark", dark ? "1" : "0"); } catch (e2) { /* ничего */ }
+      }
+    } else if (t === "system") {
+      try { var sd = sessionStorage.getItem("krug:tgDark"); if (sd) dark = sd === "1"; } catch (e3) { /* ничего */ }
+    }
     root.dataset.theme = dark ? "dark" : "light";
     root.dataset.motion = localStorage.getItem("krug-motion") || "full";
     root.dataset.glass = localStorage.getItem("krug-glass") || "liquid";

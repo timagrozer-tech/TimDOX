@@ -30,6 +30,9 @@ let leaveHook = null;
 /** fn(key) вызывается перед уходом со страницы — чтобы сохранить её для кнопки «Назад» */
 export function onLeave(fn) { leaveHook = fn; }
 export function currentKey() { return curKey; }
+let firstKey = null;
+/** Для кнопки «Назад» мини-приложения: есть ли куда возвращаться внутри сайта */
+export function canGoBack() { return overlays.length > 0 || (curKey && firstKey && curKey !== firstKey); }
 
 // ---------------------------------------------------------------- Окна поверх страницы и кнопка «Назад»
 // Открытое окно (фото, история, диалог) добавляет запись в историю: «Назад» на телефоне закрывает окно, а не страницу.
@@ -79,6 +82,7 @@ export function start() {
   try { history.scrollRestoration = "manual"; } catch { /* старые браузеры */ }
   curKey = history.state?.key || newKey();
   if (!history.state?.key) history.replaceState({ ...(history.state || {}), key: curKey }, "");
+  firstKey = curKey;
   window.addEventListener("popstate", () => {
     if (ignorePop) { ignorePop = false; return; }
     if (overlays.length) { // «Назад» закрывает открытое окно

@@ -33,7 +33,7 @@ _CDN = f" {config.SUPABASE_URL}" if config.MEDIA_STORAGE == "supabase" else ""
 # обложки и потоки раздела «Музыка» приходят с серверов Audius и радиостанций — разрешаем любые https-источники картинок и звука
 CSP = (f"default-src 'self'; img-src 'self' data: blob: https:{_CDN}; media-src 'self' blob: https:{_CDN}; "
        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; "
-       "script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'")
+       "script-src 'self'; connect-src 'self'; frame-ancestors 'self' https://web.telegram.org; base-uri 'self'; form-action 'self'; object-src 'none'")
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
@@ -111,7 +111,6 @@ class SecurityMiddleware:
                 headers += [
                     (b"x-content-type-options", b"nosniff"),
                     (b"referrer-policy", b"strict-origin-when-cross-origin"),
-                    (b"x-frame-options", b"DENY"),
                     (b"permissions-policy", b"camera=(self), microphone=(self), geolocation=()"),
                 ]
                 if config.COOKIE_SECURE:  # сайт работает только по HTTPS — браузер запомнит это на год

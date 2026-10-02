@@ -1,6 +1,7 @@
 // Точка входа клиентского приложения.
 import { api, state, loadMe, connectStream, on } from "./api.js";
 import { saveInitData, tgInitData } from "./components/tglink.js";
+import { initTelegramApp } from "./tgapp.js";
 import { h, avatar } from "./dom.js";
 import { route, onRender, onLeave, start, navigate } from "./router.js";
 import { stopAllMedia } from "./components/mediakit.js";
@@ -255,6 +256,7 @@ async function telegramLogin() {
     initCheckin();
   }
   start();
+  try { initTelegramApp(); } catch { /* вне Telegram или старый клиент */ }
 })();
 
 // Аватары: если миниатюра не загрузилась — пробуем оригинал, если и он недоступен — показываем инициалы.
