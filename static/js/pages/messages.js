@@ -6,7 +6,7 @@ import { setTitle, toast, toastError, showMenu, modal, promptDialog, confirmDial
 import { openPanel } from "../components/stickerpanel.js";
 import { report } from "../components/post.js";
 import { attachMentions } from "../components/mentions.js";
-import { audioPlayer, videoPlayer, voicePlayer, videoMeta, audioMeta, parseTrackName, downsampleLevels, fmtDur } from "../components/mediakit.js";
+import { audioPlayer, videoPlayer, voicePlayer, videoMeta, audioMeta, audioWaveform, parseTrackName, downsampleLevels, fmtDur } from "../components/mediakit.js";
 import { showPackPreview } from "./stickers.js";
 import { setCleanup, navigate } from "../router.js";
 import { pickFriends } from "../components/people.js";
@@ -71,7 +71,8 @@ export function previewOf(m) {
     case "photo": return `📷 Фото${cap}`;
     case "video": return `🎬 Видео${cap}`;
     case "audio": return `🎵 ${m.media?.title || "Аудио"}${cap}`;
-    case "voice": return `🎤 Голосовое${m.media?.duration ? ` ${fmtDur(m.media.duration)}` : ""}`;
+    case "voice": return m.media?.transcript ? `🎤 ${m.media.transcript.length > 70 ? `${m.media.transcript.slice(0, 68).trimEnd()}…` : m.media.transcript}`
+      : `🎤 Голосовое${m.media?.duration ? ` ${fmtDur(m.media.duration)}` : ""}`;
     case "deleted": return "🚫 Сообщение удалено";
     case "sticker": return `${m.media?.emoji || m.text || ""} Стикер`;
     default: return m.text;
@@ -282,7 +283,7 @@ export async function messagesPage({ params }) {
         const content = md.type === "photo"
           ? h("button.chat-photo", { type: "button", "aria-label": "Открыть фото", onclick: () => lightbox([{ url: md.url, alt: m.text || "Фото" }]) },
             h("img", { src: md.thumb || md.url, alt: m.text || "Фото", loading: "lazy", style: md.w && md.h ? { aspectRatio: `${md.w} / ${md.h}` } : {} }))
-          : md.type === "video" ? videoPlayer(md) : md.type === "voice" ? voicePlayer(md) : audioPlayer(md);
+          : md.type === "video" ? videoPlayer(md) : md.type === "voice" ? voicePlayer(md, m.pending ? null : m.id) : audioPlayer(md, m.pending ? null : m.id);
         bubble = h(`div.msg.media-msg.k-${md.type}${m.text ? ".with-caption" : ""}${cls}`, { dataset: { id: m.id, sender: m.sender_id } },
           quote, content, m.text ? h("div.caption", ...richText(m.text).childNodes) : null, reacts, meta);
       } else {
@@ -542,6 +543,8 @@ export async function messagesPage({ params }) {
           if (Number.isFinite(meta.duration)) fd.append("duration", String(meta.duration));
           const t = parseTrackName(file.name);
           fd.append("title", t.title); if (t.artist) fd.append("artist", t.artist);
+          const wave = await audioWaveform(file);
+          if (wave.length) fd.append("waveform", JSON.stringify(wave));
         }
         fd.append("file", file, file.name);
         const up = api.upload(`/api/conversations/${id}/media`, fd, (p) => {

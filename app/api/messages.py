@@ -84,6 +84,10 @@ def _msg_view(m: dict) -> dict:
             view["media"] = json.loads(m["media"])
         except ValueError:
             pass
+        else:
+            from .. import transcribe
+            if isinstance(view["media"], dict) and transcribe.can_transcribe(view["kind"], view["media"]):
+                view["media"]["stt"] = transcribe.enabled()
     return view
 
 
@@ -514,12 +518,40 @@ async def send_media(request: Request):
                 title = clean_text(str(form.get("title") or f.filename or "Аудио"), 120)
                 info["title"] = title.rsplit(".", 1)[0] if "." in title[-5:] else title
                 info["artist"] = clean_text(str(form.get("artist") or ""), 80) or None
+                try:
+                    wave = json.loads(str(form.get("waveform") or "[]"))
+                    if isinstance(wave, list) and wave:
+                        info["waveform"] = [max(0, min(100, int(x))) for x in wave[:64]]
+                except (ValueError, TypeError):
+                    pass
     except Exception:
         media.delete_files(*saved_files)
         raise
     finally:
         await form.close()
-    return JSONResponse(deliver_message(conv_id, v, caption, kind, info, reply_to=reply_to), status_code=201)
+    msg = deliver_message(conv_id, v, caption, kind, info, reply_to=reply_to)
+    if kind == "voice":
+        from .. import transcribe
+        transcribe.run_async(msg["id"], _broadcast_update)
+    return JSONResponse(msg, status_code=201)
+
+
+@auth()
+async def transcribe_message(request: Request):
+    """Расшифровка голосового или короткого аудио по кнопке «Текст»."""
+    from .. import transcribe
+    m = _own_message(request)
+    info = json.loads(m["media"] or "{}") if m.get("media") else {}
+    if not transcribe.can_transcribe(m["kind"] or "", info):
+        raise ApiError(400, "Расшифровать можно голосовое или аудио до 3 минут")
+    if info.get("transcript") is None:
+        if not transcribe.enabled():
+            raise ApiError(503, "Расшифровка пока недоступна")
+        limit(request, "transcribe")
+        from starlette.concurrency import run_in_threadpool
+        await run_in_threadpool(transcribe.run, m["id"], _broadcast_update)
+    row = db.one("SELECT * FROM messages WHERE id=?", (m["id"],))
+    return JSONResponse(_enrich([_msg_view(row)])[0])
 
 
 @auth()
@@ -608,6 +640,7 @@ routes = [
     Route("/api/messages/{id:int}", edit_message, methods=["PATCH"]),
     Route("/api/messages/{id:int}", delete_message, methods=["DELETE"]),
     Route("/api/messages/{id:int}/react", react_message, methods=["POST"]),
+    Route("/api/messages/{id:int}/transcribe", transcribe_message, methods=["POST"]),
     Route("/api/conversations/{id:int}/read", mark_read, methods=["POST"]),
     Route("/api/conversations/{id:int}/typing", typing, methods=["POST"]),
     Route("/api/stream", stream, methods=["GET"]),

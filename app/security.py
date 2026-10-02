@@ -85,6 +85,7 @@ rate_limiter = RateLimiter()
 LIMITS = {
     "constellation": (30, 3600),
     "steam_world": (60, 600),
+    "transcribe": (40, 3600),
     "auth": (10, 60),        # вход, регистрация, сброс пароля
     "login_account": (10, 900),  # неудачные входы в один аккаунт — не зависит от IP
     "mail_address": (4, 3600),   # писем на один адрес в час
