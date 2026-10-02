@@ -383,8 +383,8 @@ VISION_PROMPT = ("Это стикер для мессенджера. Переч�
                  "эмоция, действие. Только JSON: {\"tags\": [\"кот\", \"радость\", ...]}")
 
 
-_vision = {"model": None, "checked": 0.0}
-VISION_HINTS = ("llama-4-scout", "llama-4-maverick", "vision", "-vl", "llava", "pixtral", "gemma-3")
+_vision = {"model": None, "checked": 0.0, "failed": set()}
+VISION_HINTS = ("llama-4-scout", "llama-4-maverick", "vision", "-vl", "llava", "pixtral", "gemma-3", "qwen3")
 
 
 def vision_model() -> str | None:
@@ -407,7 +407,7 @@ def vision_model() -> str | None:
         return None
     for hint in VISION_HINTS:
         for mid in ids:
-            if hint in mid.lower():
+            if hint in mid.lower() and mid not in _vision["failed"]:
                 _vision["model"] = mid
                 log.info("ИИ-зрение для стикеров: %s", mid)
                 return mid
@@ -430,7 +430,8 @@ def vision_chat(prompt: str, image: bytes, mime: str = "image/png", max_tokens: 
         with urllib.request.urlopen(req, timeout=40) as r:
             return json.loads(r.read())["choices"][0]["message"]["content"]
     except urllib.error.HTTPError as e:
-        if e.code in (400, 404):  # модель убрали — найдём другую
+        if e.code in (400, 404):  # модель убрали или она не видит картинки — попробуем другую
+            _vision["failed"].add(model)
             _vision.update(model=None, checked=0.0)
         log.info("ИИ-зрение недоступно: %s", e)
     except (urllib.error.URLError, OSError, ValueError, KeyError, TimeoutError) as e:
