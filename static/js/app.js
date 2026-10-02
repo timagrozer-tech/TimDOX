@@ -242,6 +242,22 @@ async function telegramLogin() {
   }
 }
 
+// 3D-стикеры стали живыми: у тех, кто собрал персонажа раньше, один раз тихо пересобираем набор
+async function upgradeAvatarStickers() {
+  const KEY = "krug:a3dLive:v1";
+  try { if (localStorage.getItem(KEY) || document.hidden || !state.me?.username) return; } catch { return; }
+  try {
+    const u = await api.get(`/api/users/${encodeURIComponent(state.me.username)}`);
+    if (!u.avatar3d) { localStorage.setItem(KEY, "none"); return; }
+    const m = await import("./components/avatar3d-stickers.js");
+    const pack = await m.buildAvatarStickers(u.avatar3d, { quiet: true });
+    if (pack) {
+      localStorage.setItem(KEY, "1");
+      toast("Ваши 3D-стикеры ожили — загляните в смайлики чата 😎", { icon: "sparkle", duration: 5000 });
+    }
+  } catch { /* попробуем в следующий раз */ }
+}
+
 (async function boot() {
   try {
     await loadMe();
@@ -257,6 +273,7 @@ async function telegramLogin() {
   }
   start();
   try { initTelegramApp(); } catch { /* вне Telegram или старый клиент */ }
+  if (state.me) setTimeout(upgradeAvatarStickers, 7000);
 })();
 
 // Аватары: если миниатюра не загрузилась — пробуем оригинал, если и он недоступен — показываем инициалы.

@@ -1263,19 +1263,53 @@ export async function mount3D(container, spec, { interactive = true, snapshotabl
      * Стикеры: голова и плечи на прозрачном фоне, по одному на эмоцию, с лёгким наклоном головы.
      * Возвращает [[эмоция, Blob PNG], …].
      */
-    async stickers(size = 512, list = EMOTION_KEYS) {
+    /** Стикеры с эмоциями. frames > 1 — живые: на каждую эмоцию лента кадров (спрайт по горизонтали), по кругу. */
+    async stickers(size = 512, list = EMOTION_KEYS, { frames = 1 } = {}) {
       const POSE = { neutral: [0, 0, 0], happy: [-.06, .1, .08], smirk: [.02, -.18, -.1], cool: [-.08, .22, .06], surprised: [-.12, 0, 0],
         love: [.04, .12, .14], laugh: [-.16, -.08, -.1], wink: [0, .2, .12], angry: [.12, -.1, 0], sad: [.16, .1, -.12], sleepy: [.12, .15, .2] };
+      // движение на круге t ∈ [0,1): [наклон x, поворот y, наклон z, подскок, масштаб, моргание]
+      const TAU = Math.PI * 2;
+      const MOVE = {
+        neutral: (t) => [0, .05 * Math.sin(TAU * t), 0, .025 * Math.sin(TAU * t), 1, Math.abs(t - .5) < .05],
+        happy: (t) => [0, 0, .08 * Math.sin(TAU * t), .17 * Math.abs(Math.sin(TAU * t)), 1, Math.abs(t - .75) < .05],
+        laugh: (t) => [-.06 * Math.abs(Math.sin(2 * TAU * t)), 0, .15 * Math.sin(2 * TAU * t), .1 * Math.abs(Math.sin(2 * TAU * t)), 1, false],
+        love: (t) => [0, 0, .06 * Math.sin(TAU * t), .02, 1 + .1 * Math.max(0, Math.sin(2 * TAU * t)) ** 2, false],
+        cool: (t) => [0, .2 * Math.sin(TAU * t), 0, .02 * Math.sin(2 * TAU * t), 1, false],
+        smirk: (t) => [0, 0, .08 * Math.sin(TAU * t), .02 * Math.sin(TAU * t), 1, Math.abs(t - .3) < .05],
+        surprised: (t) => [-.08 * Math.max(0, Math.sin(TAU * t)), 0, 0, .16 * Math.max(0, Math.sin(TAU * t)), 1 + .05 * Math.max(0, Math.sin(TAU * t)), false],
+        wink: (t) => [0, .06 * Math.sin(TAU * t), .1 * Math.sin(TAU * t), .03 * Math.abs(Math.sin(TAU * t)), 1, false],
+        angry: (t) => [.04, .13 * Math.sin(3 * TAU * t), 0, 0, 1 + .02 * Math.abs(Math.sin(3 * TAU * t)), false],
+        sad: (t) => [.08 * (.5 + .5 * Math.sin(TAU * t)), 0, .04 * Math.sin(TAU * t), -.03 * (.5 + .5 * Math.sin(TAU * t)), 1, false],
+        sleepy: (t) => [.16 * Math.max(0, Math.sin(TAU * t)) ** 2, 0, .05 * Math.sin(TAU * t), -.02 * Math.max(0, Math.sin(TAU * t)), 1, false],
+      };
       const cam = camera.clone();
       const out = [];
       const w0 = canvas.width, h0 = canvas.height;
       cancelAnimationFrame(raf); raf = 0;
       clearTimeout(emoteTimer);
       renderer.setPixelRatio(1); renderer.setSize(size, size, false);
-      const copy = document.createElement("canvas"); copy.width = copy.height = size;
+      const copy = document.createElement("canvas"); copy.width = size * frames; copy.height = size;
       const cx = copy.getContext("2d");
+      const one = document.createElement("canvas"); one.width = one.height = size;
+      const ox = one.getContext("2d");
       const silC = document.createElement("canvas"); silC.width = silC.height = size;
       const sil = silC.getContext("2d");
+      // кадр: как настоящий стикер — белая обводка по силуэту и мягко растворяющийся низ
+      const drawFrame = (x) => {
+        ox.clearRect(0, 0, size, size);
+        sil.clearRect(0, 0, size, size); sil.globalCompositeOperation = "source-over";
+        sil.drawImage(canvas, 0, 0, size, size);
+        sil.globalCompositeOperation = "source-in"; sil.fillStyle = "#ffffff"; sil.fillRect(0, 0, size, size);
+        const r = Math.max(2, Math.round(size / 85));
+        for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; ox.drawImage(silC, Math.cos(a) * r, Math.sin(a) * r); }
+        ox.drawImage(canvas, 0, 0, size, size);
+        ox.globalCompositeOperation = "destination-in";
+        const fade = ox.createLinearGradient(0, size * .8, 0, size);
+        fade.addColorStop(0, "rgba(0,0,0,1)"); fade.addColorStop(1, "rgba(0,0,0,0)");
+        ox.fillStyle = fade; ox.fillRect(0, 0, size, size);
+        ox.globalCompositeOperation = "source-over";
+        cx.drawImage(one, x, 0);
+      };
       try {
         for (const em of list) {
           char.userData.setEmotion(em);
@@ -1285,35 +1319,32 @@ export async function mount3D(container, spec, { interactive = true, snapshotabl
           char.rotation.set(0, 0, 0); char.position.set(0, 0, 0); char.scale.set(1, 1, 1);
           ud.head.rotation.set(0, 0, 0); ud.lids.forEach((e) => { e.scale.y = 1; }); ud.mouth.scale.set(1, 1, 1);
           char.updateMatrixWorld(true);
-          // кадр: вся голова со шляпой и верх плеч
+          // кадр: вся голова со шляпой и верх плеч (для живых — с запасом на подскок)
           const box = new T.Box3().setFromObject(ud.head);
-          const top = box.max.y + .12, bottom = -1.55;
-          const half = Math.max((top - bottom) / 2, (box.max.x - box.min.x) / 2 + .1);
+          const top = box.max.y + (frames > 1 ? .3 : .12), bottom = -1.55;
+          const half = Math.max((top - bottom) / 2, (box.max.x - box.min.x) / 2 + (frames > 1 ? .22 : .1));
           const cy = (top + bottom) / 2;
           cam.aspect = 1; cam.position.set(0, cy, half / Math.tan(T.MathUtils.degToRad(14)) + 1.2); cam.lookAt(0, cy, 0); cam.updateProjectionMatrix();
           const [px, py, pz] = POSE[em] || POSE.neutral;
-          ud.head.rotation.set(px, py, pz);
-          renderer.render(scene, cam);
-          // как настоящий стикер: белая обводка по силуэту и мягко растворяющийся низ
-          cx.clearRect(0, 0, size, size);
-          sil.clearRect(0, 0, size, size); sil.globalCompositeOperation = "source-over";
-          sil.drawImage(canvas, 0, 0, size, size);
-          sil.globalCompositeOperation = "source-in"; sil.fillStyle = "#ffffff"; sil.fillRect(0, 0, size, size);
-          const r = Math.max(2, Math.round(size / 85));
-          for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; cx.drawImage(silC, Math.cos(a) * r, Math.sin(a) * r); }
-          cx.drawImage(canvas, 0, 0, size, size);
-          cx.globalCompositeOperation = "destination-in";
-          const fade = cx.createLinearGradient(0, size * .78, 0, size);
-          fade.addColorStop(0, "rgba(0,0,0,1)"); fade.addColorStop(1, "rgba(0,0,0,0)");
-          cx.fillStyle = fade; cx.fillRect(0, 0, size, size);
-          cx.globalCompositeOperation = "source-over";
-          out.push([em, await new Promise((res) => copy.toBlob(res, "image/png"))]);
+          cx.clearRect(0, 0, copy.width, size);
+          for (let f = 0; f < frames; f++) {
+            const [mx, my, mz, up, sc, blink] = frames > 1 ? (MOVE[em] || MOVE.neutral)(f / frames) : [0, 0, 0, 0, 1, false];
+            ud.head.rotation.set(px + mx, py + my, pz + mz);
+            char.position.y = up; char.scale.setScalar(sc);
+            ud.lids.forEach((e) => { e.scale.y = blink ? .12 : 1; });
+            char.updateMatrixWorld(true);
+            renderer.render(scene, cam);
+            drawFrame(f * size);
+          }
+          char.position.y = 0; char.scale.setScalar(1);
+          out.push([em, await new Promise((res) => copy.toBlob(res, frames > 1 ? "image/webp" : "image/png", .92))]); // WebP в разы легче; Safari сам отдаст PNG
         }
       } finally {
         char.userData.setEmotion(cur.emotion || "neutral");
         if (char.userData.fx) char.userData.fx.group.visible = true;
         if (char.userData.pet) char.userData.pet.visible = true;
         char.userData.head.rotation.set(0, 0, 0);
+        char.position.set(0, 0, 0); char.scale.set(1, 1, 1);
         renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
         renderer.setSize(w0 / Math.min(devicePixelRatio || 1, 2), h0 / Math.min(devicePixelRatio || 1, 2), false);
         resize();

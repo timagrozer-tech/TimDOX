@@ -377,6 +377,34 @@ def _process_sticker(data: bytes) -> dict:
     return {"path": f"/uploads/{rel}", "animated": animated, "_files": {rel: buf.getvalue()}}
 
 
+def _sprite_sticker(data: bytes, frames: int, ms: int) -> dict:
+    """Лента кадров PNG (по горизонтали, одинаковые квадраты) → живой WebP-стикер по кругу."""
+    try:
+        img = Image.open(io.BytesIO(data))
+        if img.format not in ("PNG", "WEBP"):
+            raise ApiError(400, "Кадры стикера: PNG или WebP")
+        w, h = img.size
+        if not (2 <= frames <= 24) or w != h * frames or not 64 <= h <= STICKER_SIDE:
+            raise ApiError(400, "Неверная лента кадров")
+        img = img.convert("RGBA")
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+        raise ApiError(400, "Файл не является изображением или повреждён")
+    shots = [img.crop((i * h, 0, (i + 1) * h, h)) for i in range(frames)]
+    buf = io.BytesIO()
+    shots[0].save(buf, "WEBP", save_all=True, append_images=shots[1:], duration=max(30, min(ms, 200)), loop=0, quality=82, method=4)
+    sub = datetime.now().strftime("%Y/%m")
+    rel = f"{sub}/st_{secrets.token_hex(10)}.webp"
+    return {"path": f"/uploads/{rel}", "animated": True, "format": "webp", "_files": {rel: buf.getvalue()}}
+
+
+async def save_sprite_sticker(upload, frames: int, ms: int = 80) -> dict:
+    data = await upload.read(6 * 1024 * 1024 + 1)
+    if len(data) > 6 * 1024 * 1024:
+        raise ApiError(413, "Слишком большой стикер")
+    # стикеры 3D-аватара сайт собирает сам при каждом сохранении — в дневной лимит загрузок не считаем
+    return _store(await run_in_threadpool(_sprite_sticker, data, frames, ms))
+
+
 async def save_sticker(upload) -> dict:
     data = await upload.read(5 * 1024 * 1024 + 1)
     if len(data) > 5 * 1024 * 1024:

@@ -87,6 +87,23 @@ class Avatar3DTest(unittest.TestCase):
         self.assertEqual((r2["id"], r2["count"]), (pack["id"], 1))
         mine = c.get("/api/stickers").json()["packs"]
         self.assertIn(pack["id"], [p["id"] for p in mine])
+        # живые стикеры: лента из 4 кадров 96×96 → анимированный WebP
+        from PIL import Image
+        strip = Image.new("RGBA", (96 * 4, 96), (0, 0, 0, 0))
+        for i in range(4):
+            strip.paste((255, 40 * i, 0, 255), (i * 96 + 20, 20, i * 96 + 76, 76))
+        b = io.BytesIO(); strip.save(b, "PNG")
+        r3 = c.c.put("/api/avatar3d-stickers", headers=c._h(), data={"emotion": ["love"], "frames": "4"},
+                     files=[("file", ("love.png", io.BytesIO(b.getvalue()), "image/png"))])
+        self.assertEqual(r3.status_code, 201, r3.text)
+        st = r3.json()["stickers"][0]
+        self.assertTrue(st["animated"])
+        from app import media
+        img = Image.open(io.BytesIO(media.read_upload(st["url"] if "url" in st else st["file"])))
+        self.assertEqual((img.n_frames, img.size), (4, (96, 96)))
+        bad = c.c.put("/api/avatar3d-stickers", headers=c._h(), data={"emotion": ["love"], "frames": "5"},
+                      files=[("file", ("love.png", io.BytesIO(b.getvalue()), "image/png"))])
+        self.assertEqual(bad.status_code, 400)
         # стикер можно отправить в чат; набор не занимает лимит своих наборов
         self.assertEqual(c.post("/api/sticker-packs", {"title": "Ещё набор"}).status_code, 201)
 

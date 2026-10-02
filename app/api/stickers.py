@@ -508,14 +508,19 @@ async def avatar_stickers(request: Request):
     v = u["id"]
     if not db.value("SELECT avatar3d FROM profiles WHERE user_id=?", (v,)):
         raise ApiError(400, "Сначала создайте 3D-аватар")
-    form = await request.form(max_files=len(AVATAR_EMOJI), max_fields=len(AVATAR_EMOJI) * 2 + 4)
+    form = await request.form(max_files=len(AVATAR_EMOJI), max_fields=len(AVATAR_EMOJI) * 2 + 4, max_part_size=6 * 1024 * 1024)
     try:
         files, emotions = form.getlist("file"), [str(x) for x in form.getlist("emotion")]
         if not files or len(files) != len(emotions):
             raise ApiError(400, "Нет стикеров")
         if len(set(emotions)) != len(emotions) or any(e not in AVATAR_EMOJI for e in emotions):
             raise ApiError(400, "Неизвестная эмоция")
-        saved = [await media.save_sticker(f) for f in files]
+        try:
+            frames = int(form.get("frames") or 1)
+        except ValueError:
+            frames = 1
+        # живые стикеры: каждая эмоция — лента кадров; статичные (старые версии сайта) — как раньше
+        saved = [await (media.save_sprite_sticker(f, frames) if frames > 1 else media.save_sticker(f)) for f in files]
     finally:
         await form.close()
     slug = avatar_pack_slug(v)

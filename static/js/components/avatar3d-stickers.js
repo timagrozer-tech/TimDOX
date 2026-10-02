@@ -16,9 +16,12 @@ export async function buildAvatarStickers(spec, { quiet = false } = {}) {
     try {
       view = await mount3D(holder, spec, { interactive: false, snapshotable: true });
       if (!view) return null;
-      const shots = await view.stickers(512);
+      // живые стикеры: 12 кадров на эмоцию (~1 секунда по кругу); сервер собирает из них анимированный WebP
+      const FRAMES = 12;
+      const shots = await view.stickers(320, undefined, { frames: FRAMES });
       const fd = new FormData();
-      for (const [em, blob] of shots) { fd.append("file", blob, `${em}.png`); fd.append("emotion", em); }
+      fd.append("frames", String(FRAMES));
+      for (const [em, blob] of shots) { fd.append("file", blob, `${em}.${blob.type === "image/webp" ? "webp" : "png"}`); fd.append("emotion", em); }
       const pack = await api.form("/api/avatar3d-stickers", fd, "PUT");
       if (!quiet) toast("Готовы 3D-стикеры с вашим персонажем — они в смайликах чата 😎", { icon: "sparkle", duration: 4500 });
       return pack;
