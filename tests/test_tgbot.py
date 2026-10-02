@@ -165,6 +165,17 @@ class TgBotTest(unittest.TestCase):
         self.assertEqual(r.status_code, 403)
         self.user.delete("/api/telegram")
 
+    def test_link_inside_mini_app(self):
+        tg_user = {"id": 999, "first_name": "Внутри", "username": "inside"}
+        r = self.user.post("/api/telegram/link", {"init_data": init_data(tg_user, token="9:x")})
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(r.json()["code"], "tg_init_bad")
+        r = self.user.post("/api/telegram/link", {"init_data": init_data(tg_user)})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()["linked"]["tg_username"], "inside")
+        self.assertIn("привязан", self.texts()[-1])
+        self.user.delete("/api/telegram")
+
 
 if __name__ == "__main__":
     unittest.main()

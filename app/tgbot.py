@@ -181,7 +181,11 @@ def _bind(code: str, frm: dict) -> dict | None:
     if not row:
         return None
     db.run("DELETE FROM tg_link_codes WHERE code=?", (code,))
-    uid, tg_id = row["user_id"], int(frm["id"])
+    return _bind_user(row["user_id"], frm)
+
+
+def _bind_user(uid: int, frm: dict) -> dict | None:
+    tg_id = int(frm["id"])
     db.run("DELETE FROM tg_links WHERE user_id=? OR tg_id=?", (uid, tg_id))  # один Telegram — один аккаунт KRUG
     name = " ".join(x for x in (frm.get("first_name"), frm.get("last_name")) if x)[:64]
     db.run("INSERT INTO tg_links (user_id, tg_id, tg_username, tg_name) VALUES (?,?,?,?)", (uid, tg_id, (frm.get("username") or "")[:64], name))
@@ -566,6 +570,18 @@ async def link_start(request: Request):
     v = request.state.user["id"]
     if not enabled() or not bot_username():
         raise ApiError(503, "Бот Telegram пока не подключён")
+    data = await body(request)
+    if data.get("init_data"):
+        # открыто внутри мини-приложения: Telegram уже подписал, кто это — привязываем сразу
+        tg_user = check_init_data(str(data["init_data"]), max_age=24 * 3600)
+        if not tg_user or not tg_user.get("id"):
+            raise ApiError(400, "Данные Telegram устарели — откройте KRUG из бота заново", "tg_init_bad")
+        new = _bind_user(v, tg_user)
+        if new:
+            _enqueue(send, new["tg_id"], f"🎉 Готово! Аккаунт KRUG <b>@{esc(new['username'])}</b> привязан.\n\n"
+                                         "Теперь стикеры и наборы, которые вы мне пришлёте, сразу попадут в KRUG, а уведомления придут сюда.",
+                     MAIN_ROWS_LINKED())
+        return JSONResponse(_view(v))
     code = new_link_code(v)
     return JSONResponse({"url": f"https://t.me/{bot_username()}?start=link_{code}", "expires_in": 900})
 

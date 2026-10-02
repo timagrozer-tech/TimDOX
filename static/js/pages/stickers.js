@@ -1,5 +1,6 @@
 // Студия стикеров KRUG: мои наборы, коллекция (избранное, реакции, папки), каталог (бесплатно и за KC),
 // импорт (Telegram по ссылке, архивы, перетаскивание файлов) и AI Sticker Lab. Плюс окно набора и страница по ссылке.
+import { linkTelegram } from "../components/tglink.js";
 import { api, emit, on, state } from "../api.js";
 import { h, icon, pl } from "../dom.js";
 import { setTitle, toast, toastError, modal, promptDialog, confirmDialog, busy, showMenu } from "../ui.js";
@@ -371,8 +372,8 @@ function botCard(connect) {
         st.linked ? h("span.stk-badge.ok", `✓ Telegram${st.tg_username ? ` @${st.tg_username}` : ""}`) : null,
         st.linked ? open : h("button.btn.primary", { type: "button", onclick: (e) => busy(e.currentTarget, async () => {
           try {
-            const r = await api.post("/api/telegram/link", {});
-            window.open(r.url, "_blank", "noopener");
+            const r = await linkTelegram();
+            if (r.linked) { paint(r.view); toast("Бот подключён 🎉", { icon: "check" }); return; }
             toast("Нажмите «Запустить» в Telegram — и аккаунт подключится", { icon: "check", duration: 4000 });
             const poll = setInterval(async () => {
               if (!box.isConnected) return clearInterval(poll);

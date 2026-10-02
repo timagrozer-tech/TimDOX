@@ -1,5 +1,6 @@
 // Точка входа клиентского приложения.
 import { api, state, loadMe, connectStream, on } from "./api.js";
+import { saveInitData, tgInitData } from "./components/tglink.js";
 import { h, avatar } from "./dom.js";
 import { route, onRender, onLeave, start, navigate } from "./router.js";
 import { stopAllMedia } from "./components/mediakit.js";
@@ -223,10 +224,14 @@ initPullToRefresh();
 
 // Открыто из бота Telegram (мини-приложение): если аккаунт привязан — входим без пароля
 async function telegramLogin() {
-  if (!location.hash.includes("tgWebAppData")) return;
+  if (!location.hash.includes("tgWebAppData")) {
+    if (tgInitData()) document.documentElement.classList.add("in-telegram");
+    return;
+  }
   const initData = new URLSearchParams(location.hash.slice(1)).get("tgWebAppData");
   history.replaceState(history.state, "", location.pathname + location.search);
   document.documentElement.classList.add("in-telegram");
+  if (initData) saveInitData(initData);
   if (!initData || state.me) return;
   try {
     await api.post("/api/auth/telegram", { init_data: initData });

@@ -9,6 +9,7 @@ import { codeForm, verifyFlow } from "./feed.js";
 import { installButton } from "../pwa.js";
 import { refreshSidebarUser } from "../components/layout.js";
 import { logout } from "../app-actions.js";
+import { linkTelegram } from "../components/tglink.js";
 
 /** Выбор и загрузка аватара или обложки */
 export function uploadProfileImage(kind, onDone) {
@@ -212,13 +213,15 @@ function telegramBox() {
       let poll = null;
       const btn = h("button.btn.primary", { type: "button" }, icon("send", "sm"), "Привязать Telegram");
       btn.addEventListener("click", () => busy(btn, async () => {
-        const r = await api.post("/api/telegram/link", {});
-        window.open(r.url, "_blank", "noopener");
+        try {
+          const r = await linkTelegram();
+          if (r.linked) { toast("Telegram привязан ✨"); render(r.view); return; }
+        } catch (e) { toastError(e); return; }
         toast("Нажмите «Запустить» в Telegram — привязка займёт секунду");
         clearInterval(poll);
         let n = 0;
         poll = setInterval(async () => {
-          if (++n > 60 || !box.isConnected) { clearInterval(poll); return; }
+          if (++n > 100 || !box.isConnected) { clearInterval(poll); return; }
           try { const d2 = await api.get("/api/telegram"); if (d2.linked) { clearInterval(poll); toast("Telegram привязан ✨"); render(d2); } } catch { /* ждём */ }
         }, 3000);
       }));
