@@ -411,6 +411,7 @@ def vision_model() -> str | None:
                 _vision["model"] = mid
                 log.info("ИИ-зрение для стикеров: %s", mid)
                 return mid
+    log.info("ИИ-зрение: среди моделей Groq нет подходящей (%s)", ", ".join(ids)[:600])
     return None
 
 
