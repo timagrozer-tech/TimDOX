@@ -1,6 +1,7 @@
 """Личные и групповые сообщения, поток событий реального времени (SSE)."""
 import asyncio
 import json
+import re
 
 from sse_starlette.sse import EventSourceResponse
 from starlette.requests import Request
@@ -46,8 +47,15 @@ def _preview_text(m: dict) -> str:
     kind = m.get("kind") or "text"
     if kind == "deleted":
         return "Сообщение удалено"
-    labels = {"photo": "📷 Фото", "video": "🎬 Видео", "audio": "🎵 Музыка", "voice": "🎤 Голосовое", "sticker": "Стикер"}
+    labels = {"photo": "📷 Фото", "video": "🎬 Видео", "audio": "🎵 Музыка", "voice": "🎤 Голосовое", "sticker": "Стикер",
+              "file": "📎 Файл", "location": "📍 Местоположение", "contact": "👤 Контакт"}
     base = labels.get(kind, "")
+    if kind in ("file", "contact") and m.get("media"):
+        try:
+            info = json.loads(m["media"]) if isinstance(m["media"], str) else m["media"]
+            base = f"📎 {info.get('name') or 'Файл'}" if kind == "file" else f"👤 {info.get('name') or 'Контакт'}"
+        except (ValueError, TypeError, AttributeError):
+            pass
     text = (m.get("text") or "").strip()
     if kind == "sticker":
         return f"{text} Стикер".strip()
@@ -486,11 +494,21 @@ async def send_media(request: Request):
     try:
         kind = str(form.get("type") or "")
         f = form.get("file")
-        if kind not in ("photo", "video", "audio", "voice") or not getattr(f, "filename", None):
-            raise ApiError(400, "Прикрепите фото, видео или музыку")
+        if kind not in ("photo", "video", "audio", "voice", "file") or not getattr(f, "filename", None):
+            raise ApiError(400, "Прикрепите файл")
         caption = censor(clean_text(str(form.get("caption") or ""), 1000))
         reply_to = _reply_id(form)
-        if kind == "photo":
+        if kind == "file":
+            saved = await media.save_file(f)
+            saved_files.append(saved["path"])
+            # браузеры кодируют в имени файла кавычки и переводы строк (%22, %0D, %0A) — возвращаем их как было
+            raw = str(f.filename or "file").replace("%22", '"').replace("%0D", "").replace("%0A", "")
+            raw = raw.replace("\\", "/").rsplit("/", 1)[-1]
+            name = clean_text(raw, 120) or "file"
+            ext = name.rsplit(".", 1)[-1].lower()[:10] if "." in name else ""
+            info = {"type": "file", "url": saved["path"], "size": saved["size"], "name": name, "ext": ext,
+                    "mime": re.sub(r"[^\w.+/-]", "", str(getattr(f, "content_type", "") or ""))[:80]}
+        elif kind == "photo":
             saved = await media.save_upload(f, "message")
             saved_files.append(saved["path"])
             info = {"type": "photo", "url": saved["path"], "thumb": saved["thumb"], "w": saved["width"], "h": saved["height"]}
@@ -534,6 +552,42 @@ async def send_media(request: Request):
         from .. import transcribe
         transcribe.run_async(msg["id"], _broadcast_update)
     return JSONResponse(msg, status_code=201)
+
+
+@auth()
+async def share(request: Request):
+    """Местоположение или контакт (профиль из Круга) в переписке."""
+    limit(request, "write")
+    v = request.state.user["id"]
+    conv_id = path_int(request)
+    _check_can_send(conv_id, v)
+    data = await body(request)
+    kind = str(data.get("type") or "")
+    if kind == "location":
+        try:
+            lat, lon = float(data.get("lat")), float(data.get("lon"))
+        except (TypeError, ValueError):
+            raise ApiError(400, "Нет координат")
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            raise ApiError(400, "Неверные координаты")
+        acc = data.get("acc")
+        info = {"type": "location", "lat": round(lat, 6), "lon": round(lon, 6),
+                "acc": int(max(0, min(100000, float(acc)))) if isinstance(acc, (int, float)) else None,
+                "label": clean_text(str(data.get("label") or ""), 80) or None}
+    elif kind == "contact":
+        try:
+            uid = int(data.get("user_id"))
+        except (TypeError, ValueError):
+            raise ApiError(400, "Не выбран контакт")
+        p = db.one("""SELECT p.user_id, p.username, p.name, p.avatar, p.verified FROM profiles p JOIN users u ON u.id = p.user_id
+                      WHERE p.user_id=? AND u.is_banned=0""", (uid,))
+        if not p or social.blocked_between(v, uid):
+            raise ApiError(404, "Пользователь не найден")
+        info = {"type": "contact", "user_id": p["user_id"], "username": p["username"], "name": p["name"],
+                "avatar": p["avatar"], "verified": bool(p["verified"])}
+    else:
+        raise ApiError(400, "Можно отправить местоположение или контакт")
+    return JSONResponse(deliver_message(conv_id, v, "", kind, info, reply_to=_reply_id(data)), status_code=201)
 
 
 @auth()
@@ -637,6 +691,7 @@ routes = [
     Route("/api/conversations/{id:int}/messages", list_messages, methods=["GET"]),
     Route("/api/conversations/{id:int}/messages", send_message, methods=["POST"]),
     Route("/api/conversations/{id:int}/media", send_media, methods=["POST"]),
+    Route("/api/conversations/{id:int}/share", share, methods=["POST"]),
     Route("/api/messages/{id:int}", edit_message, methods=["PATCH"]),
     Route("/api/messages/{id:int}", delete_message, methods=["DELETE"]),
     Route("/api/messages/{id:int}/react", react_message, methods=["POST"]),

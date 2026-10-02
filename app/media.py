@@ -257,6 +257,25 @@ async def save_media(upload, kind: str) -> dict:
     return {"path": f"/uploads/{rel}", "size": len(data), "mime": content_type_of(rel)}
 
 
+async def save_file(upload) -> dict:
+    """Любой файл для сообщений. Хранится как .bin (application/octet-stream) и отдаётся только на скачивание:
+    браузер никогда не откроет его как страницу, поэтому HTML/SVG/JS в файле не опасны для сайта."""
+    limit_mb = config.MAX_FILE_MB
+    data = await upload.read(limit_mb * 1024 * 1024 + 1)
+    if len(data) > limit_mb * 1024 * 1024:
+        raise ApiError(413, f"Файл больше {limit_mb} МБ")
+    if not data:
+        raise ApiError(400, "Файл пустой")
+    charge_upload(len(data))
+    sub = datetime.now().strftime("%Y/%m")
+    rel = f"{sub}/{secrets.token_hex(12)}.bin"
+    if config.MEDIA_STORAGE == "supabase":
+        await run_in_threadpool(_put, rel, data, "application/octet-stream")
+    else:
+        _put(rel, data, "application/octet-stream")
+    return {"path": f"/uploads/{rel}", "size": len(data)}
+
+
 async def save_upload(upload, kind: str) -> dict:
     """upload — starlette UploadFile."""
     if upload.content_type not in ALLOWED_MIME:

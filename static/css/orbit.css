@@ -3865,3 +3865,55 @@ a.cst-st-game:hover { background: rgb(255 255 255 / .12); }
 @media (max-width: 719px) {
   .menu { background: color-mix(in srgb, var(--surface, #15132a) 97%, transparent) !important; }
 }
+
+/* ---- вложения: файл, место, контакт */
+.file-card { display: grid; gap: 6px; padding: 8px; min-width: 240px; max-width: 320px; }
+.file-main { display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; border-radius: 14px; padding: 6px; margin: -6px; transition: background .2s; }
+.file-main:hover { background: rgb(127 127 127 / .12); }
+.file-ic { position: relative; flex: none; width: 44px; height: 52px; border-radius: 10px 16px 10px 10px; display: grid; place-items: end center; padding-bottom: 7px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--fc) 85%, #fff), var(--fc)); color: #fff; box-shadow: 0 6px 14px -8px var(--fc); }
+.file-ic b { font: 800 10px/1 var(--font); letter-spacing: .04em; }
+.file-ic-fold { position: absolute; top: 0; right: 0; width: 14px; height: 14px; border-radius: 0 14px 0 6px; background: rgb(255 255 255 / .45); }
+.file-ic.big { width: 54px; height: 64px; }
+.file-meta { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.file-name { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; line-height: 1.3; }
+.file-meta small { font-size: 12px; opacity: .7; font-variant-numeric: tabular-nums; }
+.file-dl { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: rgb(127 127 127 / .18); }
+.msg.mine .file-dl { background: rgb(255 255 255 / .2); }
+.file-warn { display: flex; align-items: center; gap: 6px; font-size: 11.5px; line-height: 1.35; opacity: .8; }
+.file-warn .icon { width: 14px; height: 14px; flex: none; color: #f59e0b; }
+.up-file { gap: 10px; }
+.up-file .file-ic { width: 34px; height: 40px; }
+
+.loc-card { display: grid; gap: 8px; padding: 6px; width: 292px; max-width: 100%; }
+.loc-map { display: block; border-radius: 14px; overflow: hidden; }
+.map-box { position: relative; overflow: hidden; border-radius: 14px; max-width: 100%; background: #dfe7ee; }
+.map-tile { position: absolute; width: 256px; height: 256px; max-width: none; user-select: none; }
+:root[data-theme="dark"] .map-tile { filter: invert(.92) hue-rotate(180deg) brightness(.9) contrast(.9) saturate(.7); }
+.map-pin { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -30px 0 0 -15px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+  background: linear-gradient(140deg, var(--c1, #6d4bff), var(--al, #d6246e)); box-shadow: 0 6px 14px -4px rgb(0 0 0 / .5); display: grid; place-items: center; }
+.map-pin i { width: 10px; height: 10px; border-radius: 50%; background: #fff; }
+.map-ping { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%;
+  border: 2px solid var(--c1, #6d4bff); background: color-mix(in srgb, var(--c1, #6d4bff) 18%, transparent); opacity: 0; animation: map-ping 2s ease-out infinite; }
+@keyframes map-ping { 0% { opacity: .8; transform: scale(.2); } 100% { opacity: 0; transform: scale(1.4); } }
+.map-attr { position: absolute; right: 4px; bottom: 3px; font-size: 9px; padding: 1px 5px; border-radius: 6px; background: rgb(255 255 255 / .75); color: #333; }
+.loc-info { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
+.loc-ic { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: rgb(127 127 127 / .18); flex: none; }
+.loc-info b { display: block; font-size: 14px; }
+.loc-info small { font-size: 12px; opacity: .7; font-variant-numeric: tabular-nums; }
+.loc-links { display: flex; gap: 6px; padding: 0 4px 4px; }
+.loc-links a { flex: 1; text-align: center; padding: 7px 8px; border-radius: 10px; font-size: 12.5px; font-weight: 700; color: inherit; text-decoration: none; background: rgb(127 127 127 / .16); }
+.msg.mine .loc-links a, .msg.mine .loc-ic { background: rgb(255 255 255 / .18); }
+:root[data-motion="reduced"] .map-ping { animation: none; }
+/* время у файлов, мест и контактов — под карточкой, а не поверх кнопок */
+.msg.media-msg.k-file .m-meta, .msg.media-msg.k-location .m-meta, .msg.media-msg.k-contact .m-meta {
+  position: static; display: block; text-align: right; background: none; color: inherit; opacity: .7; margin: -2px 10px 6px; padding: 0; }
+.msg a.file-main, .msg a.contact-main, .msg .loc-links a, .msg a.loc-map, .msg .contact-actions a { text-decoration: none; color: inherit; }
+
+.contact-card { display: grid; gap: 10px; padding: 10px; min-width: 240px; }
+.contact-main { display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; }
+.contact-main b { display: flex; align-items: center; gap: 4px; font-size: 15px; }
+.contact-main small { opacity: .7; font-size: 13px; }
+.contact-actions { display: flex; gap: 8px; }
+.contact-actions .btn { flex: 1; justify-content: center; }
+.msg.mine .contact-actions .btn { background: rgb(255 255 255 / .2); color: #fff; }

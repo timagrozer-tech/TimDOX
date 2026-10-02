@@ -72,6 +72,7 @@ MEDIA_STORAGE = os.environ.get("MEDIA_STORAGE", "disk").lower()
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "10"))
 MAX_VIDEO_MB = int(os.environ.get("MAX_VIDEO_MB", "30"))
 MAX_AUDIO_MB = int(os.environ.get("MAX_AUDIO_MB", "15"))
+MAX_FILE_MB = int(os.environ.get("MAX_FILE_MB", "25"))  # любые файлы в сообщениях
 REEL_MAX_SECONDS = int(os.environ.get("REEL_MAX_SECONDS", "90"))
 
 # Supabase Storage для фото, видео и музыки (MEDIA_STORAGE=supabase)

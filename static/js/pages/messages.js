@@ -10,6 +10,7 @@ import { audioPlayer, videoPlayer, voicePlayer, videoMeta, audioMeta, audioWavef
 import { showPackPreview } from "./stickers.js";
 import { setCleanup, navigate } from "../router.js";
 import { pickFriends } from "../components/people.js";
+import { fileCard, fileIcon, locationCard, contactCard } from "../components/attachments.js";
 
 function convAvatar(c, size = "") {
   if (!c.is_group) return avatar(c.user, size);
@@ -73,6 +74,9 @@ export function previewOf(m) {
     case "audio": return `🎵 ${m.media?.title || "Аудио"}${cap}`;
     case "voice": return m.media?.transcript ? `🎤 ${m.media.transcript.length > 70 ? `${m.media.transcript.slice(0, 68).trimEnd()}…` : m.media.transcript}`
       : `🎤 Голосовое${m.media?.duration ? ` ${fmtDur(m.media.duration)}` : ""}`;
+    case "file": return `📎 ${m.media?.name || "Файл"}${cap}`;
+    case "location": return "📍 Местоположение";
+    case "contact": return `👤 ${m.media?.name || "Контакт"}`;
     case "deleted": return "🚫 Сообщение удалено";
     case "sticker": return `${m.media?.emoji || m.text || ""} Стикер`;
     default: return m.text;
@@ -146,12 +150,13 @@ export async function messagesPage({ params }) {
     const fit = autosize(ta);
     const send = h("button.btn.primary.icon-only", { type: "submit", "aria-label": "Отправить", disabled: !conv.can_write }, icon("send"));
     const emojiBtn = h("button.btn.ghost.icon-only.emoji-btn.sp-toggle", { type: "button", "aria-label": "Смайлики и стикеры", title: "Смайлики и стикеры", disabled: !conv.can_write }, icon("smile"));
-    const attachBtn = h("button.btn.ghost.icon-only.attach-btn", { type: "button", "aria-label": "Прикрепить", title: "Фото, видео или музыка", disabled: !conv.can_write, "aria-haspopup": "menu" }, icon("clip"));
+    const attachBtn = h("button.btn.ghost.icon-only.attach-btn", { type: "button", "aria-label": "Прикрепить", title: "Прикрепить: фото, файл, музыку, место или контакт", disabled: !conv.can_write, "aria-haspopup": "menu" }, icon("clip"));
     const pickMedia = h("input", { type: "file", accept: "image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime", multiple: true, hidden: true });
     const pickAudio = h("input", { type: "file", accept: "audio/*,.mp3,.m4a,.ogg,.wav,.flac", multiple: true, hidden: true });
+    const pickAny = h("input", { type: "file", multiple: true, hidden: true });
     const micBtn = h("button.btn.primary.icon-only.mic-btn", { type: "button", "aria-label": "Записать голосовое сообщение", title: "Голосовое сообщение", disabled: !conv.can_write }, icon("mic"));
     const ctxBar = h("div.ctx-bar", { hidden: true });
-    const form = h("form.chat-form", ctxBar, h("div.chat-input", attachBtn, ta, emojiBtn, send, micBtn), pickMedia, pickAudio);
+    const form = h("form.chat-form", ctxBar, h("div.chat-input", attachBtn, ta, emojiBtn, send, micBtn), pickMedia, pickAudio, pickAny);
     let replyTo = null, editing = null;
     const syncButtons = () => form.classList.toggle("has-text", !!ta.value.trim() || !!editing);
     ta.addEventListener("input", syncButtons);
@@ -182,12 +187,16 @@ export async function messagesPage({ params }) {
     }));
     attachBtn.addEventListener("click", () => showMenu(attachBtn, [
       { label: "Фото или видео", icon: "image", onClick: () => pickMedia.click() },
+      { label: "Файл", icon: "clip", onClick: () => pickAny.click() },
       { label: "Музыка", icon: "music", onClick: () => pickAudio.click() },
+      { label: "Местоположение", icon: "pin", onClick: () => shareLocation() },
+      { label: "Контакт", icon: "user", onClick: () => shareContact() },
     ]));
+    pickAny.addEventListener("change", () => { sendFiles([...pickAny.files], "file"); pickAny.value = ""; });
     pickMedia.addEventListener("change", () => { sendFiles([...pickMedia.files]); pickMedia.value = ""; });
     pickAudio.addEventListener("change", () => { sendFiles([...pickAudio.files], "audio"); pickAudio.value = ""; });
     ta.addEventListener("paste", (e) => {
-      const files = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith("image/"));
+      const files = [...(e.clipboardData?.files || [])];
       if (files.length) { e.preventDefault(); sendFiles(files); }
     });
     // перетаскивание файлов в окно переписки
@@ -278,6 +287,14 @@ export async function messagesPage({ params }) {
       } else if (big) {
         bubble = h(`div.msg-bigemoji.e${big}${cls}`, { dataset: { id: m.id, sender: m.sender_id } }, h("span", m.text), quote, reacts, meta);
         if (quote) bubble.prepend(quote);
+      } else if (m.media && ["file", "location", "contact"].includes(m.kind)) {
+        const md = m.media;
+        const content = m.kind === "file" ? fileCard(md) : m.kind === "location" ? locationCard(md)
+          : contactCard(md, { onMessage: md.user_id === state.me.id ? null : async (u) => {
+            try { const c = await api.post("/api/conversations", { user_id: u.id }); navigate(`/messages/${c.id}`); } catch (e) { toastError(e); }
+          } });
+        bubble = h(`div.msg.media-msg.k-${m.kind}${m.text ? ".with-caption" : ""}${cls}`, { dataset: { id: m.id, sender: m.sender_id } },
+          quote, content, m.text ? h("div.caption", ...richText(m.text).childNodes) : null, reacts, meta);
       } else if (m.media && ["photo", "video", "audio", "voice"].includes(m.kind)) {
         const md = m.media;
         const content = md.type === "photo"
@@ -503,11 +520,38 @@ export async function messagesPage({ params }) {
     }
 
     // ---- вложения: фото, видео, музыка — с прогрессом загрузки
+    async function postShare(payload) {
+      if (replyTo) { payload.reply_to = replyTo.id; replyTo = null; paintCtx(); }
+      try {
+        const m = await api.post(`/api/conversations/${id}/share`, payload);
+        chat.append(m);
+        upsertConv(id, m);
+      } catch (e) { toastError(e); }
+    }
+    async function shareLocation() {
+      if (!navigator.geolocation) return toast("Браузер не умеет определять местоположение", { error: true });
+      const t = toast("Определяю местоположение…", { duration: 2500 });
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        t?.remove?.();
+        const { latitude: lat, longitude: lon, accuracy } = pos.coords;
+        if (!await confirmDialog({ title: "Отправить ваше местоположение?", text: `Собеседник увидит точку на карте (точность ±${Math.round(accuracy)} м).`, confirm: "Отправить" })) return;
+        postShare({ type: "location", lat, lon, acc: Math.round(accuracy) });
+      }, (err) => {
+        t?.remove?.();
+        toast(err.code === 1 ? "Нет доступа к геопозиции — разрешите его в настройках браузера" : "Не удалось определить местоположение", { error: true });
+      }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+    }
+    async function shareContact() {
+      const ids = await pickFriends({ title: "Поделиться контактом", confirm: "Отправить", min: 1 });
+      for (const uid of ids || []) await postShare({ type: "contact", user_id: uid });
+    }
     async function sendFiles(files, forceType = null) {
       for (const file of files.slice(0, 10)) {
-        const type = forceType || (file.type.startsWith("video/") ? "video" : file.type.startsWith("audio/") ? "audio" : file.type.startsWith("image/") ? "photo" : null);
-        if (!type) { toast(`«${file.name}» — неподдерживаемый формат`, { error: true }); continue; }
-        const limitMb = type === "video" ? 30 : type === "audio" ? 15 : 10;
+        // фото/видео/музыка — то, что сайт умеет показывать сам; всё остальное уходит обычным файлом
+        const t = file.type;
+        const type = forceType || (/^image\/(jpeg|png|webp|gif)$/.test(t) ? "photo" : /^video\/(mp4|webm|quicktime)$/.test(t) ? "video"
+          : /^audio\/(mpeg|mp3|mp4|x-m4a|m4a|ogg|wav|x-wav|wave|flac|x-flac)$/.test(t) ? "audio" : "file");
+        const limitMb = type === "video" ? 30 : type === "audio" ? 15 : type === "file" ? 25 : 10;
         if (file.size > limitMb * 1024 * 1024) { toast(`«${file.name}» больше ${limitMb} МБ`, { error: true }); continue; }
         await uploadOne(file, type);
       }
@@ -518,13 +562,14 @@ export async function messagesPage({ params }) {
       if (replyTo) { fd.append("reply_to", String(replyTo.id)); replyTo = null; paintCtx(); }
       const caption = ta.value.trim();
       if (caption) { fd.append("caption", caption); ta.value = ""; fit(); }
-      const localUrl = type === "audio" || type === "voice" ? null : URL.createObjectURL(file);
+      const localUrl = type === "audio" || type === "voice" || type === "file" ? null : URL.createObjectURL(file);
       const ring = h("span.up-ring", { style: { "--p": "0" } }, h("b", "0%"));
       const cancel = h("button.up-cancel", { type: "button", "aria-label": "Отменить загрузку" }, icon("x", "sm"));
       const card = h("div.msg.mine.media-msg.uploading.first.last",
         type === "photo" ? h("img.up-preview", { src: localUrl, alt: "" })
           : type === "video" ? h("video.up-preview", { src: localUrl, muted: true, playsinline: true })
-            : h("div.up-audio", icon(type === "voice" ? "mic" : "music"), h("span", type === "voice" ? `Голосовое · ${fmtDur(extra.duration)}` : file.name)),
+            : type === "file" ? h("div.up-audio.up-file", fileIcon(file.name.includes(".") ? file.name.split(".").pop() : ""), h("span", file.name))
+              : h("div.up-audio", icon(type === "voice" ? "mic" : "music"), h("span", type === "voice" ? `Голосовое · ${fmtDur(extra.duration)}` : file.name)),
         h("div.up-overlay", ring, cancel));
       body.querySelector(".chat-empty")?.remove();
       body.append(card);

@@ -4,6 +4,7 @@ import os
 import time
 import logging
 import re
+from urllib.parse import quote
 from contextlib import asynccontextmanager
 
 from starlette.applications import Starlette
@@ -207,11 +208,22 @@ async def uploads(request: Request):
     rel = request.path_params["path"]
     if ".." in rel or rel.startswith("/"):
         return JSONResponse({"error": "Не найдено"}, status_code=404)
+    # файлы из сообщений (.bin) — только скачиванием, с исходным именем из ?dl=
+    dl = re.sub(r'[\x00-\x1f"\\/]', "_", request.query_params.get("dl", ""))[:150].strip()
+    attach = rel.endswith(".bin") or bool(dl)
     cdn = media.public_url(rel)
     if cdn:
-        return RedirectResponse(cdn, status_code=301, headers={"Cache-Control": "public, max-age=31536000, immutable"})
+        if attach:
+            cdn += ("&" if "?" in cdn else "?") + "download=" + quote(dl or rel.rsplit("/", 1)[-1])
+        return RedirectResponse(cdn, status_code=301 if not attach else 302, headers={"Cache-Control": "public, max-age=31536000, immutable"})
     ctype = media.content_type_of(rel)
     headers = {"Cache-Control": "public, max-age=31536000, immutable", "Accept-Ranges": "bytes", "ETag": f'"{rel}"'}
+    if attach:
+        ctype = "application/octet-stream"
+        name = dl or rel.rsplit("/", 1)[-1]
+        ascii_name = re.sub(r"[^A-Za-z0-9._-]", "_", name) or "file"
+        headers["Content-Disposition"] = f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(name)}"
+        headers["ETag"] = f'"{rel}:{quote(name)}"' 
     if request.headers.get("if-none-match") == headers["ETag"]:
         return Response(status_code=304, headers=headers)
     # видео и музыка: браузеры запрашивают куски (Range) — без этого не работает перемотка
