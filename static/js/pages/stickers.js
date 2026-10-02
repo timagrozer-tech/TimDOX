@@ -356,7 +356,7 @@ async function tabCatalog(root) {
   load();
 }
 
-async function tabImport(root) {
+async function tabImport(root, ref = "") {
   const { items: jobs, telegram } = await api.get("/api/sticker-import");
   // ---- Telegram
   const link = h("input.input", { type: "text", placeholder: "https://t.me/addstickers/Название или @Название", "aria-label": "Ссылка на набор Telegram", autocomplete: "off" });
@@ -427,7 +427,8 @@ async function tabImport(root) {
       h("span", j.source === "telegram" ? "✈️" : "📦"), h("b", j.title || j.ref || "Набор"),
       h("small.muted", j.status === "done" ? nStickers(j.done) : j.status === "error" ? j.error || "ошибка" : `${j.done} из ${j.total}…`),
       j.slug && j.status === "done" ? h("button.btn.ghost.sm", { type: "button", onclick: () => showPackPreview(j.slug) }, "Открыть") : null)))) : null);
-  setTimeout(() => link.focus(), 60);
+  // пришли из бота Telegram: набор уже выбран — сразу показываем превью
+  if (ref) { link.value = ref.includes("/") ? ref : `https://t.me/addstickers/${ref}`; preview(); } else setTimeout(() => link.focus(), 60);
 }
 
 async function pickSticker(title, onPick) {
@@ -485,7 +486,7 @@ export async function stickersPage({ params, query }) {
     if (tab === "packs") { const t = await tabPacks(root); if (query.new) setTimeout(t.createPack, 200); }
     else if (tab === "collection") await tabCollection(root);
     else if (tab === "catalog") await tabCatalog(root);
-    else if (tab === "import") await tabImport(root);
+    else if (tab === "import") await tabImport(root, query.ref || "");
     else tabLab(root);
   } catch (e) { root.replaceChildren(h("p.muted", e.message)); }
   return page;
