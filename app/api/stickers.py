@@ -719,27 +719,16 @@ CAPTION_PROMPT = ("Это фото, из которого делают набо�
 
 
 def _ai_captions(raw: bytes) -> list[str]:
-    import base64
     import io
-    import os
     import re
-    import urllib.request
     from PIL import Image
-    if not os.environ.get("GROQ_API_KEY"):
-        return []
     try:
         im = Image.open(io.BytesIO(raw)).convert("RGB")
         im.thumbnail((384, 384))
         buf = io.BytesIO(); im.save(buf, "JPEG", quality=80)
-        payload = {"model": os.environ.get("GROQ_VISION_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct"), "max_tokens": 200,
-                   "temperature": .8, "response_format": {"type": "json_object"},
-                   "messages": [{"role": "user", "content": [{"type": "text", "text": CAPTION_PROMPT},
-                                {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()}}]}]}
-        req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions", data=json.dumps(payload).encode(), method="POST",
-                                     headers={"content-type": "application/json", "authorization": f"Bearer {os.environ['GROQ_API_KEY']}",
-                                              "user-agent": "KrugStickers/1.0 (+https://krug-social.onrender.com)"})
-        with urllib.request.urlopen(req, timeout=40) as r:
-            text = json.loads(r.read())["choices"][0]["message"]["content"]
+        text = stickers2.vision_chat(CAPTION_PROMPT, buf.getvalue(), "image/jpeg", 220, .8)
+        if not text:
+            return []
         caps = json.loads(re.search(r"\{.*\}", text, re.S).group(0)).get("captions") or []
         return [censor(clean_text(str(c), 24)) for c in caps if str(c).strip()][:8]
     except Exception:  # noqa: BLE001 — без подписей ИИ используем стандартные

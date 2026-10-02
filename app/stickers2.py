@@ -383,24 +383,67 @@ VISION_PROMPT = ("Это стикер для мессенджера. Переч�
                  "эмоция, действие. Только JSON: {\"tags\": [\"кот\", \"радость\", ...]}")
 
 
-def vision_tags(image_png: bytes) -> list[str] | None:
-    import base64
+_vision = {"model": None, "checked": 0.0}
+VISION_HINTS = ("llama-4-scout", "llama-4-maverick", "vision", "-vl", "llava", "pixtral", "gemma-3")
+
+
+def vision_model() -> str | None:
+    """Модель с распознаванием картинок: из GROQ_VISION_MODEL или первая подходящая из списка моделей Groq (раз в 6 часов)."""
+    if os.environ.get("GROQ_VISION_MODEL"):
+        return os.environ["GROQ_VISION_MODEL"]
     key = os.environ.get("GROQ_API_KEY")
     if not key:
         return None
-    payload = {"model": os.environ.get("GROQ_VISION_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct"), "max_tokens": 120, "temperature": 0.2,
-               "response_format": {"type": "json_object"},
-               "messages": [{"role": "user", "content": [{"type": "text", "text": VISION_PROMPT},
-                                                         {"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(image_png).decode()}}]}]}
+    if _vision["model"] or time.time() - _vision["checked"] < 6 * 3600:
+        return _vision["model"]
+    _vision["checked"] = time.time()
+    try:
+        req = urllib.request.Request("https://api.groq.com/openai/v1/models",
+                                     headers={"authorization": f"Bearer {key}", "user-agent": "KrugStickers/1.0 (+https://krug-social.onrender.com)"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            ids = [m.get("id", "") for m in json.loads(r.read()).get("data", []) if m.get("active", True)]
+    except (urllib.error.URLError, OSError, ValueError, TimeoutError) as e:
+        log.info("список моделей Groq недоступен: %s", e)
+        return None
+    for hint in VISION_HINTS:
+        for mid in ids:
+            if hint in mid.lower():
+                _vision["model"] = mid
+                log.info("ИИ-зрение для стикеров: %s", mid)
+                return mid
+    return None
+
+
+def vision_chat(prompt: str, image: bytes, mime: str = "image/png", max_tokens: int = 160, temperature: float = .3) -> str | None:
+    import base64
+    key, model = os.environ.get("GROQ_API_KEY"), vision_model()
+    if not key or not model:
+        return None
+    payload = {"model": model, "max_tokens": max_tokens, "temperature": temperature,
+               "messages": [{"role": "user", "content": [{"type": "text", "text": prompt},
+                                                         {"type": "image_url", "image_url": {"url": f"data:{mime};base64," + base64.b64encode(image).decode()}}]}]}
     req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions", data=json.dumps(payload).encode(), method="POST",
                                  headers={"content-type": "application/json", "authorization": f"Bearer {key}",
                                           "user-agent": "KrugStickers/1.0 (+https://krug-social.onrender.com)"})
     try:
         with urllib.request.urlopen(req, timeout=40) as r:
-            text = json.loads(r.read())["choices"][0]["message"]["content"]
+            return json.loads(r.read())["choices"][0]["message"]["content"]
+    except urllib.error.HTTPError as e:
+        if e.code in (400, 404):  # модель убрали — найдём другую
+            _vision.update(model=None, checked=0.0)
+        log.info("ИИ-зрение недоступно: %s", e)
+    except (urllib.error.URLError, OSError, ValueError, KeyError, TimeoutError) as e:
+        log.info("ИИ-зрение недоступно: %s", e)
+    return None
+
+
+def vision_tags(image_png: bytes) -> list[str] | None:
+    text = vision_chat(VISION_PROMPT, image_png)
+    if not text:
+        return None
+    try:
         tags = json.loads(re.search(r"\{.*\}", text, re.S).group(0)).get("tags") or []
-    except (urllib.error.URLError, OSError, ValueError, KeyError, AttributeError, TimeoutError) as e:
-        log.info("ИИ-теги недоступны: %s", e)
+    except (ValueError, AttributeError):
         return None
     clean = []
     for t in tags:
