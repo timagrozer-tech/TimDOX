@@ -418,6 +418,23 @@ CREATE TABLE IF NOT EXISTS user_gifs (
 );
 CREATE INDEX IF NOT EXISTS idx_user_gifs_user ON user_gifs(user_id, id);
 
+-- Бот Telegram: привязка аккаунта, уведомления, вход из мини-приложения
+CREATE TABLE IF NOT EXISTS tg_links (
+    user_id         INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    tg_id           INTEGER NOT NULL UNIQUE,
+    tg_username     TEXT NOT NULL DEFAULT '',
+    tg_name         TEXT NOT NULL DEFAULT '',
+    notify_messages INTEGER NOT NULL DEFAULT 1,
+    notify_social   INTEGER NOT NULL DEFAULT 1,
+    webapp_login    INTEGER NOT NULL DEFAULT 1,
+    linked_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE TABLE IF NOT EXISTS tg_link_codes (
+    code       TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TEXT NOT NULL
+);
+
 -- Клипы (короткие вертикальные видео)
 CREATE TABLE IF NOT EXISTS reels (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,

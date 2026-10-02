@@ -201,6 +201,56 @@ function loginsBox() {
   return h("div.stack", list, more);
 }
 
+/** Telegram: привязка аккаунта, уведомления в боте, вход из мини-приложения */
+function telegramBox() {
+  const box = h("div.stack.tg-box");
+  const sw = (checked, onchange) => h("input.switch", { type: "checkbox", role: "switch", checked: !!checked, onchange });
+  const render = (d) => {
+    if (!d.enabled) { box.replaceChildren(h("p.muted", "Бот Telegram скоро заработает.")); return; }
+    const bot = d.bot ? `@${d.bot}` : "бот KRUG";
+    if (!d.linked) {
+      let poll = null;
+      const btn = h("button.btn.primary", { type: "button" }, icon("send", "sm"), "Привязать Telegram");
+      btn.addEventListener("click", () => busy(btn, async () => {
+        const r = await api.post("/api/telegram/link", {});
+        window.open(r.url, "_blank", "noopener");
+        toast("Нажмите «Запустить» в Telegram — привязка займёт секунду");
+        clearInterval(poll);
+        let n = 0;
+        poll = setInterval(async () => {
+          if (++n > 60 || !box.isConnected) { clearInterval(poll); return; }
+          try { const d2 = await api.get("/api/telegram"); if (d2.linked) { clearInterval(poll); toast("Telegram привязан ✨"); render(d2); } } catch { /* ждём */ }
+        }, 3000);
+      }));
+      box.replaceChildren(
+        h("div.tg-hero",
+          h("div.tg-hero-ic", icon("send")),
+          h("div.label-block", h("b", `Подключите ${bot}`),
+            h("small", "Уведомления о сообщениях и друзьях прямо в Telegram, перенос стикеров одной пересылкой, стикеры из фото и вход в KRUG без пароля."))),
+        h("div.row", btn, d.bot ? h("a.btn.ghost", { href: `https://t.me/${d.bot}`, target: "_blank", rel: "noopener" }, "Открыть бота") : null));
+      return;
+    }
+    const L = d.linked;
+    const patch = (key) => (e) => api.patch("/api/telegram", { [key]: e.target.checked }).then(render).catch(toastError);
+    const unlink = h("button.btn.ghost.sm", { type: "button" }, icon("x", "sm"), "Отвязать");
+    unlink.addEventListener("click", async () => {
+      if (!(await confirmDialog({ title: "Отвязать Telegram?", text: "Уведомления в бот приходить перестанут.", confirm: "Отвязать", danger: true }))) return;
+      busy(unlink, async () => render(await api.del("/api/telegram")));
+    });
+    box.replaceChildren(
+      h("div.tg-hero.ok",
+        h("div.tg-hero-ic", icon("check")),
+        h("div.label-block", h("b", L.tg_name || "Telegram привязан"), h("small", L.tg_username ? `@${L.tg_username} · ${bot}` : bot)),
+        unlink),
+      settingRow("Новые сообщения", "Когда вы не в сети — не чаще раза в 2 минуты на чат", sw(L.notify_messages, patch("notify_messages"))),
+      settingRow("Друзья и записи", "Заявки, упоминания, комментарии, ответы, подписки, подарки", sw(L.notify_social, patch("notify_social"))),
+      settingRow("Вход из Telegram", "Кнопка «KRUG» в боте открывает сайт сразу в вашем аккаунте. С 2FA вход по паролю.", sw(L.webapp_login, patch("webapp_login"))),
+      h("p.muted.small", "В боте: перешлите стикер — набор переедет в KRUG; пришлите фото — бот вырежет фон и сделает стикер."));
+  };
+  api.get("/api/telegram").then(render).catch((e) => box.replaceChildren(h("p.muted", e.message)));
+  return box;
+}
+
 function settingRow(title, hint, control) {
   return h("div.setting-row", h("div.label-block", h("b", title), hint ? h("small", hint) : null), control);
 }
@@ -477,6 +527,8 @@ export async function settingsPage({ query = {} } = {}) {
       section("Пароль", null, h("details.set-more", h("summary", icon("lock", "sm"), "Сменить пароль", icon("down", "sm")), pwForm)),
       section("Где выполнен вход", "Если видите незнакомое устройство — завершите сеанс и смените пароль.", sessionsBox()),
       section("Журнал входов", "Все входы и неудачные попытки за 90 дней. Мы показываем сеть, а не точный адрес.", loginsBox())]],
+    ["telegram", "Telegram", "send", () => [
+      section("Telegram", "Бот KRUG: уведомления, стикеры и быстрый вход.", telegramBox())]],
     ["more", "Ещё", "more", () => [
       section("Мои данные", "Копия всех ваших данных или полное удаление аккаунта.",
         h("div.row", { style: { flexWrap: "wrap" } },

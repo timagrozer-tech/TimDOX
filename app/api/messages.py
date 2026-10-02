@@ -235,7 +235,26 @@ def deliver_message(conv_id: int, sender: int, text: str, kind: str = "text", me
         hub.publish(uid, "message", {"message": msg, "sender": sender_card})
         if uid != sender:
             social.push_counters(uid)
+    _tg_notify(conv_id, sender, sender_card, text, kind)
     return msg
+
+
+_KIND_LABEL = {"image": "📷 Фото", "voice": "🎙 Голосовое", "video": "🎬 Видео", "sticker": "Стикер", "gif": "GIF",
+               "file": "📎 Файл", "location": "📍 Место", "contact": "👤 Контакт", "audio": "🎵 Аудио"}
+
+
+def _tg_notify(conv_id: int, sender: int, sender_card: dict, text: str, kind: str) -> None:
+    try:
+        from .. import tgbot
+        if not tgbot.enabled():
+            return
+        preview = (text or "").strip() or _KIND_LABEL.get(kind, "Новое сообщение")
+        name = sender_card.get("name") or sender_card.get("username") or "KRUG"
+        for uid in member_ids(conv_id):
+            if uid != sender:
+                tgbot.notify_message(uid, name, conv_id, preview)
+    except Exception:  # noqa: BLE001 — уведомления никогда не ломают отправку
+        pass
 
 
 @auth()

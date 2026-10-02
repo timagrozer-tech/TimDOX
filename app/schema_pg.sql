@@ -878,3 +878,20 @@ ALTER TABLE user_sticker_packs ADD COLUMN IF NOT EXISTS favorite INTEGER NOT NUL
 ALTER TABLE comments ADD COLUMN IF NOT EXISTS media TEXT;
 CREATE INDEX IF NOT EXISTS idx_packs_published ON sticker_packs(published, installs);
 CREATE INDEX IF NOT EXISTS idx_packs_source ON sticker_packs(source, source_ref);
+
+-- Бот Telegram: привязка аккаунта, уведомления, вход из мини-приложения
+CREATE TABLE IF NOT EXISTS tg_links (
+    user_id         BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    tg_id           BIGINT NOT NULL UNIQUE,
+    tg_username     TEXT NOT NULL DEFAULT '',
+    tg_name         TEXT NOT NULL DEFAULT '',
+    notify_messages INTEGER NOT NULL DEFAULT 1,
+    notify_social   INTEGER NOT NULL DEFAULT 1,
+    webapp_login    INTEGER NOT NULL DEFAULT 1,
+    linked_at       TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE TABLE IF NOT EXISTS tg_link_codes (
+    code       TEXT PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TEXT NOT NULL
+);

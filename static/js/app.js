@@ -1,5 +1,5 @@
 // Точка входа клиентского приложения.
-import { state, loadMe, connectStream, on } from "./api.js";
+import { api, state, loadMe, connectStream, on } from "./api.js";
 import { h, avatar } from "./dom.js";
 import { route, onRender, onLeave, start, navigate } from "./router.js";
 import { stopAllMedia } from "./components/mediakit.js";
@@ -221,12 +221,28 @@ initAvatarFallback();
 initPwa();
 initPullToRefresh();
 
+// Открыто из бота Telegram (мини-приложение): если аккаунт привязан — входим без пароля
+async function telegramLogin() {
+  if (!location.hash.includes("tgWebAppData")) return;
+  const initData = new URLSearchParams(location.hash.slice(1)).get("tgWebAppData");
+  history.replaceState(history.state, "", location.pathname + location.search);
+  document.documentElement.classList.add("in-telegram");
+  if (!initData || state.me) return;
+  try {
+    await api.post("/api/auth/telegram", { init_data: initData });
+    await loadMe();
+  } catch (e) {
+    if (e?.code && e.code !== "tg_not_linked") toast(e.message);
+  }
+}
+
 (async function boot() {
   try {
     await loadMe();
   } catch {
     // сервер недоступен — покажем страницу входа, она сообщит об ошибке
   }
+  try { await telegramLogin(); } catch { /* вход из Telegram — необязателен */ }
   if (state.me) {
     applyUserLook();
     connectStream();

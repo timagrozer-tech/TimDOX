@@ -273,6 +273,13 @@ def notify(user_id: int, actor_id: int, type_: str, post_id: int | None = None,
     row = db.one("SELECT * FROM notifications WHERE id=?", (cur.lastrowid,))
     hub.publish(user_id, "notification", notification_view(row))
     push_counters(user_id)
+    try:
+        from . import tgbot
+        if tgbot.enabled() and type_ in tgbot.SOCIAL:
+            actor = db.one("SELECT name, username FROM profiles WHERE user_id=?", (actor_id,))
+            tgbot.notify_social(user_id, (actor and (actor["name"] or actor["username"])) or "Кто-то", type_, post_id)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def unnotify(user_id: int, actor_id: int, type_: str, post_id: int | None = None) -> None:

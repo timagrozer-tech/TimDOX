@@ -4496,3 +4496,13 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
   .stk-head h1 { font-size: 30px; }
   .stk-head .btn { display: none; }
 }
+
+/* ---------------------------------------------------------------- Telegram в настройках */
+.tg-hero { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 18px;
+  background: linear-gradient(135deg, rgba(42, 171, 238, .16), rgba(42, 171, 238, .04)); border: 1px solid rgba(42, 171, 238, .28); }
+.tg-hero .label-block { flex: 1; min-width: 0; }
+.tg-hero .label-block small { display: block; line-height: 1.4; }
+.tg-hero-ic { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, #37bbfe, #1e96d1); box-shadow: 0 6px 18px rgba(42, 171, 238, .35); }
+.tg-hero.ok .tg-hero-ic { background: linear-gradient(135deg, #34d399, #10b981); box-shadow: 0 6px 18px rgba(16, 185, 129, .3); }
+.tg-box .small { font-size: 13px; }

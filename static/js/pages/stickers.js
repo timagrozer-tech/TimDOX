@@ -356,7 +356,42 @@ async function tabCatalog(root) {
   load();
 }
 
-async function tabImport(root, ref = "") {
+// бот KRUG Stickers: привязка аккаунта — после неё наборы переносятся прямо из Telegram
+function botCard(connect) {
+  const box = h("section.card.card-pad.stk-import.stk-bot", { id: "tg-bot" }, h("div.spinner"));
+  const paint = (raw) => {
+    const st = { ...raw, tg_username: raw.linked?.tg_username, linked: !!raw.linked };
+    if (!st.enabled || !st.bot) { box.remove(); return; }
+    const open = h("a.btn.soft.sm", { href: `https://t.me/${st.bot}`, target: "_blank", rel: "noopener" }, "Открыть бота");
+    box.replaceChildren(
+      h("div.stk-import-head", h("span.stk-logo.tg", "🤖"), h("div", h("h3", "Бот KRUG Stickers"),
+        h("p.muted", st.linked ? "Подключён. Пересылайте боту стикеры — и переносите наборы в KRUG одной кнопкой прямо из Telegram."
+          : "Подключите аккаунт: пересылайте боту любые стикеры — наборы будут сразу появляться в вашем KRUG. Ещё бот покажет состав набора и соберёт его в ZIP."))),
+      h("div.row", { style: { gap: "8px", flexWrap: "wrap", alignItems: "center" } },
+        st.linked ? h("span.stk-badge.ok", `✓ Telegram${st.tg_username ? ` @${st.tg_username}` : ""}`) : null,
+        st.linked ? open : h("button.btn.primary", { type: "button", onclick: (e) => busy(e.currentTarget, async () => {
+          try {
+            const r = await api.post("/api/telegram/link", {});
+            window.open(r.url, "_blank", "noopener");
+            toast("Нажмите «Запустить» в Telegram — и аккаунт подключится", { icon: "check", duration: 4000 });
+            const poll = setInterval(async () => {
+              if (!box.isConnected) return clearInterval(poll);
+              const s2 = await api.get("/api/telegram").catch(() => null);
+              if (s2?.linked) { clearInterval(poll); paint(s2); toast("Бот подключён 🎉", { icon: "check" }); }
+            }, 2500);
+            setTimeout(() => clearInterval(poll), 5 * 60 * 1000);
+          } catch (er) { toastError(er); }
+        }) }, "🔗 Подключить бота"),
+        st.linked ? h("button.btn.ghost.sm", { type: "button", onclick: async () => {
+          try { paint(await api.del("/api/telegram")); } catch (e) { toastError(e); }
+        } }, "Отключить") : null));
+    if (connect) setTimeout(() => box.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+  };
+  api.get("/api/telegram").then(paint).catch(() => box.remove());
+  return box;
+}
+
+async function tabImport(root, ref = "", connect = false) {
   const { items: jobs, telegram } = await api.get("/api/sticker-import");
   // ---- Telegram
   const link = h("input.input", { type: "text", placeholder: "https://t.me/addstickers/Название или @Название", "aria-label": "Ссылка на набор Telegram", autocomplete: "off" });
@@ -416,6 +451,7 @@ async function tabImport(root, ref = "") {
   drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); run([...e.dataTransfer.files]); });
 
   root.replaceChildren(
+    botCard(connect),
     h("section.card.card-pad.stk-import",
       h("div.stk-import-head", h("span.stk-logo.tg", "✈️"), h("div", h("h3", "Из Telegram"), h("p.muted", "Вставьте ссылку на набор или его @название — покажем превью и перенесём в один клик. Анимированные и видеостикеры тоже."))),
       telegram ? null : h("p.stk-warn", "Импорт по ссылке почти готов: администратору осталось подключить бота Telegram. Пока можно загрузить стикеры архивом или файлами ниже."),
@@ -486,7 +522,7 @@ export async function stickersPage({ params, query }) {
     if (tab === "packs") { const t = await tabPacks(root); if (query.new) setTimeout(t.createPack, 200); }
     else if (tab === "collection") await tabCollection(root);
     else if (tab === "catalog") await tabCatalog(root);
-    else if (tab === "import") await tabImport(root, query.ref || "");
+    else if (tab === "import") await tabImport(root, query.ref || "", !!query.connect);
     else tabLab(root);
   } catch (e) { root.replaceChildren(h("p.muted", e.message)); }
   return page;
