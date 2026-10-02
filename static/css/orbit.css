@@ -4104,3 +4104,28 @@ a.cst-st-game:hover { background: rgb(255 255 255 / .12); }
 .shop-tabs .tab-dot { display: inline-block; width: 6px; height: 6px; margin-left: 5px; border-radius: 50%; background: var(--al, #d6246e); vertical-align: middle; }
 :root[data-motion="reduced"] .shop-card.r-legendary::before, :root[data-motion="reduced"] .gift-emoji { animation: none; }
 @media (max-width: 719px) { .shop-toolbar { padding: 0 8px; } .shop-filter { overflow-x: auto; max-width: 100%; } }
+
+/* ---- 3D-аватар */
+.avatar.is-3d { position: relative; overflow: hidden; }
+.avatar.is-3d .av3d-canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; border-radius: 50%; cursor: grab; z-index: 1; }
+.avatar.is-3d .av3d-canvas:active { cursor: grabbing; }
+.avatar.is-3d.ready > img, .avatar.is-3d.ready > span:not(.av3d-canvas) { visibility: hidden; }
+.avatar-slot.has-3d .avatar-edit { z-index: 3; }
+.av3d-editor { display: grid; gap: 12px; }
+.av3d-stage { position: relative; width: min(300px, 78vw); aspect-ratio: 1; margin: 0 auto; border-radius: 28px; overflow: hidden; display: grid; place-items: center;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), 0 18px 40px -18px rgb(0 0 0 / .6); }
+.av3d-stage .av3d-canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; cursor: grab; touch-action: pan-y; }
+.av3d-hint { text-align: center; margin: 0; }
+.av3d-tabs { overflow-x: auto; max-width: 100%; scrollbar-width: none; justify-self: center; }
+.av3d-tabs::-webkit-scrollbar { display: none; }
+.av3d-tabs button { white-space: nowrap; }
+.av3d-panel { display: grid; gap: 12px; min-height: 150px; }
+.av3d-group { display: grid; gap: 6px; }
+.av3d-group > small { font-size: 12px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
+.av3d-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.av3d-row .chip.on { background: var(--primary); color: #fff; border-color: transparent; }
+.av3d-sw { width: 34px; height: 34px; border-radius: 50%; border: 2px solid rgb(255 255 255 / .25); cursor: pointer; padding: 0; box-shadow: inset 0 -3px 6px rgb(0 0 0 / .18); transition: transform .15s; }
+.av3d-sw:hover { transform: scale(1.08); }
+.av3d-sw.on { outline: 3px solid var(--primary); outline-offset: 2px; transform: scale(1.06); }
+.modal .grow { flex: 1; }
+.av3d-row .chip[aria-pressed="true"] { background: var(--primary); color: #fff; border-color: transparent; box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--primary) 70%, transparent); }

@@ -797,3 +797,4 @@ CREATE TABLE IF NOT EXISTS market_listings (
 );
 CREATE INDEX IF NOT EXISTS idx_market_active ON market_listings(status, id);
 CREATE INDEX IF NOT EXISTS idx_market_item ON market_listings(item_id, status, closed_at);
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar3d TEXT;

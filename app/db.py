@@ -92,6 +92,7 @@ MIGRATIONS = [
     ("profiles", "constellation", "TEXT"),
     ("profiles", "space", "TEXT"),
     ("profiles", "shop_title", "TEXT"),
+    ("profiles", "avatar3d", "TEXT"),
 ]
 POST_MIGRATION_SQL = """
 CREATE INDEX IF NOT EXISTS idx_posts_community ON posts(community_id, id DESC);

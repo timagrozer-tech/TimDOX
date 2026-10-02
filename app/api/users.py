@@ -77,6 +77,8 @@ async def profile(request: Request):
     from .. import shop
     data["title"] = shop.title_of(p.get("shop_title"))
     data["title_style"] = shop.title_style(p.get("shop_title"))
+    from .. import avatar3d
+    data["avatar3d"] = avatar3d.load(p.get("avatar3d"))
     data["gifts"] = shop.gifts_of(uid, 12)
     if full:
         from .collection_routes import showcase
@@ -571,6 +573,24 @@ async def settings_update(request: Request):
 
 
 @auth()
+async def avatar3d_set(request: Request):
+    """Параметры 3D-аватара (PUT) или отказ от него (DELETE — фото-снимок остаётся аватаром)."""
+    from .. import avatar3d
+    v = request.state.user["id"]
+    limit(request, "write")
+    if request.method == "DELETE":
+        db.run("UPDATE profiles SET avatar3d=NULL WHERE user_id=?", (v,))
+        return JSONResponse({"avatar3d": None})
+    data = await body(request)
+    try:
+        spec = avatar3d.validate(data.get("spec"))
+    except avatar3d.Invalid as e:
+        raise ApiError(400, str(e))
+    db.run("UPDATE profiles SET avatar3d=? WHERE user_id=?", (json.dumps(spec), v))
+    return JSONResponse({"avatar3d": spec})
+
+
+@auth()
 async def upload_image(request: Request):
     limit(request, "upload")
     v = request.state.user["id"]
@@ -585,6 +605,7 @@ async def upload_image(request: Request):
     form = await request.form(max_files=1, max_fields=5)
     try:
         f = form.get("file")
+        keep3d = str(form.get("keep3d") or "") == "1"
         if not getattr(f, "filename", None):
             raise ApiError(400, "Выберите изображение")
         saved = await media.save_upload(f, kind)
@@ -592,6 +613,8 @@ async def upload_image(request: Request):
         await form.close()
     url = saved["path"]  # превью доступно по тому же адресу с суффиксом _t
     db.run(f"UPDATE profiles SET {kind}=? WHERE user_id=?", (url, v))
+    if kind == "avatar" and not keep3d:
+        db.run("UPDATE profiles SET avatar3d=NULL WHERE user_id=?", (v,))
     media.delete_files(old)
     return JSONResponse({kind: url})
 
@@ -785,6 +808,7 @@ routes = [
     Route("/api/me/status", set_status, methods=["PATCH", "DELETE"]),
     Route("/api/me/email", email_change, methods=["POST"]),
     Route("/api/me/email/confirm", email_confirm, methods=["POST"]),
+    Route("/api/me/avatar3d", avatar3d_set, methods=["PUT", "DELETE"]),
     Route("/api/me/{kind}", upload_image, methods=["POST", "DELETE"]),
     Route("/api/me/export", export_data, methods=["GET"]),
     Route("/api/me", delete_account, methods=["DELETE"]),

@@ -11,6 +11,10 @@ import { uploadProfileImage } from "./settings.js";
 import { constellationSpark, constellationBlock } from "../components/constellation.js";
 import { openSpaceEditor, SPACE_MODES } from "../components/space.js";
 import { cityView } from "../components/city.js";
+import { mount3D, bgCss } from "../components/avatar3d.js";
+import { openAvatar3DEditor, webglAvailable } from "../components/avatar3d-editor.js";
+
+let live3d = null; // живой 3D-аватар в шапке профиля (один на страницу)
 
 export async function profilePage({ params, query }) {
   let offPosted = null;
@@ -81,11 +85,32 @@ export async function profilePage({ params, query }) {
     }
 
     const eq = data.equipped || {};
-    const av = decorate(avatar(u, "xl"), eq);
-    const avatarWrap = h(`div.avatar-slot${eq.frame ? ".has-frame" : ""}`, { style: { position: "relative" } },
-      data.user.avatar ? h("button", { type: "button", style: { border: 0, padding: 0, background: "none", borderRadius: "50%" }, "aria-label": "Открыть фото профиля", onclick: () => lightbox([{ url: data.user.avatar, alt: u.name }]) }, av) : av,
+    const avEl = avatar(u, "xl");
+    const av = decorate(avEl, eq);
+    // 3D-аватар: в профиле персонаж живой (крутится, моргает, прыгает от касания); без WebGL — остаётся снимок
+    live3d?.destroy(); live3d = null;
+    const has3d = !!data.avatar3d && webglAvailable();
+    if (has3d) {
+      avEl.classList.add("is-3d");
+      avEl.style.background = bgCss(data.avatar3d);
+      mount3D(avEl, data.avatar3d, { interactive: true }).then((v) => {
+        if (!v || !avEl.isConnected) { v?.destroy(); avEl.classList.remove("is-3d"); return; }
+        live3d = v; avEl.classList.add("ready");
+      }).catch(() => avEl.classList.remove("is-3d"));
+    }
+    const editAvatar = (btn) => showMenu(btn, [
+      { label: "Загрузить фото", icon: "image", onClick: () => uploadProfileImage("avatar", (url) => { data.user.avatar = url; state.me.avatar = url; data.avatar3d = null; renderHeader(); }) },
+      { label: data.avatar3d ? "Изменить 3D-аватар" : "Создать 3D-аватар", icon: "sparkle", onClick: () => openAvatar3DEditor(data.avatar3d, (spec, url) => {
+        data.avatar3d = spec; data.user.avatar = url; renderHeader();
+      }) },
+      data.avatar3d ? { label: "Оставить снимок вместо живого 3D", icon: "camera", onClick: async () => {
+        try { await api.del("/api/me/avatar3d"); data.avatar3d = null; renderHeader(); } catch (e) { toastError(e); }
+      } } : null,
+    ].filter(Boolean));
+    const avatarWrap = h(`div.avatar-slot${eq.frame ? ".has-frame" : ""}${has3d ? ".has-3d" : ""}`, { style: { position: "relative" } },
+      data.user.avatar && !has3d ? h("button", { type: "button", style: { border: 0, padding: 0, background: "none", borderRadius: "50%" }, "aria-label": "Открыть фото профиля", onclick: () => lightbox([{ url: data.user.avatar, alt: u.name }]) }, av) : av,
       eq.pet ? pet(eq.pet) : null,
-      isMe ? h("button.avatar-edit", { type: "button", "aria-label": "Изменить фото профиля", onclick: () => uploadProfileImage("avatar", (url) => { data.user.avatar = url; state.me.avatar = url; renderHeader(); }) }, icon("camera", "sm")) : null);
+      isMe ? h("button.avatar-edit", { type: "button", "aria-label": "Изменить аватар", "aria-haspopup": "menu", onclick: (e) => editAvatar(e.currentTarget) }, icon("camera", "sm")) : null);
 
     const info = [];
     if (!data.hidden) {
@@ -353,7 +378,7 @@ export async function profilePage({ params, query }) {
   const offPresence = on("presence", ({ user_id, online }) => {
     if (user_id === u.id && root.isConnected) { data.user.online = online; renderHeader(); }
   });
-  setCleanup(() => { offPresence(); offPosted?.(); });
+  setCleanup(() => { offPresence(); offPosted?.(); live3d?.destroy(); live3d = null; });
   return root;
 }
 
