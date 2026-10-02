@@ -47,7 +47,7 @@ export async function profilePage({ params, query }) {
       : { label: "Выдать галочку", icon: "check", onClick: grantVerify }] : [];
     if (isMe) {
       actions.append(h("a.btn.outline", { href: "/settings", title: "Редактировать профиль" }, icon("edit", "sm"), h("span.pa-full", "Редактировать профиль"), h("span.pa-short", "Изменить")));
-      actions.append(h("a.btn.soft.stats-btn", { href: "/stats", title: "Личная статистика" }, icon("chart", "sm"), h("span", "Статистика")));
+      actions.append(h("a.btn.soft.stats-btn", { href: "/stats", title: "Личная статистика", "aria-label": "Статистика" }, icon("chart", "sm"), h("span", "Статистика")));
       actions.append(h("button.btn.ghost.icon-only.space-btn", { type: "button", "aria-label": "Настроить пространство", title: "Настроить пространство",
         onclick: () => openSpaceEditor(space, (next) => { space = next; root.dataset.mode = space.mode; renderHeader(); }) }, icon("settings")));
       if (data.can_verify) {

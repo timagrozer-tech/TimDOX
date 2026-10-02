@@ -726,21 +726,24 @@ async def constellation_set(request: Request):
 
 
 @auth()
-async def steam_world(request: Request):
-    """Мини-профиль Steam из Созвездия человека. Только тот ник, что он сам вписал, — не прокси."""
+async def live_world(request: Request):
+    """Живой мини-профиль мира из Созвездия (Steam, GitHub, Telegram). Только ник, вписанный владельцем, — не прокси."""
+    from .. import worlds
+    kind = request.path_params.get("kind", "steam")
+    if kind not in worlds.LIVE_KINDS:
+        raise ApiError(404, "Этот мир не умеет показывать живой профиль")
     v = request.state.user["id"]
     p = _profile(request.path_params["username"])
     uid = p["user_id"]
     rel = social.relation(v, uid)
     if rel["blocked_me"] or not (uid == v or rel["status"] == "friends" or p["profile_visibility"] == "public"):
         raise ApiError(404, "Профиль скрыт")
-    item = next((i for i in constellation.load(p.get("constellation"))["items"] if i.get("kind") == "steam"), None)
+    item = next((i for i in constellation.load(p.get("constellation"))["items"] if i.get("kind") == kind), None)
     if not item or not item.get("handle"):
-        raise ApiError(404, "Steam не привязан")
+        raise ApiError(404, "Мир не привязан")
     limit(request, "steam_world")
     from starlette.concurrency import run_in_threadpool
-    from .. import steam
-    return JSONResponse(await run_in_threadpool(steam.fetch, item["handle"]))
+    return JSONResponse(await run_in_threadpool(worlds.fetch, kind, item["handle"]))
 
 
 @auth()
@@ -756,7 +759,8 @@ routes = [
     Route("/api/me/constellation", constellation_get, methods=["GET"]),
     Route("/api/me/constellation", constellation_set, methods=["PUT"]),
     Route("/api/me/space", space_set, methods=["PUT"]),
-    Route("/api/users/{username}/steam", steam_world, methods=["GET"]),
+    Route("/api/users/{username}/steam", live_world, methods=["GET"]),
+    Route("/api/users/{username}/world/{kind}", live_world, methods=["GET"]),
     Route("/api/onboarding", onboarding_get, methods=["GET"]),
     Route("/api/onboarding", onboarding_set, methods=["POST"]),
     Route("/api/users/{username}", profile, methods=["GET"]),

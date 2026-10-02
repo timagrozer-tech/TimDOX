@@ -140,6 +140,7 @@ export function openConstellation(user, data, isMe, origin) {
       h("div.cst-card-actions", h("button.btn.ghost", { type: "button", onclick: () => showCard(null) }, "Назад"), go));
     card.hidden = false;
     if (it.kind === "steam" && it.handle) steamCard(it, info, mini);
+    else if ((it.kind === "github" || it.kind === "telegram") && it.handle) liveCard(it, info, mini);
   };
 
   // ---- Steam: живой мини-профиль вместо одного ника
@@ -174,6 +175,41 @@ export function openConstellation(user, data, isMe, origin) {
     facts.classList.add("steam");
     const go = card.querySelector(".cst-card-actions a.btn.primary");
     if (go) { go.href = d.url; go.replaceChildren("Открыть в Steam", icon("arrowRight", "sm")); }
+  }
+
+  // ---- GitHub и Telegram: живые мини-профили
+  const nf = (n) => Number(n || 0).toLocaleString("ru-RU");
+  async function liveCard(it, info, mini) {
+    const facts = card.querySelector(".cst-card-facts");
+    facts.replaceChildren(h("span.cst-st-skel"), h("span.cst-st-skel.short"));
+    let d;
+    try { d = await api.get(`/api/users/${encodeURIComponent(user.username)}/world/${it.kind}`); } catch { d = null; }
+    if (selected !== it || closed) return;
+    if (!d?.ok) { facts.replaceChildren(h("span", `@${it.handle}`)); return; }
+    const head = card.querySelector(".cst-card-head");
+    const go = card.querySelector(".cst-card-actions a.btn.primary");
+    const ava = (src) => src ? h("img.cst-st-ava", { src, alt: "", referrerpolicy: "no-referrer", loading: "lazy" }) : mini;
+    facts.classList.add("steam");
+    if (it.kind === "github") {
+      head.replaceChildren(h("div.cst-st-ava-wrap.s-gh", ava(d.avatar)),
+        h("div.grow", h("b", d.name), h("small.cst-st-state.s-gh", `@${d.login}`),
+          h("small.cst-st-meta", [d.location, d.since && `на GitHub с ${d.since}`].filter(Boolean).join(" · "))),
+        h("span.cst-st-badge.gh", mark("github")));
+      const stats = h("div.cst-live-stats", h("span", h("b", nf(d.repos)), " репоз."), h("span", h("b", nf(d.followers)), " подписч."), h("span", h("b", nf(d.following)), " подписок"));
+      const repo = (r) => h(r.url ? "a.cst-st-game.repo" : "div.cst-st-game.repo", r.url ? { href: r.url, target: "_blank", rel: "noopener noreferrer nofollow" } : {},
+        h("span.cst-repo-ic", icon("book", "sm")),
+        h("div.grow", h("b", r.name), h("small", [r.lang, `★ ${nf(r.stars)}`, r.desc].filter(Boolean).join(" · "))));
+      facts.replaceChildren(...[d.bio ? h("p.cst-live-bio", d.bio) : null, stats, d.top.length ? h("div.cst-st-games", ...d.top.map(repo)) : null].filter(Boolean));
+      if (go) { go.href = d.url; go.replaceChildren("Открыть GitHub", icon("arrowRight", "sm")); }
+    } else {
+      const what = d.type === "channel" ? "Канал" : d.type === "group" ? "Группа" : "Профиль";
+      const cnt = d.count != null ? `${nf(d.count)} ${d.type === "group" ? "участников" : "подписчиков"}` : `@${d.handle}`;
+      head.replaceChildren(h("div.cst-st-ava-wrap.s-tg.round", ava(d.photo)),
+        h("div.grow", h("b", d.title), h("small.cst-st-state.s-tg", `${what} · ${cnt}`), h("small.cst-st-meta", `t.me/${d.handle}`)),
+        h("span.cst-st-badge.tg", mark("telegram")));
+      facts.replaceChildren(h("p.cst-live-bio", d.desc || "Напишите мне в Telegram"));
+      if (go) { go.href = d.url; go.replaceChildren(d.type === "user" ? "Написать в Telegram" : "Открыть в Telegram", icon("arrowRight", "sm")); }
+    }
   }
 
   const paint = () => {

@@ -3778,3 +3778,32 @@ a.cst-st-game:hover { background: rgb(255 255 255 / .12); }
 .cst-st-ava-wrap { overflow: hidden; display: grid; place-items: center; }
 .cst-st-ava-wrap > .cst-body { transform: none !important; }
 .cst-st-ava-wrap > .cst-body.ring::after, .cst-st-ava-wrap > .cst-body::before { display: none; }
+
+/* телефоны: магазин и рынок не прилипают к краю; «Статистика» — значком, а не обрезанным словом */
+@media (max-width: 719px) {
+  .shop-page { padding: 0 8px; }
+  .shop-page > .page-head { padding: 6px 8px 0; }
+  .shop-note { padding: 0 8px; }
+  .shop-page > .shop-earn, .shop-page > .shop-links { margin-bottom: 8px; }
+}
+@media (max-width: 420px) {
+  .stats-btn > span { display: none; }
+  .stats-btn { flex: 0 0 auto !important; min-width: 44px; padding-inline: 12px; }
+}
+.shop-page > .shop-earn { align-self: center; }
+
+/* ---- живые миры: GitHub и Telegram */
+.cst-st-ava-wrap.s-gh { background: linear-gradient(160deg, #8b949e, #30363d); }
+.cst-st-ava-wrap.s-tg { background: linear-gradient(160deg, #7fd3ff, #229ed9); }
+.cst-st-ava-wrap.round, .cst-st-ava-wrap.round > .cst-st-ava { border-radius: 50%; }
+.cst-card-head small.cst-st-state.s-gh { color: #c9d1d9; }
+.cst-card-head small.cst-st-state.s-tg { color: #7fd3ff; }
+.cst-st-badge.gh { background: #181717; }
+.cst-st-badge.tg { background: #229ed9; }
+.cst-live-bio { margin: 0 0 8px; font-size: 14px; line-height: 1.45; color: rgb(255 255 255 / .82); overflow-wrap: anywhere; }
+.cst-live-stats { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.cst-card-facts .cst-live-stats span { padding: 6px 10px; border-radius: 10px; background: rgb(255 255 255 / .08); font-size: 12px; font-weight: 600; color: rgb(255 255 255 / .7); }
+.cst-live-stats b { color: #fff; font-size: 13px; }
+.cst-st-game.repo { padding: 8px 10px; }
+.cst-repo-ic { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: rgb(255 255 255 / .08); flex: none; }
+.cst-st-game.repo small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

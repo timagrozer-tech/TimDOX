@@ -10,11 +10,11 @@ from starlette.applications import Starlette
 from starlette.exceptions import HTTPException
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
-from starlette.responses import RedirectResponse, FileResponse, JSONResponse, Response
+from starlette.responses import RedirectResponse, FileResponse, HTMLResponse, JSONResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from . import collection, config, db, economy, media, referrals
+from . import collection, config, db, economy, media, referrals, seo
 from .api import wallet as wallet_api
 from .api import city as city_api
 from .api import shop_routes
@@ -181,7 +181,7 @@ async def http_error(request: Request, exc: HTTPException):
         text = {404: "Не найдено", 405: "Метод не поддерживается"}.get(exc.status_code, exc.detail)
         return JSONResponse({"error": text}, status_code=exc.status_code)
     if exc.status_code == 404:
-        return FileResponse(config.STATIC_DIR / "index.html", status_code=200)
+        return HTMLResponse(seo.render(request.url.path), headers={"Cache-Control": "no-cache"})
     return JSONResponse({"error": exc.detail}, status_code=exc.status_code)
 
 
@@ -199,7 +199,7 @@ async def server_error(request: Request, exc: Exception):
 async def spa(request: Request):
     if request.url.path.startswith("/api/"):
         return JSONResponse({"error": "Не найдено"}, status_code=404)
-    return FileResponse(config.STATIC_DIR / "index.html", headers={"Cache-Control": "no-cache"})
+    return HTMLResponse(seo.render(request.url.path), headers={"Cache-Control": "no-cache"})
 
 
 async def uploads(request: Request):
