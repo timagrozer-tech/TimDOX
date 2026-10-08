@@ -135,7 +135,7 @@ res = {}
 body = b"".join(application({"REQUEST_METHOD": "GET", "PATH_INFO": "/api/health", "QUERY_STRING": "", "wsgi.input": io.BytesIO(),
     "SERVER_NAME": "localhost", "SERVER_PORT": "443", "HTTP_HOST": sys.argv[2], "wsgi.url_scheme": "https", "REMOTE_ADDR": "127.0.0.1"},
     lambda st, h, e=None: res.update(st=st)))
-print("wsgi:", res.get("st"), body[:60].decode("utf-8", "replace"))
+print("wsgi:", res.get("st"), body[:60].decode("utf-8", "replace"), flush=True)
 os._exit(0)' "$Y/yarko.env" "$DOMAIN" 2>&1 | tail -4)
 echo "    $SMOKE"
 echo "$SMOKE" | grep -q '^wsgi: 200' || die "Приложение не запускается в режиме хостинга (см. выше)"
