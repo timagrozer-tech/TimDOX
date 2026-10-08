@@ -6,9 +6,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def _load_dotenv() -> None:
-    env_file = BASE_DIR / ".env"
-    if not env_file.exists():
-        return
+    # .env рядом с кодом и настройки, перенесённые со старого сервера при переезде (DATA_DIR/migrated.env)
+    for env_file in (BASE_DIR / ".env", Path(os.environ.get("DATA_DIR", BASE_DIR / "data")) / "migrated.env",
+                     Path("/tmp/yarko-migrated.env")):
+        if env_file.exists():
+            _read_env(env_file)
+
+
+def _read_env(env_file: Path) -> None:
     for line in env_file.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:

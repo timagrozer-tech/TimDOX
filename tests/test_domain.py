@@ -33,5 +33,30 @@ class DomainTest(unittest.TestCase):
             forged = {"type": "http", "headers": [(b"x-yarko-edge", b"nope"), (b"x-edge-client-ip", b"95.1.2.3")], "client": ("10.0.0.1", 1)}
             self.assertNotEqual(web.client_ip(Request(forged)), "95.1.2.3")
 
+    def test_migrate_env(self):
+        """Переезд: настройки отдаются только с верным токеном и только пока он задан."""
+        import os
+        from unittest import mock
+        c = TestClient(main.app)
+        tok = "t" * 40
+        with mock.patch.dict(os.environ, {"MIGRATE_TOKEN": tok, "GROQ_API_KEY": "gk-test", "RENDER": "true"}):
+            self.assertEqual(c.post("/api/edge/env", headers={"x-migrate-token": "wrong"}).status_code, 404)
+            r = c.post("/api/edge/env", headers={"x-migrate-token": tok})
+            self.assertEqual(r.status_code, 200, r.text)
+            self.assertEqual(r.json().get("GROQ_API_KEY"), "gk-test")
+            self.assertNotIn("RENDER", r.json())
+        self.assertEqual(c.post("/api/edge/env", headers={"x-migrate-token": tok}).status_code, 404)  # без токена в окружении
+
+    def test_own_turn_credentials(self):
+        import os, base64, hashlib, hmac
+        from unittest import mock
+        from app.api import calls
+        with mock.patch.dict(os.environ, {"TURN_SECRET": "sec", "TURN_HOST": "turn.example"}):
+            srv = calls.ice_servers(7)[0]
+            self.assertIn("turn:turn.example:3478?transport=udp", srv["urls"])
+            self.assertTrue(srv["username"].endswith(":7"))
+            exp = base64.b64encode(hmac.new(b"sec", srv["username"].encode(), hashlib.sha1).digest()).decode()
+            self.assertEqual(srv["credential"], exp)
+
 if __name__ == "__main__":
     unittest.main()

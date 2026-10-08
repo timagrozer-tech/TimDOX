@@ -20,9 +20,27 @@ MAX_PARTICIPANTS = 4
 SIGNAL_TYPES = {"offer", "answer", "ice", "state", "reaction", "recording", "hangup"}
 
 
-def ice_servers() -> list[dict]:
+def _turn_rest(uid: int | None) -> dict | None:
+    """Свой ретранслятор (coturn с use-auth-secret): временный логин на сутки, подписанный общим секретом"""
+    secret, host = os.environ.get("TURN_SECRET", ""), os.environ.get("TURN_HOST", "")
+    if not (secret and host):
+        return None
+    import base64
+    import hashlib
+    import hmac
+    import time
+    user = f"{int(time.time()) + 86400}:{uid or 0}"
+    cred = base64.b64encode(hmac.new(secret.encode(), user.encode(), hashlib.sha1).digest()).decode()
+    return {"urls": [f"stun:{host}:3478", f"turn:{host}:3478?transport=udp", f"turn:{host}:3478?transport=tcp"],
+            "username": user, "credential": cred}
+
+
+def ice_servers(uid: int | None = None) -> list[dict]:
     # несколько независимых STUN: если один недоступен из сети собеседника, сработает другой
     servers = [{"urls": ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302", "stun:stun.cloudflare.com:3478"]}]
+    own = _turn_rest(uid)
+    if own:
+        servers.insert(0, own)
     turn = os.environ.get("TURN_URLS", "").split()
     if turn:
         servers.append({"urls": turn, "username": os.environ.get("TURN_USERNAME", ""),
@@ -82,7 +100,7 @@ async def start(request: Request):
         _end(active, "stale")
         active = None
     if active:
-        return JSONResponse({"call": _view(active), "ice_servers": ice_servers(), "existing": True})
+        return JSONResponse({"call": _view(active), "ice_servers": ice_servers(v), "existing": True})
     cid = secrets.token_urlsafe(12)
     video = bool(data.get("video"))
     db.run("INSERT INTO calls (id, conversation_id, started_by, video) VALUES (?,?,?,?)", (cid, conv_id, v, 1 if video else 0))
@@ -90,7 +108,7 @@ async def start(request: Request):
     c = db.one("SELECT * FROM calls WHERE id=?", (cid,))
     view = _view(c)
     hub.publish_many(others, "call_invite", view)
-    return JSONResponse({"call": view, "ice_servers": ice_servers()}, status_code=201)
+    return JSONResponse({"call": view, "ice_servers": ice_servers(v)}, status_code=201)
 
 
 @auth()
@@ -106,7 +124,7 @@ async def join(request: Request):
         db.run("INSERT INTO call_participants (call_id, user_id) VALUES (?,?)", (c["id"], v))
         me = social.cards_by_ids([v]).get(v)
         hub.publish_many(parts, "call_join", {"call_id": c["id"], "user": me})
-    return JSONResponse({"call": _view(c), "ice_servers": ice_servers(), "peers": [p for p in parts if p != v]})
+    return JSONResponse({"call": _view(c), "ice_servers": ice_servers(v), "peers": [p for p in parts if p != v]})
 
 
 @auth()
@@ -156,7 +174,8 @@ async def decline(request: Request):
 @auth()
 async def ice(request: Request):
     """Серверы соединения для страницы «Проверка звонков»"""
-    return JSONResponse({"ice_servers": ice_servers(), "turn": bool(os.environ.get("TURN_URLS"))})
+    return JSONResponse({"ice_servers": ice_servers(request.state.user["id"]),
+                         "turn": bool(os.environ.get("TURN_URLS") or os.environ.get("TURN_SECRET"))})
 
 
 @auth()
