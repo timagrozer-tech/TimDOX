@@ -50,3 +50,19 @@ class SeoTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SeoFilesTest(unittest.TestCase):
+    def test_sitemap_llms_robots(self):
+        from test_api import Client
+        c = Client()
+        r = c.get("/sitemap.xml")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("<urlset", r.text)
+        self.assertIn("xml", r.headers["content-type"])
+        self.assertIn("Yarko", c.get("/llms.txt").text)
+        self.assertIn("Sitemap:", c.get("/robots.txt").text)
+        self.assertIn('name="robots" content="noindex"', c.get("/settings").text)
+        home = c.get("/").text
+        self.assertIn('"@type": "WebSite"', home)
+        self.assertNotIn('content="noindex"', home)

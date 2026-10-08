@@ -316,8 +316,20 @@ async def manifest(request: Request):
 async def robots(request: Request):
     """Поисковикам и сервисам предпросмотра: открыты страницы, закрыто API"""
     from starlette.responses import PlainTextResponse
-    return PlainTextResponse("User-agent: *\nAllow: /\nDisallow: /api/\n",
+    rules = "User-agent: *\nAllow: /\nDisallow: /api/\n" + "".join(
+        f"Disallow: /{p}\n" for p in ("messages", "settings", "notifications", "wallet", "stats", "invite", "verify", "reset"))
+    return PlainTextResponse(rules + f"\nSitemap: {config.APP_URL}/sitemap.xml\n",
                              headers={"Cache-Control": "public, max-age=3600"})
+
+
+async def sitemap_xml(request: Request):
+    return Response(await run_in_threadpool(seo.sitemap), media_type="application/xml",
+                    headers={"Cache-Control": "public, max-age=3600"})
+
+
+async def llms_txt(request: Request):
+    from starlette.responses import PlainTextResponse
+    return PlainTextResponse(seo.llms_txt(), headers={"Cache-Control": "public, max-age=3600"})
 
 
 async def health(request: Request):
@@ -478,6 +490,8 @@ routes = [
     Route("/api/health", health),
     Route("/sw.js", service_worker),
     Route("/robots.txt", robots),
+    Route("/sitemap.xml", sitemap_xml),
+    Route("/llms.txt", llms_txt),
     Route("/manifest.webmanifest", manifest),
     *wallet_api.routes, *city_api.routes, *shop_routes.routes, *market_routes.routes, *invites.routes, *accounts.routes, *calls.routes, *admin.routes, *world_api.routes, *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
     *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *stats.routes, *music_api.routes, *collection_routes.routes, *reels.routes, *stickers.routes, *tgbot.routes, *webpush.routes, *assist.routes, *chatplus.routes, *consents.routes, *migrate.routes,
