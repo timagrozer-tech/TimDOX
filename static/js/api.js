@@ -122,7 +122,7 @@ export function connectStream() {
   source.addEventListener("hello", () => { retry = 1000; emit("stream-open"); });
   // сервер закрыл поток: сессия завершена на другом устройстве, истекла или аккаунт заблокирован
   source.addEventListener("session_end", () => { disconnectStream(); if (state.me) emit("logged-out"); });
-  for (const ev of ["notification", "message", "message_update", "typing", "read", "presence", "counters", "items",
+  for (const ev of ["notification", "message", "message_update", "typing", "read", "presence", "counters", "items", "conv_theme",
     "call_invite", "call_signal", "call_join", "call_leave", "call_decline", "call_end"]) {
     source.addEventListener(ev, (e) => {
       let data;

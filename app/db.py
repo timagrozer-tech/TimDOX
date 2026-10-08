@@ -110,6 +110,8 @@ MIGRATIONS = [
     ("stickers", "remix_of", "INTEGER"),
     ("user_sticker_packs", "favorite", "INTEGER NOT NULL DEFAULT 0"),
     ("comments", "media", "TEXT"),
+    ("conversations", "theme", "TEXT"),
+    ("conversation_members", "theme", "TEXT"),
     ("tg_links", "tg_name", "TEXT NOT NULL DEFAULT ''"),
     ("tg_links", "notify_messages", "INTEGER NOT NULL DEFAULT 1"),
     ("tg_links", "notify_social", "INTEGER NOT NULL DEFAULT 1"),

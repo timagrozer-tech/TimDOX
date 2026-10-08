@@ -937,3 +937,7 @@ CREATE TABLE IF NOT EXISTS push_subs (
     created_at      TEXT NOT NULL DEFAULT krug_now()
 );
 CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subs(user_id);
+
+-- Чат 2.0: оформление чата (общее и личное)
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS theme TEXT;
+ALTER TABLE conversation_members ADD COLUMN IF NOT EXISTS theme TEXT;

@@ -1,5 +1,6 @@
 // Личные сообщения в реальном времени: список диалогов и окно переписки.
 import { chatAI } from "../components/chatai.js";
+import { applyChatTheme, openThemeEditor, capsuleNode, openCapsuleDialog, wheelNode, openWheelDialog, nudgeNode, playNudge, nudgeMenu } from "../components/chatplus.js";
 import { startCall } from "../call/call.js";
 import { api, state, on, setCounters } from "../api.js";
 import { h, icon, avatar, vmark, shortTime, hm, dayLabel, richText, autosize, timeAgo } from "../dom.js";
@@ -151,6 +152,7 @@ export async function messagesPage({ params }) {
     const statusText = () => (isGroup ? `${conv.members.length} участников` : conv.user.online ? "в сети"
       : conv.user.last_seen_at ? `был(а) ${timeAgo(conv.user.last_seen_at)}` : "не в сети");
     const body = h("div.chat-body", { role: "log", "aria-live": "polite", "aria-label": `Переписка: ${conv.title}` });
+    let myTypingAt = 0;
     const sub = h("div.sub", statusText());
     const ta = attachMentions(h("textarea", { rows: 1, placeholder: conv.can_write ? "Напишите сообщение…" : "Вы не можете написать этому пользователю", maxlength: 4000, disabled: !conv.can_write, "aria-label": "Текст сообщения" }));
     const fit = autosize(ta);
@@ -202,6 +204,9 @@ export async function messagesPage({ params }) {
       { label: "Музыка", icon: "music", onClick: () => pickAudio.click() },
       { label: "Местоположение", icon: "pin", onClick: () => shareLocation() },
       { label: "Контакт", icon: "user", onClick: () => shareContact() },
+      "-",
+      { label: "Капсула времени", hint: "Откроется в назначенный момент", icon: "clock", onClick: () => openCapsuleDialog(id).then(addMine) },
+      { label: "Колесо решений", hint: "Пусть решит случай", icon: "refresh", onClick: () => openWheelDialog(id).then(addMine) },
     ]));
     pickAny.addEventListener("change", () => { sendFiles([...pickAny.files], "file"); pickAny.value = ""; });
     pickMedia.addEventListener("change", () => { sendFiles([...pickMedia.files]); pickMedia.value = ""; });
@@ -223,7 +228,16 @@ export async function messagesPage({ params }) {
         h("button.btn.ghost.icon-only", { type: "button", "aria-label": "Видеозвонок", title: "Видеозвонок", onclick: () => startCall(id, true) }, icon("video")));
     };
     const groupMenu = isGroup ? h("button.btn.ghost.icon-only", { type: "button", "aria-label": "Настройки беседы", "aria-haspopup": "menu" }, icon("more")) : null;
+    // «Чат 2.0»: оформление и касания — в одном меню, чтобы шапка не теснила имя
+    const chatExtras = () => [
+      { label: "Оформление чата", hint: "Обои, цвет, пузыри, размер текста", icon: "palette", onClick: () => openThemeEditor({ id, conv, pane: chatPane, isGroup }) },
+      conv.can_write ? { label: "Касание", hint: "Тук-тук, сердцебиение, обнять", icon: "heart", onClick: () => nudgeMenu(chatMore || groupMenu, id, addMine) } : null,
+    ];
+    const chatMore = isGroup ? null : h("button.btn.ghost.icon-only.chat-more", { type: "button", "aria-label": "Ещё", "aria-haspopup": "menu" }, icon("more"));
+    chatMore?.addEventListener("click", () => showMenu(chatMore, chatExtras()));
     groupMenu?.addEventListener("click", () => showMenu(groupMenu, [
+      ...chatExtras(),
+      "-",
       { label: "Участники", icon: "users", onClick: showMembers },
       { label: "Добавить друзей", icon: "userPlus", onClick: addMembers },
       { label: "Переименовать", icon: "edit", onClick: rename },
@@ -237,10 +251,12 @@ export async function messagesPage({ params }) {
         h("div.who", isGroup ? h("button.name.link-btn", { type: "button", onclick: showMembers }, conv.title)
           : conv.user.username ? h("a.name", { href: `/u/${conv.user.username}` }, conv.user.name, vmark(conv.user)) : h("span.name", conv.user.name), sub),
         callButtons(),
+        isGroup ? null : chatMore,
         groupMenu),
       body, form);
 
     chat = { id, conv, body, sub, messages: [], hasMore: false, loadingOlder: false, otherRead: conv.other_last_read_id, typingTimer: null, senders: {} };
+    applyChatTheme(chatPane, conv.theme);
     (conv.members || []).forEach((m) => { chat.senders[m.id] = m; });
 
     function showMembers() {
@@ -262,14 +278,19 @@ export async function messagesPage({ params }) {
       try { await api.post(`/api/conversations/${id}/leave`); toast("Вы покинули беседу"); convs = convs.filter((c) => c.id !== id); navigate("/messages"); } catch (e) { toastError(e); }
     }
 
-    const sameGroup = (a, b) => a && b && a.sender_id === b.sender_id && a.kind !== "system" && b.kind !== "system"
+    const sameGroup = (a, b) => a && b && a.sender_id === b.sender_id && !["system", "nudge"].includes(a.kind) && !["system", "nudge"].includes(b.kind)
       && dayLabel(a.created_at) === dayLabel(b.created_at);
     function msgNode(m, prev, next) {
       const mine = m.sender_id === state.me.id;
       const nodes = [];
       if (!prev || dayLabel(prev.created_at) !== dayLabel(m.created_at)) nodes.push(h("div.day-sep", dayLabel(m.created_at)));
       if (m.kind === "system") { nodes.push(h("div.msg-system", { dataset: { id: m.id } }, m.text)); return nodes; }
-      const first = !prev || prev.sender_id !== m.sender_id || prev.kind === "system" || nodes.length;
+      if (m.kind === "nudge") {
+        const who = m.sender_id === state.me.id ? "Вы" : (chat.senders[m.sender_id]?.name || conv.user?.name || "Собеседник").split(" ")[0];
+        nodes.push(h("div.msg-system.nudge-sys", { dataset: { id: m.id } }, nudgeNode(m, who)));
+        return nodes;
+      }
+      const first = !prev || prev.sender_id !== m.sender_id || ["system", "nudge"].includes(prev.kind) || nodes.length;
       if (isGroup && !mine && first) {
         const snd = chat.senders[m.sender_id];
         nodes.push(h("div.msg-sender", snd ? avatar(snd, "xs", { presence: false }) : null, snd ? snd.name : "Участник"));
@@ -300,6 +321,12 @@ export async function messagesPage({ params }) {
           h("div.gif-img", stickerEl({ url: m.media.url, format: m.media.format === "webm" ? "webm" : "webp" })), h("span.gif-badge", "GIF"), meta);
         if (quote) bubble.prepend(quote);
         if (reacts) bubble.append(reacts);
+      } else if (m.kind === "capsule") {
+        bubble = h(`div.msg.special-msg.k-capsule${cls}`, { dataset: { id: m.id, sender: m.sender_id } }, quote, capsuleNode(m, { onOpen: () => reveal(m.id) }), reacts, meta);
+      } else if (m.kind === "wheel" && m.media) {
+        bubble = h(`div.msg.special-msg.k-wheel${cls}`, { dataset: { id: m.id, sender: m.sender_id } },
+          wheelNode(m, { spin: !!m._live, onRepeat: conv.can_write ? (md) => openWheelDialog(id, md).then(addMine) : null }), reacts, meta);
+        m._live = false;
       } else if (big) {
         bubble = h(`div.msg-bigemoji.e${big}${cls}`, { dataset: { id: m.id, sender: m.sender_id } }, h("span", m.text), quote, reacts, meta);
         if (quote) bubble.prepend(quote);
@@ -331,8 +358,22 @@ export async function messagesPage({ params }) {
       nodes.push(bubble);
       return nodes;
     }
+    const dayFloat = h("div.day-float", { "aria-hidden": "true" }, h("span"));
+    let dayTimer = 0;
+    function syncDayFloat() {
+      const seps = body.querySelectorAll(".day-sep");
+      let cur = null;
+      for (const sep of seps) { if (sep.offsetTop <= body.scrollTop + 6) cur = sep; else break; }
+      // плашка нужна, только когда «родной» разделитель дня уже уехал вверх
+      const show = !!cur && cur.offsetTop < body.scrollTop - 8;
+      dayFloat.firstChild.textContent = cur?.textContent || "";
+      dayFloat.classList.toggle("show", show);
+      clearTimeout(dayTimer);
+      if (show) dayTimer = setTimeout(() => dayFloat.classList.remove("show"), 1600);
+    }
+    body.addEventListener("scroll", () => requestAnimationFrame(syncDayFloat), { passive: true });
     function drawAll(keepBottomOffset = null) {
-      const nodes = [];
+      const nodes = [dayFloat];
       if (chat.hasMore) nodes.push(h("button.btn.ghost.sm", { type: "button", style: { alignSelf: "center" }, onclick: loadOlder }, "Показать ранние сообщения"));
       if (!chat.messages.length) nodes.push(h("div.chat-empty", h("div.empty", convAvatar(conv, "lg"), h("h3", conv.title), h("p", "Напишите первое сообщение 👋"))));
       chat.messages.forEach((m, i) => nodes.push(...msgNode(m, chat.messages[i - 1], chat.messages[i + 1])));
@@ -354,6 +395,20 @@ export async function messagesPage({ params }) {
     }
     body.addEventListener("scroll", () => { if (body.scrollTop < 60) loadOlder(); });
 
+    function addMine(m) {
+      if (!m) return;
+      m._live = true;
+      chat.append(m);
+      upsertConv(id, m);
+    }
+    async function reveal(mid) {
+      try {
+        const fresh = await api.get(`/api/messages/${mid}`);
+        applyUpdate(fresh);
+        body.querySelector(`[data-id="${mid}"]`)?.classList.add("capsule-reveal");
+        navigator.vibrate?.([20, 40, 60]);
+      } catch { /* откроется при следующем входе */ }
+    }
     chat.append = (m) => {
       if (chat.messages.some((x) => x.id === m.id)) return;
       const stick = nearBottom() || m.sender_id === state.me.id;
@@ -382,10 +437,14 @@ export async function messagesPage({ params }) {
       }).catch(() => {});
     };
     chat.showTyping = (name) => {
-      sub.textContent = isGroup && name ? `${name.split(" ")[0]} печатает…` : "печатает…";
+      // «резонанс»: вы печатаете одновременно
+      const together = Date.now() - myTypingAt < 3000;
+      sub.textContent = together ? "⚡ печатаете одновременно" : (isGroup && name ? `${name.split(" ")[0]} печатает…` : "печатает…");
+      sub.classList.toggle("resonance", together);
+      if (together && !sub.dataset.buzzed) { sub.dataset.buzzed = "1"; navigator.vibrate?.(12); setTimeout(() => { delete sub.dataset.buzzed; }, 8000); }
       sub.classList.add("typing");
       clearTimeout(chat.typingTimer);
-      chat.typingTimer = setTimeout(() => { sub.textContent = statusText(); sub.classList.remove("typing"); }, 3500);
+      chat.typingTimer = setTimeout(() => { sub.textContent = statusText(); sub.classList.remove("typing", "resonance"); }, 3500);
     };
     chat.setOnline = (online) => { if (isGroup) return; conv.user.online = online; if (!sub.classList.contains("typing")) sub.textContent = statusText(); };
 
@@ -640,6 +699,7 @@ export async function messagesPage({ params }) {
     // отправка
     let lastTyping = 0;
     ta.addEventListener("input", () => {
+      myTypingAt = Date.now();
       if (Date.now() - lastTyping > 2500 && ta.value.trim()) {
         lastTyping = Date.now();
         api.post(`/api/conversations/${id}/typing`).catch(() => {});
@@ -705,6 +765,10 @@ export async function messagesPage({ params }) {
     const id = message.conversation_id;
     if (chat && chat.id === id) {
       if (sender) chat.senders[sender.id] = sender;
+      if (message.sender_id !== state.me.id) {
+        message._live = true;
+        if (message.kind === "nudge") playNudge(message.media?.type, (sender?.name || "").split(" ")[0]);
+      }
       chat.append(message);
       if (message.sender_id !== state.me.id) {
         chat.markRead();
@@ -719,6 +783,12 @@ export async function messagesPage({ params }) {
     if (chat && chat.id === msg.conversation_id) chat.applyUpdate(msg);
     const c = convs.find((x) => x.id === msg.conversation_id);
     if (c?.last_message?.id === msg.id) { c.last_message = msg; drawList(); }
+  }));
+  cleanups.push(on("conv_theme", (d) => {
+    if (!chat || chat.id !== d.conversation_id) return;
+    Object.assign(chat.conv, { theme: d.theme, shared: d.shared, own: d.own });
+    applyChatTheme(chatPane, d.theme);
+    toast(`${d.by} поменял(а) оформление чата 🎨`, { icon: "palette" });
   }));
   cleanups.push(on("typing", ({ conversation_id, name }) => { if (chat && chat.id === conversation_id) chat.showTyping(name); }));
   cleanups.push(on("read", ({ conversation_id, last_read_id }) => {

@@ -101,6 +101,10 @@ def _msg_view(m: dict) -> dict:
             from .. import transcribe
             if isinstance(view["media"], dict) and transcribe.can_transcribe(view["kind"], view["media"]):
                 view["media"]["stt"] = transcribe.enabled()
+    if view["kind"] == "capsule":
+        # капсула времени: до срока содержимое не уходит из сервера никому, даже отправителю
+        from .chatplus import capsule_view
+        capsule_view(view)
     return view
 
 
@@ -365,7 +369,9 @@ async def leave_group(request: Request):
 @auth()
 async def get_conversation(request: Request):
     v = request.state.user["id"]
-    return JSONResponse(_conv_view(path_int(request), v))
+    conv_id = path_int(request)
+    from .chatplus import theme_of
+    return JSONResponse({**_conv_view(conv_id, v), **theme_of(conv_id, v)})
 
 
 @auth()

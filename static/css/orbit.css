@@ -4575,3 +4575,135 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
 .ai-summary-text { white-space: pre-wrap; line-height: 1.6; font-size: 15px; }
 .ai-thinking { display: flex; align-items: center; gap: 10px; color: var(--text-2); padding: 12px 0; }
 .ai-summary .small { font-size: 12.5px; margin-top: 12px; }
+
+/* ================================================================ Чат 2.0 */
+/* дата: одна плавающая плашка вместо нескольких «липких» — больше не налезают друг на друга */
+.chat-body .day-sep { position: static; }
+.day-float { position: sticky; top: 4px; z-index: 4; height: 0; display: flex; justify-content: center; pointer-events: none; }
+.day-float span { margin-top: 2px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--text-2);
+  background: var(--glass-strong); box-shadow: var(--shadow-sm); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  opacity: 0; transform: translateY(-6px); transition: opacity .2s, transform .2s; }
+.day-float.show span { opacity: 1; transform: none; }
+.day-float span:empty { display: none; }
+
+/* размер текста чата */
+.chat .msg, .chat .msg-bigemoji .caption { font-size: var(--chat-fs, 14.8px); }
+
+/* ---- обои */
+.chat[class*="cw-"]:not(.cw-none) .chat-body { background-attachment: local; }
+.cw-aurora .chat-body, .ct-wall-prev.cw-aurora { background: radial-gradient(60% 50% at 20% 10%, #22d3ee55, transparent 70%), radial-gradient(50% 60% at 85% 30%, #a855f755, transparent 70%), radial-gradient(60% 50% at 50% 100%, #10b98144, transparent 70%), #0b1024; background-size: 200% 200%; }
+.cw-cosmos .chat-body, .ct-wall-prev.cw-cosmos { background: radial-gradient(1px 1px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 70% 20%, #fff, transparent), radial-gradient(1.5px 1.5px at 40% 70%, #cbd5ff, transparent), radial-gradient(1px 1px at 85% 80%, #fff, transparent), radial-gradient(1px 1px at 10% 85%, #fff, transparent), radial-gradient(70% 60% at 70% 30%, #4c1d9544, transparent), #05061a; background-size: 220px 220px, 260px 260px, 300px 300px, 240px 240px, 280px 280px, 100% 100%, 100% 100%; }
+.cw-ocean .chat-body, .ct-wall-prev.cw-ocean { background: linear-gradient(180deg, #0c4a6e, #0e7490 55%, #155e75); }
+.cw-sunset .chat-body, .ct-wall-prev.cw-sunset { background: linear-gradient(180deg, #7c2d12, #db2777 55%, #f59e0b); }
+.cw-mint .chat-body, .ct-wall-prev.cw-mint { background: linear-gradient(160deg, #d1fae5, #a7f3d0 50%, #ccfbf1); }
+.cw-forest .chat-body, .ct-wall-prev.cw-forest { background: radial-gradient(80% 60% at 50% 0%, #16653455, transparent), linear-gradient(180deg, #052e16, #14532d); }
+.cw-candy .chat-body, .ct-wall-prev.cw-candy { background: linear-gradient(135deg, #fbcfe8, #ddd6fe 50%, #bfdbfe); }
+.cw-neon .chat-body, .ct-wall-prev.cw-neon { background: linear-gradient(#ff00c81a 1px, transparent 1px), linear-gradient(90deg, #00e5ff1a 1px, transparent 1px), radial-gradient(70% 50% at 50% 100%, #ff00c833, transparent), #0a0018; background-size: 28px 28px, 28px 28px, 100% 100%, 100% 100%; }
+.cw-matrix .chat-body, .ct-wall-prev.cw-matrix { background: repeating-linear-gradient(90deg, #00ff6610 0 1px, transparent 1px 18px), linear-gradient(180deg, #001a0a, #000); }
+.cw-hearts .chat-body, .ct-wall-prev.cw-hearts { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M30 44s-12-7.5-12-15a6.5 6.5 0 0 1 12-3.5A6.5 6.5 0 0 1 42 29c0 7.5-12 15-12 15z' fill='%23f472b6' fill-opacity='.18'/%3E%3C/svg%3E"), linear-gradient(160deg, #fff1f2, #fce7f3); }
+.cw-bubbles .chat-body, .ct-wall-prev.cw-bubbles { background: radial-gradient(circle at 20% 30%, #93c5fd55 0 18px, transparent 19px), radial-gradient(circle at 75% 60%, #c4b5fd55 0 28px, transparent 29px), radial-gradient(circle at 45% 85%, #67e8f955 0 12px, transparent 13px), linear-gradient(160deg, #eff6ff, #f5f3ff); background-size: 180px 180px, 240px 240px, 140px 140px, 100% 100%; }
+.cw-snow .chat-body, .ct-wall-prev.cw-snow { background: radial-gradient(2px 2px at 10% 20%, #fff, transparent), radial-gradient(2px 2px at 60% 10%, #fff, transparent), radial-gradient(1.5px 1.5px at 35% 60%, #fff, transparent), radial-gradient(2px 2px at 80% 75%, #fff, transparent), linear-gradient(180deg, #1e3a5f, #3b5b85); background-size: 160px 160px, 200px 200px, 140px 140px, 180px 180px, 100% 100%; }
+.cw-paper .chat-body, .ct-wall-prev.cw-paper { background: radial-gradient(#00000014 1px, transparent 1px), #fbf8f1; background-size: 18px 18px, 100% 100%; }
+.ct-wall-prev.cw-none { background: var(--surface-3); }
+/* живые обои */
+@media (prefers-reduced-motion: no-preference) {
+  .chat:not(.cw-still).cw-aurora .chat-body { animation: cw-aurora 18s ease-in-out infinite alternate; }
+  .chat:not(.cw-still).cw-cosmos .chat-body, .chat:not(.cw-still).cw-snow .chat-body { animation: cw-drift 60s linear infinite; }
+  .chat:not(.cw-still).cw-matrix .chat-body { animation: cw-rain 6s linear infinite; }
+}
+@keyframes cw-aurora { 0% { background-position: 0% 0%; } 100% { background-position: 100% 100%; } }
+@keyframes cw-drift { to { background-position: 220px 440px, -260px 520px, 300px 600px, -240px 480px, 280px 560px, 0 0, 0 0; } }
+@keyframes cw-rain { to { background-position: 0 0, 0 0; } }
+/* на светлых обоях — тёмный текст в чужих сообщениях и служебных строках */
+.cw-mint .msg:not(.mine), .cw-candy .msg:not(.mine), .cw-hearts .msg:not(.mine), .cw-bubbles .msg:not(.mine), .cw-paper .msg:not(.mine) { background: #ffffffd9; color: #111827; }
+.cw-mint .msg-system, .cw-candy .msg-system, .cw-hearts .msg-system, .cw-bubbles .msg-system, .cw-paper .msg-system { color: #374151; }
+
+/* ---- акцент своих сообщений */
+.ca-violet { --chat-accent: linear-gradient(135deg,#8b5cf6,#6d28d9); } .ca-blue { --chat-accent: linear-gradient(135deg,#3b82f6,#1d4ed8); }
+.ca-cyan { --chat-accent: linear-gradient(135deg,#22d3ee,#0891b2); } .ca-green { --chat-accent: linear-gradient(135deg,#34d399,#059669); }
+.ca-lime { --chat-accent: linear-gradient(135deg,#a3e635,#4d7c0f); } .ca-amber { --chat-accent: linear-gradient(135deg,#fbbf24,#d97706); }
+.ca-orange { --chat-accent: linear-gradient(135deg,#fb923c,#ea580c); } .ca-red { --chat-accent: linear-gradient(135deg,#f87171,#dc2626); }
+.ca-pink { --chat-accent: linear-gradient(135deg,#f472b6,#db2777); } .ca-mono { --chat-accent: linear-gradient(135deg,#52525b,#18181b); }
+.chat[class*="ca-"]:not(.ca-default) .msg.mine:not(.special-msg) { background: var(--chat-accent); }
+
+/* ---- форма пузырей */
+.cb-sharp .msg, .cb-sharp .msg.mine { border-radius: 6px !important; }
+.cb-cloud .msg { border-radius: 22px !important; padding-left: 15px; padding-right: 15px; }
+.cb-glass .msg { background: rgba(255, 255, 255, .1) !important; backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); border: 1px solid rgba(255, 255, 255, .22) !important; color: var(--text); }
+.cb-glass .msg.mine { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--primary) 60%, transparent); }
+.cb-outline .msg { background: transparent !important; border: 1.5px solid var(--border) !important; box-shadow: none !important; color: var(--text); }
+.cb-outline .msg.mine { border-color: var(--primary) !important; }
+
+/* ---- редактор оформления */
+.ct h4 { margin: 6px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); }
+.ct-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+.ct-accent { grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); }
+.ct-opt { display: grid; place-items: center; padding: 4px; border-radius: 14px; border: 2px solid transparent; background: none; }
+.ct-opt.on { border-color: var(--primary); }
+.ct-wall, .ct-bub { display: grid; gap: 4px; justify-items: center; width: 100%; }
+.ct-wall small, .ct-bub small { font-size: 11px; color: var(--text-2); text-align: center; line-height: 1.2; }
+.ct-wall-prev { display: block; width: 100%; aspect-ratio: 3 / 4; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--border); }
+.ct-dot { width: 30px; height: 30px; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .25); }
+.ct-bub-prev { padding: 6px 10px; font-size: 12px; background: var(--grad); color: #fff; border-radius: 14px; }
+.ct-bub-prev.cb-sharp { border-radius: 4px; } .ct-bub-prev.cb-cloud { border-radius: 20px; padding: 6px 14px; }
+.ct-bub-prev.cb-glass { background: rgba(255, 255, 255, .14); color: var(--text); border: 1px solid rgba(255, 255, 255, .3); }
+.ct-bub-prev.cb-outline { background: transparent; color: var(--text); border: 1.5px solid var(--primary); }
+.ct input[type="range"] { width: 140px; }
+.ct-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ct-chip { padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: var(--surface-3); color: var(--text); border: 0; }
+
+/* ---- особые сообщения */
+.chat .msg.special-msg, .chat .msg.special-msg.mine { background: var(--glass-strong) !important; color: var(--text); padding: 10px; max-width: min(86%, 340px); }
+.capsule { display: flex; gap: 12px; align-items: center; }
+.capsule.opened { display: grid; gap: 6px; }
+.capsule-orb { flex: none; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; font-size: 26px;
+  background: radial-gradient(circle at 35% 30%, #fff8, transparent 40%), conic-gradient(from 0deg, #8b5cf6, #22d3ee, #f472b6, #8b5cf6);
+  box-shadow: 0 0 24px #8b5cf688; animation: capsule-glow 3s ease-in-out infinite; }
+@keyframes capsule-glow { 50% { box-shadow: 0 0 34px #22d3ee99; transform: scale(1.04); } }
+.capsule-body { display: grid; gap: 2px; min-width: 0; }
+.capsule-body small, .capsule-top small { color: var(--text-2); font-size: 12px; }
+.capsule-hint { font-size: 13px; color: var(--text-2); font-style: italic; }
+.capsule-timer { font-variant-numeric: tabular-nums; font-size: 18px; letter-spacing: .02em; background: linear-gradient(90deg, #a78bfa, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.capsule-top { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.capsule-text { white-space: pre-wrap; font-size: 15px; line-height: 1.45; }
+.capsule.cracking .capsule-orb { animation: capsule-crack .9s ease-in forwards; }
+@keyframes capsule-crack { 40% { transform: scale(1.25) rotate(-8deg); } 100% { transform: scale(0); opacity: 0; } }
+.capsule-reveal { animation: capsule-in .7s cubic-bezier(.2, .9, .3, 1.3); }
+@keyframes capsule-in { from { transform: scale(.8); filter: blur(6px); opacity: 0; } }
+.wheel-card { display: grid; gap: 8px; justify-items: center; text-align: center; }
+.wheel-q { font-size: 15px; }
+.wheel-box { position: relative; width: 190px; height: 190px; }
+.wheel-svg { width: 100%; height: 100%; filter: drop-shadow(0 8px 18px #0006); }
+.wheel-svg g { transform-origin: 0 0; transform-box: view-box; }
+.wheel-svg text { fill: #fff; font-size: 10px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
+.wheel-pin { position: absolute; top: -4px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border: 10px solid transparent; border-top: 16px solid #fff; filter: drop-shadow(0 2px 3px #0008); }
+.wheel-hub { position: absolute; inset: 0; margin: auto; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); box-shadow: 0 2px 8px #0006; font-size: 18px; }
+.wheel-result { font-size: 15px; transition: opacity .3s, transform .3s; }
+.wheel-result.hidden { opacity: 0; transform: scale(.8); }
+.wheel-card.done .wheel-result b { color: var(--primary); }
+.wheel-opts .row { gap: 6px; }
+.nudge-sys { display: flex; justify-content: center; }
+.nudge-line { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; background: var(--glass-strong); font-size: 13px; color: var(--text-2); }
+.nudge-emo { font-size: 18px; }
+.chat-head .nudge-btn { color: #f472b6; }
+.nudge-fx { position: fixed; inset: 0; z-index: 9000; display: grid; place-items: center; pointer-events: none; overflow: hidden;
+  background: radial-gradient(circle, #f472b633, transparent 60%); animation: nudge-bg 2.3s ease forwards; }
+.nf-hug { background: radial-gradient(circle, #fbbf2433, transparent 60%); } .nf-fire { background: radial-gradient(circle, #f9731633, transparent 60%); }
+.nf-knock, .nf-wave { background: radial-gradient(circle, #60a5fa33, transparent 60%); }
+.nudge-big { grid-area: 1 / 1; font-size: 120px; animation: nudge-pop 2.2s cubic-bezier(.2, .9, .3, 1.4) forwards; }
+.nf-heart .nudge-big { animation: nudge-beat 1.1s ease-in-out 2, nudge-out 2.2s forwards; }
+.nf-wave .nudge-big { animation: nudge-wave .5s ease-in-out 4, nudge-out 2.2s forwards; transform-origin: 70% 80%; }
+.nudge-from { grid-area: 1 / 1; margin-top: 170px; font-weight: 800; font-size: 18px; color: var(--text); text-shadow: 0 2px 10px #0008; }
+.nudge-fx i { position: absolute; bottom: -40px; left: var(--x); font-style: normal; font-size: calc(28px * var(--s)); animation: nudge-rise 2s ease-out var(--d) forwards; }
+@keyframes nudge-bg { 85% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes nudge-pop { 0% { transform: scale(0); } 25% { transform: scale(1.15); } 40% { transform: scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3); } }
+@keyframes nudge-beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.25); } 30% { transform: scale(1); } 45% { transform: scale(1.18); } }
+@keyframes nudge-wave { 50% { transform: rotate(-22deg); } }
+@keyframes nudge-out { 85% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes nudge-rise { to { transform: translateY(-110vh) rotate(25deg); opacity: 0; } }
+.knock-shake { animation: knock 0.5s ease; }
+@keyframes knock { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+.chat-head .sub.resonance { background: linear-gradient(90deg, #f59e0b, #ec4899, #8b5cf6); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 800; }
+
+.chat-head .who { min-width: 0; flex: 1; }
+.chat-head .who .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
