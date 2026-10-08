@@ -299,6 +299,13 @@ async def manifest(request: Request):
                         headers={"Cache-Control": "public, max-age=3600"})
 
 
+async def robots(request: Request):
+    """Поисковикам и сервисам предпросмотра: открыты страницы, закрыто API"""
+    from starlette.responses import PlainTextResponse
+    return PlainTextResponse("User-agent: *\nAllow: /\nDisallow: /api/\n",
+                             headers={"Cache-Control": "public, max-age=3600"})
+
+
 async def health(request: Request):
     db.value("SELECT 1")
     return JSONResponse({"status": "ok"})
@@ -360,6 +367,7 @@ async def lifespan(app):
 routes = [
     Route("/api/health", health),
     Route("/sw.js", service_worker),
+    Route("/robots.txt", robots),
     Route("/manifest.webmanifest", manifest),
     *wallet_api.routes, *city_api.routes, *shop_routes.routes, *market_routes.routes, *invites.routes, *accounts.routes, *calls.routes, *admin.routes, *world_api.routes, *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
     *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *stats.routes, *music_api.routes, *collection_routes.routes, *reels.routes, *stickers.routes, *tgbot.routes, *webpush.routes, *assist.routes, *chatplus.routes, *consents.routes, *migrate.routes,
