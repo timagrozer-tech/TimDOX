@@ -342,6 +342,32 @@ async def updates_loop():
 
 
 @asynccontextmanager
+def warm_edge() -> None:
+    """Российский вход (хостинг) хранит у себя копии стилей и скриптов. После выкладки новой версии сразу
+    «прогреваем» его: он узнаёт о новой версии (сбрасывает старые копии) и заранее забирает свежие файлы —
+    первому посетителю не приходится ждать, пока хостинг сходит за ними на основной сервер."""
+    import time
+    import urllib.request
+    if not (config.EDGE_SECRET and config.ON_RENDER and not config.APP_URL.endswith(".onrender.com")):
+        return
+    time.sleep(25)  # даём серверу полностью запуститься
+    base = config.APP_URL.rstrip("/")
+    def get(path: str) -> int:
+        try:
+            with urllib.request.urlopen(urllib.request.Request(base + path, headers={"User-Agent": "YarkoWarm/1"}), timeout=60) as r:
+                r.read()
+                return r.status
+        except Exception:  # noqa: BLE001
+            return 0
+    if get("/api/health") != 200:
+        log.info("Прогрев российского входа: хостинг не ответил")
+        return
+    exts = (".js", ".css", ".svg", ".png", ".webmanifest", ".woff2", ".webp", ".jpg")
+    files = sorted(p for p in config.STATIC_DIR.rglob("*") if p.is_file() and p.suffix in exts and p.stat().st_size < 3_000_000)
+    ok = sum(get("/static/" + p.relative_to(config.STATIC_DIR).as_posix()) == 200 for p in files)
+    log.info("Прогрев российского входа: %s из %s файлов", ok, len(files))
+
+
 async def lifespan(app):
     db.connect()
     load_extra_banned(config.DATA_DIR / "banned_words.txt")
@@ -352,6 +378,7 @@ async def lifespan(app):
     updates_task = asyncio.create_task(updates_loop()) if os.environ.get("KRUG_UPDATES_LOOP", "1") != "0" else None
     from . import stickers2
     asyncio.get_running_loop().run_in_executor(None, tgbot.setup)
+    asyncio.get_running_loop().run_in_executor(None, warm_edge)
     tag_task = asyncio.create_task(stickers2.tagging_loop()) if os.environ.get("KRUG_UPDATES_LOOP", "1") != "0" else None
     log.info("«%s» запущен: %s", config.APP_NAME, config.APP_URL)
     yield
