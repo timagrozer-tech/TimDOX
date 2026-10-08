@@ -118,6 +118,10 @@ class Stage4Test(unittest.TestCase):
         self.assertIn("reel_like", types)
         self.assertIn("reel_comment", types)
         self.assertEqual(len(self.ivan.get("/api/reels", params={"user": "zoya4"}).json()["items"]), 1)
+        # «Подписки»: клипы друзей и тех, на кого подписан; незнакомцу — пусто
+        self.assertIn(reel["id"], [x["id"] for x in self.ivan.get("/api/reels", params={"feed": "following"}).json()["items"]])
+        stranger = Client().register("reel_stranger4", "Незнакомец Клипов")
+        self.assertNotIn(reel["id"], [x["id"] for x in stranger.get("/api/reels", params={"feed": "following"}).json()["items"]])
         self.assertEqual(self.ivan.delete(f"/api/reels/{reel['id']}").status_code, 403)
         self.assertEqual(self.zoya.delete(f"/api/reels/{reel['id']}").status_code, 200)
         self.assertIsNone(db.value("SELECT 1 FROM reels WHERE id=?", (reel["id"],)))

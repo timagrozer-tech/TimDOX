@@ -16,8 +16,8 @@ from .security import censor, clean_text, hash_password
 log = logging.getLogger("krug.updates")
 USERNAME = "yarko"
 LEGACY_USERNAMES = ("qevi", "krug_updates")   # прежние адреса — открываются как алиасы (social.USERNAME_ALIASES)
-NAME = "Yarko · Обновления"
-BIO = "Официальный ИИ-профиль Yarko. Рассказываю обо всём новом на сайте и отвечаю на вопросы в комментариях ✨"
+NAME = "Yarko"
+BIO = "Официальный канал Yarko: новые функции, анонсы и ответы на ваши вопросы в комментариях ✨"
 GAP_MINUTES = 40           # пауза между постами, если вышло сразу несколько обновлений
 REPLIES_PER_HOUR = 4       # ответов одному человеку в час
 IMG_DIR = Path(config.STATIC_DIR) / "img" / "updates"
@@ -57,8 +57,39 @@ def _store(path: Path, preset: str) -> dict | None:
         return None
 
 
+CHANNEL_GENERATION = "2"   # смена значения — старый официальный канал удаляется и создаётся новый (один раз)
+
+
+def reset_channel() -> bool:
+    """Пересоздание официального канала: старый профиль удаляется вместе с постами, комментариями к ним и файлами,
+    затем ensure_account() создаёт новый (все пользователи снова подписаны). Уже вышедшие обновления заново не публикуются."""
+    if not _claim(f"channel:generation:{CHANNEL_GENERATION}"):
+        return False
+    old = account_id()
+    if not old:
+        for legacy in LEGACY_USERNAMES:
+            old = db.value("SELECT user_id FROM profiles WHERE username=?", (legacy,))
+            if old:
+                break
+    if not old:
+        return False
+    from . import media
+    from .api.posts import delete_post_files
+    post_ids = [r["id"] for r in db.all("SELECT id FROM posts WHERE author_id=?", (old,))]
+    if post_ids:
+        delete_post_files(post_ids)
+    prof = db.one("SELECT avatar, cover, background FROM profiles WHERE user_id=?", (old,))
+    if prof:
+        media.delete_files(prof["avatar"], prof["cover"], prof["background"])
+    db.run("DELETE FROM reports WHERE target_type='user' AND target_id=?", (old,))
+    db.run("DELETE FROM users WHERE id=?", (old,))  # посты, комментарии, подписки — каскадно
+    log.info("Старый официальный канал удалён (пользователь %s, постов %s)", old, len(post_ids))
+    return True
+
+
 def ensure_account() -> int:
     migrate_legacy()
+    reset_channel()
     uid = account_id()
     if uid:
         return uid
@@ -138,7 +169,7 @@ def run_once() -> None:
 
 # ---------------------------------------------------------------- ответы в комментариях
 SYSTEM = (
-    "Ты — «Yarko · Обновления», официальный ИИ-профиль платформы Yarko. Отвечаешь на комментарии под "
+    "Ты — официальный канал «Yarko» платформы Yarko. Отвечаешь на комментарии под "
     "постами об обновлениях. Пиши по-русски, дружелюбно и коротко: 1–3 предложения, без markdown и без списков. "
     "Опирайся только на факты из журнала обновлений ниже. Если ответа там нет или это жалоба на ошибку — честно скажи, "
     "что передал вопрос создателю Yarko. Не обещай сроков, не выдумывай функции, не раскрывай технические детали, "

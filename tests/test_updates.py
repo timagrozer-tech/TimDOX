@@ -75,5 +75,19 @@ class UpdatesTest(unittest.TestCase):
             self.assertIsNone(updates.reply(other))
 
 
+    def test_reset_channel(self):
+        """Новое поколение канала: старый профиль удаляется с постами, создаётся новый, все снова подписаны."""
+        old = updates.ensure_account()
+        pid = db.run("INSERT INTO posts (author_id, text, visibility) VALUES (?, 'Старый пост', 'public')", (old,)).lastrowid
+        with mock.patch.object(updates, "CHANNEL_GENERATION", "test-reset"):
+            new = updates.ensure_account()
+            self.assertNotEqual(new, old)
+            self.assertIsNone(db.value("SELECT 1 FROM posts WHERE id=?", (pid,)))
+            self.assertIsNone(db.value("SELECT 1 FROM users WHERE id=?", (old,)))
+            self.assertEqual(db.value("SELECT username FROM profiles WHERE user_id=?", (new,)), "yarko")
+            self.assertTrue(db.value("SELECT 1 FROM follows WHERE follower_id=? AND followee_id=?", (self.old_id, new)))
+            self.assertEqual(updates.ensure_account(), new)  # второй раз не пересоздаётся
+        type(self).uid = new
+
 if __name__ == "__main__":
     unittest.main()

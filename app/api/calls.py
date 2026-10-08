@@ -21,7 +21,8 @@ SIGNAL_TYPES = {"offer", "answer", "ice", "state", "reaction", "recording", "han
 
 
 def ice_servers() -> list[dict]:
-    servers = [{"urls": ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"]}]
+    # несколько независимых STUN: если один недоступен из сети собеседника, сработает другой
+    servers = [{"urls": ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302", "stun:stun.cloudflare.com:3478"]}]
     turn = os.environ.get("TURN_URLS", "").split()
     if turn:
         servers.append({"urls": turn, "username": os.environ.get("TURN_USERNAME", ""),
@@ -153,6 +154,12 @@ async def decline(request: Request):
 
 
 @auth()
+async def ice(request: Request):
+    """Серверы соединения для страницы «Проверка звонков»"""
+    return JSONResponse({"ice_servers": ice_servers(), "turn": bool(os.environ.get("TURN_URLS"))})
+
+
+@auth()
 async def history(request: Request):
     v = request.state.user["id"]
     rows = db.all("""SELECT c.* FROM calls c JOIN conversation_members m ON m.conversation_id = c.conversation_id AND m.user_id = ?
@@ -167,6 +174,7 @@ async def history(request: Request):
 routes = [
     Route("/api/calls", start, methods=["POST"]),
     Route("/api/calls/history", history, methods=["GET"]),
+    Route("/api/calls/ice", ice, methods=["GET"]),
     Route("/api/calls/{id}/join", join, methods=["POST"]),
     Route("/api/calls/{id}/signal", signal, methods=["POST"]),
     Route("/api/calls/{id}/leave", leave, methods=["POST"]),

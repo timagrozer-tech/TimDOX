@@ -537,6 +537,8 @@ export async function settingsPage({ query = {} } = {}) {
     ["telegram", "Telegram", "send", () => [
       section("Telegram", "Бот Yarko: уведомления, стикеры и быстрый вход.", telegramBox())]],
     ["more", "Ещё", "more", () => [
+      section("Звонки", "Пройдёт ли голосовой или видеозвонок из вашей сети — проверка за 10 секунд.",
+        h("a.btn.soft", { href: "/calltest" }, icon("phone", "sm"), "Проверить звонки")),
       section("Документы и согласия", "Что вы приняли и когда. ИИ-функции можно включить или выключить здесь.", consentsBox()),
       section("Мои данные", "Копия всех ваших данных или полное удаление аккаунта.",
         h("div.row", { style: { flexWrap: "wrap" } },

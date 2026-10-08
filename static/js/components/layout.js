@@ -15,6 +15,7 @@ let listenersBound = false;
 // Основное меню — 8 главных разделов; редкие спрятаны в «Ещё» (меньше пунктов — быстрее находишь нужное)
 const NAV = [
   { href: "/", icon: "home", label: "Лента", match: (p) => p === "/" || p === "/explore" },
+  { href: "/reels", icon: "film", label: "Клипы", match: (p) => p.startsWith("/reels") },
   { href: "/messages", icon: "message", label: "Сообщения", badge: "messages", match: (p) => p.startsWith("/messages") },
   { href: "/notifications", icon: "bell", label: "Уведомления", badge: "notifications", match: (p) => p === "/notifications" },
   { href: "/friends", icon: "users", label: "Друзья", badge: "friend_requests", match: (p) => p.startsWith("/friends") },
@@ -68,7 +69,7 @@ function mobileMenu(btn) {
   showMenu(btn, [
     { label: "Аккаунты", hint: `@${state.me.username} · переключить или добавить`, icon: "users", onClick: openAccounts },
     "-",
-    ...navItems().filter((n) => !["Лента", "Моя страница", "Сообщения", "Друзья", "Уведомления", "Поиск"].includes(n.label)).map((n) => ({
+    ...navItems().filter((n) => !["Лента", "Моя страница", "Сообщения", "Клипы", "Уведомления", "Поиск"].includes(n.label)).map((n) => ({
       label: n.badge && state.counters[n.badge] ? `${n.label} (${state.counters[n.badge]})` : n.label,
       icon: n.icon, onClick: () => navigate(hrefOf(n)),
     })),
@@ -95,6 +96,10 @@ function createMenu(btn) {
   btn.classList.add("open");
   showMenu(btn, [
     { label: "Запись", hint: "Текст, фото, видео или опрос", icon: "edit", onClick: () => openComposerModal() },
+    { label: "Клип", hint: "Вертикальное видео до 90 секунд", icon: "film", onClick: async () => {
+      const { openUpload } = await import("../pages/reels.js");
+      openUpload((r) => navigate(`/reels/${r.id}`));
+    } },
     { label: "История", hint: "Фото или текст на 24 часа", icon: "story", onClick: async () => {
       const { createStory } = await import("./stories.js");
       createStory(() => document.querySelector(".stories-card")?._reload?.());
@@ -107,7 +112,7 @@ function tabbar() {
   longPress(profileTab, openAccounts);
   return h("nav.tabbar", { "aria-label": "Меню" },
     h("a", { href: "/", dataset: { nav: "Лента" } }, icon("home"), "Лента"),
-    h("a", { href: "/friends", dataset: { nav: "Друзья" } }, icon("users"), "Друзья", badge("friend_requests")),
+    h("a", { href: "/reels", dataset: { nav: "Клипы" } }, icon("film"), "Клипы"),
     h("a.tab-create", { href: "#", "aria-label": "Создать", "aria-haspopup": "menu", onclick: (e) => { e.preventDefault(); createMenu(e.currentTarget); } }, h("span.create", icon("plus"))),
     h("a", { href: "/messages", dataset: { nav: "Сообщения" } }, icon("message"), "Чаты", badge("messages")),
     profileTab);

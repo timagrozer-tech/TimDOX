@@ -82,7 +82,11 @@ function addPeer(uid, card) {
     } catch (e) { console.warn(e); } finally { peer.makingOffer = false; }
   };
   pc.oniceconnectionstatechange = () => {
-    if (pc.iceConnectionState === "failed") pc.restartIce?.();
+    if (pc.iceConnectionState === "failed") {
+      peer.fails = (peer.fails || 0) + 1;
+      if (peer.fails === 1) pc.restartIce?.();
+      else setStatus("Не удаётся соединиться: сеть не пропускает звонок. Попробуйте Wi‑Fi или «Настройки» → «Проверка звонков»");
+    }
     if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
       if (!cur.connectedAt) { cur.connectedAt = Date.now(); stopRing(); }
       setStatus("");

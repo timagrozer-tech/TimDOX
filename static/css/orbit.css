@@ -4805,3 +4805,64 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
 .logo:hover svg.brand-mark { transform: rotate(-12deg) scale(1.08); }
 .logo:active svg.brand-mark { transform: scale(.92); }
 @media (prefers-reduced-motion: reduce) { .logo svg.brand-mark { transition: none; } .logo:hover svg.brand-mark { transform: none; } }
+
+/* ================================================================ Клипы 2.0: вкладки, жесты, перемотка, скорость */
+.rl-tabs { pointer-events: auto; display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(0, 0, 0, .28);
+  border: 1px solid rgba(255, 255, 255, .16); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.rl-tabs button { border: 0; background: none; color: rgba(255, 255, 255, .72); font: inherit; font-weight: 800; font-size: 14px; padding: 7px 14px; border-radius: 999px; cursor: pointer; transition: background-color .2s, color .2s; }
+.rl-tabs button.on { background: rgba(255, 255, 255, .92); color: #0A0F2C; }
+.reels-loading { height: 100%; display: grid; place-items: center; }
+.reels-loading .spinner { border-color: rgba(255, 255, 255, .25); border-top-color: #fff; }
+.reel .rl-stage { touch-action: pan-y; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.rl-buffer { position: absolute; display: none; pointer-events: none; }
+.rl-buffer .spinner { width: 44px; height: 44px; border-width: 3px; border-color: rgba(255, 255, 255, .25); border-top-color: #fff; }
+.reel.active.buffering:not(.paused) .rl-buffer { display: block; }
+.rl-fast { position: absolute; top: 72px; left: 50%; transform: translate(-50%, -8px); display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px;
+  border-radius: 999px; background: rgba(0, 0, 0, .55); color: #fff; font-weight: 800; font-size: 14px; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; }
+.reel.fast .rl-fast { opacity: 1; transform: translate(-50%, 0); }
+.reel.fast .rl-info, .reel.fast .rl-rail { opacity: 0; }
+.rl-info, .rl-rail { transition: opacity .25s; }
+.rl-seek { position: absolute; top: 0; bottom: 0; width: 38%; display: grid; place-items: center; pointer-events: none; animation: rl-seek .65s ease-out forwards; }
+.rl-seek.left { left: 0; border-radius: 0 50% 50% 0 / 0 50% 50% 0; background: radial-gradient(circle at 20% 50%, rgba(255, 255, 255, .22), transparent 70%); }
+.rl-seek.right { right: 0; border-radius: 50% 0 0 50% / 50% 0 0 50%; background: radial-gradient(circle at 80% 50%, rgba(255, 255, 255, .22), transparent 70%); }
+.rl-seek b { color: #fff; font-size: 18px; text-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
+@keyframes rl-seek { 0% { opacity: 0; } 20% { opacity: 1; } 100% { opacity: 0; } }
+.rl-speed { position: absolute; top: 64px; right: 14px; z-index: 2; border: 1px solid rgba(255, 255, 255, .3); background: rgba(0, 0, 0, .4); color: #fff;
+  border-radius: 999px; padding: 4px 10px; font-weight: 800; font-size: 13px; cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.rl-progress { height: 22px; bottom: 0; background: none; cursor: pointer; touch-action: none; z-index: 2; display: flex; align-items: flex-end; }
+.rl-track { position: relative; width: 100%; height: 3px; background: rgba(255, 255, 255, .22); transition: height .15s; }
+.rl-track i { position: absolute; inset: 0; display: block; background: linear-gradient(90deg, #88FFF2, #2563FF 55%, #B277FF); transform-origin: 0 50%; transform: scaleX(0); }
+.rl-knob { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(37, 99, 255, .35); opacity: 0; transform: scale(.4); transition: opacity .15s, transform .15s; }
+.rl-progress:hover .rl-track, .reel.scrubbing .rl-track, .reel.paused .rl-track { height: 6px; }
+.rl-progress:hover .rl-knob, .reel.scrubbing .rl-knob, .reel.paused .rl-knob { opacity: 1; transform: none; }
+.rl-time { position: absolute; left: 50%; bottom: 30px; transform: translateX(-50%); padding: 6px 12px; border-radius: 12px; background: rgba(0, 0, 0, .6); color: #fff;
+  font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .15s; pointer-events: none; white-space: nowrap; }
+.reel.scrubbing .rl-time { opacity: 1; }
+.reel.scrubbing .rl-info, .reel.scrubbing .rl-rail { opacity: 0; }
+.rl-act.rl-sound { width: auto; height: auto; background: none; border-radius: 0; }
+
+/* ================================================================ Проверка звонков */
+.ct-list { display: grid; gap: 4px; }
+.ct-row { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--border); }
+.ct-row:last-child { border-bottom: 0; }
+.ct-row .label-block small { display: block; color: var(--text-3); line-height: 1.4; }
+.ct-mark { width: 30px; height: 30px; flex: none; border-radius: 50%; display: grid; place-items: center; font-weight: 900; background: var(--surface-3); color: var(--text-3); }
+.ct-row.ok .ct-mark { background: color-mix(in srgb, #10b981 22%, transparent); color: #10b981; }
+.ct-row.bad .ct-mark { background: color-mix(in srgb, #ef4444 22%, transparent); color: #ef4444; }
+.ct-row.warn .ct-mark { background: color-mix(in srgb, #f59e0b 22%, transparent); color: #f59e0b; }
+.ct-row.wait .ct-mark { animation: ct-blink 1s ease-in-out infinite; }
+@keyframes ct-blink { 50% { opacity: .4; } }
+.ct-verdict { padding: 14px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--border); }
+.ct-verdict b { font-size: 16px; }
+.ct-verdict p { margin: 6px 0 0; color: var(--text-2); }
+.reels-page { -webkit-user-select: none; user-select: none; }
+.reels-page .rl-caption, .reels-page .rl-comments { -webkit-user-select: text; user-select: text; }
+/* мобильный плеер на весь экран: управление поднимаем над нижним меню */
+@media (max-width: 719px) {
+  body.reels-mode .reels { height: 100vh; height: 100dvh; }
+  body.reels-mode .reel { --dock: calc(var(--dock-h, 64px) + 12px + env(safe-area-inset-bottom)); }
+  body.reels-mode .rl-progress { bottom: var(--dock); }
+  body.reels-mode .rl-info { padding-bottom: calc(var(--dock) + 26px); }
+  body.reels-mode .rl-rail { bottom: calc(var(--dock) + 30px); }
+  body.reels-mode .rl-time { bottom: 34px; }
+}

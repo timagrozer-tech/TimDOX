@@ -62,6 +62,12 @@ async def list_reels(request: Request):
         if not uid:
             raise ApiError(404, "Пользователь не найден")
         where.append("r.author_id=?"); params.append(uid)
+    elif request.query_params.get("feed") == "following":
+        # подписки: авторы, на которых человек подписан, и друзья
+        where.append("""(EXISTS (SELECT 1 FROM follows fo WHERE fo.follower_id=? AND fo.followee_id=r.author_id)
+                        OR EXISTS (SELECT 1 FROM friendships f2 WHERE f2.status='accepted'
+                                   AND f2.user_low=least(?, r.author_id) AND f2.user_high=greatest(?, r.author_id)))""")
+        params += [v, v, v]
     if cursor:
         where.append("r.id<?"); params.append(cursor)
     rows = db.all(f"SELECT r.* FROM reels r WHERE {' AND '.join(where)} ORDER BY r.id DESC LIMIT {PAGE + 1}", tuple(params))

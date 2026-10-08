@@ -70,5 +70,11 @@ class CallsTest(unittest.TestCase):
         self.assertEqual(self.x.post("/api/calls", {"conversation_id": self.conv}).status_code, 404)
 
 
+    def test_ice_endpoint(self):
+        r = self.a.get("/api/calls/ice").json()
+        urls = [u for srv in r["ice_servers"] for u in srv["urls"]]
+        self.assertTrue(any(u.startswith("stun:") for u in urls))
+        self.assertIn("turn", r)
+
 if __name__ == "__main__":
     unittest.main()
