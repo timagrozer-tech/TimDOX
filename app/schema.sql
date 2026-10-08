@@ -910,3 +910,16 @@ CREATE TABLE IF NOT EXISTS rt_online (
     user_id INTEGER PRIMARY KEY,
     seen_at TEXT NOT NULL
 );
+
+-- Короткий журнал запросов на обычном хостинге (app/wsgi.py), хранится сутки
+CREATE TABLE IF NOT EXISTS req_log (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    method     TEXT NOT NULL,
+    path       TEXT NOT NULL,
+    status     INTEGER NOT NULL,
+    ms         INTEGER NOT NULL,
+    ip_prefix  TEXT NOT NULL DEFAULT '',
+    ua         TEXT NOT NULL DEFAULT '',
+    pid        INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);

@@ -72,7 +72,26 @@ if LEADER:
 _DONE = object()
 
 
+def _log_request(method: str, path: str, status: int, t0: float, environ) -> None:
+    """Короткий журнал запросов в базе (сутки): видно, что дошло до сайта на хостинге, — без доступа к его логам"""
+    if os.environ.get("YARKO_REQ_LOG", "1") == "0" or (path == "/api/poll" and status == 200):
+        return
+    try:
+        import time as _t
+        from app import db
+        ip = environ.get("REMOTE_ADDR", "")
+        db.run("INSERT INTO req_log (method, path, status, ms, ip_prefix, ua, pid) VALUES (?,?,?,?,?,?,?)",
+               (method, path[:200], status, int((_t.time() - t0) * 1000), ".".join(ip.split(".")[:3]) + ".*",
+                environ.get("HTTP_USER_AGENT", "")[:120], os.getpid()))
+        if hash(t0) % 200 == 0:
+            db.run("DELETE FROM req_log WHERE created_at < ?", (db.future(days=-1),))
+    except Exception:  # noqa: BLE001 — журнал не должен ломать ответ
+        pass
+
+
 def application(environ, start_response):
+    import time as _t
+    t0 = _t.time()
     # тело запроса читаем целиком (загрузки до нескольких десятков МБ — это нормально для Passenger)
     try:
         length = int(environ.get("CONTENT_LENGTH") or 0)
@@ -178,5 +197,6 @@ def application(environ, start_response):
                     return
         finally:
             finish()  # клиент ушёл или ответ отдан: приложение получит http.disconnect (фоновые задачи ответа доработают)
+            _log_request(scope["method"], path, status, t0, environ)
 
     return body_iter()
