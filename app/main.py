@@ -196,7 +196,7 @@ class SelectiveGZip:
         if scope["type"] == "http":
             p = scope["path"]
             last = p.rsplit("/", 1)[-1]
-            if (p.startswith("/api/") and p != "/api/stream") or p.endswith(self.TEXT_EXT) or \
+            if (p.startswith("/api/") and p != "/api/stream" and not p.startswith(("/api/music/play/", "/api/music/art"))) or p.endswith(self.TEXT_EXT) or \
                     (not p.startswith(("/uploads/", "/static/", "/api/")) and "." not in last):
                 return await self.gzip(scope, receive, send)
         return await self.app(scope, receive, send)

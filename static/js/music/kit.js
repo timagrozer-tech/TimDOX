@@ -3,7 +3,7 @@ import { api } from "../api.js";
 import { h, icon, thumb } from "../dom.js";
 import { modal, toastError } from "../ui.js";
 import { fmtDur } from "../components/mediakit.js";
-import { playFrom, playQueue, toggle, current, isPlaying, likeButton, trackMenu, coverOf, hue, loadLikes } from "./player.js";
+import { playFrom, playQueue, toggle, current, isPlaying, likeButton, trackMenu, coverOf, hue, loadLikes, artUrl } from "./player.js";
 
 const eq = () => h("span.mu-eq", { "aria-hidden": "true" }, h("i"), h("i"), h("i"), h("i"));
 const stateClasses = (t) => {
@@ -56,7 +56,7 @@ export function shelf(title, items, { more = null, sub = null } = {}) {
 export function playlistCard(p) {
   return h("a.pc", { href: `/music/playlist/${encodeURIComponent(p.id)}` },
     h("span.pc-art", { style: { "--hue": String(hue(p.id)) } }, h("span.pc-back"), h("span.pc-back2"),
-      p.artwork ? h("img", { src: p.artwork, alt: "", loading: "lazy", referrerpolicy: "no-referrer" }) : h("span.mu-cover.mu-cover-empty", icon("list"))),
+      p.artwork ? h("img", { src: artUrl(p.artwork), alt: "", loading: "lazy" }) : h("span.mu-cover.mu-cover-empty", icon("list"))),
     h("span.tc-title", p.title),
     h("span.tc-sub", `${p.count} ${p.count % 10 === 1 && p.count % 100 !== 11 ? "трек" : "треков"} · ${p.artist}`));
 }
@@ -69,7 +69,7 @@ export function genreTile(g, i) {
 export function stationTile(s, list) {
   const tile = h(`div.st-radio${stateClasses(s)}`, { dataset: { track: s.key }, role: "button", tabindex: 0, "aria-label": s.title },
     h("span.sr-logo", { style: { "--hue": String(hue(s.key)) } },
-      s.artwork ? h("img", { src: s.artwork, alt: "", loading: "lazy", referrerpolicy: "no-referrer", onerror: (e) => e.target.remove() }) : null,
+      s.artwork ? h("img", { src: artUrl(s.artwork), alt: "", loading: "lazy", onerror: (e) => e.target.remove() }) : null,
       h("span.sr-letter", s.title.replace(/^(радио|radio)\s+/i, "")[0] || "R"), eq()),
     h("span.sr-name", s.title), h("span.sr-tags", s.artist),
     likeButton(s, "sr-like"));

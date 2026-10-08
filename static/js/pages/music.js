@@ -4,7 +4,7 @@ import { h, icon, pl } from "../dom.js";
 import { setTitle, toastError } from "../ui.js";
 import { navigate, setCleanup } from "../router.js";
 import { trackList, trackCard, shelf, playlistCard, genreTile, stationTile } from "../music/kit.js";
-import { playQueue, subscribe, current, isPlaying, toggle, setLiked, setShuffle } from "../music/player.js";
+import { playQueue, subscribe, current, isPlaying, toggle, setLiked, setShuffle, artUrl } from "../music/player.js";
 
 const TABS = [["home", "Главная", "music"], ["russian", "На русском", "mic"], ["my", "Моя музыка", "heart"], ["radio", "Радио", "radio"]];
 
@@ -219,7 +219,7 @@ export async function playlistPage({ params }) {
   return h("div.mu-page",
     h("a.mu-back", { href: "/music" }, icon("back", "sm"), "Музыка"),
     h("section.mu-cover-head.pl", { style: { "--hue": String((params.id.length * 71) % 360) } },
-      p.artwork ? h("img.mu-cover-img", { src: p.artwork, alt: "", referrerpolicy: "no-referrer" }) : h("span.mu-cover-emoji", "🎧"),
+      p.artwork ? h("img.mu-cover-img", { src: artUrl(p.artwork), alt: "" }) : h("span.mu-cover-emoji", "🎧"),
       h("div", h("small", "Подборка"), h("h1", p.title), h("p", [p.artist, pl(d.tracks.length, ["трек", "трека", "треков"]), total ? `${Math.round(total / 60)} мин` : ""].filter(Boolean).join(" · "))),
       h("button.btn.primary.mu-cover-play", { type: "button", onclick: () => { setShuffle(false); playQueue(d.tracks, 0, p.title); } }, icon("play", "sm"), "Слушать")),
     d.tracks.length ? h("div.card.mu-card", trackList(d.tracks, p.title)) : h("div.card.empty", h("p", "Подборка пуста")),

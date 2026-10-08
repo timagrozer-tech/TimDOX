@@ -5,7 +5,7 @@ from collections import Counter
 
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
 from .. import db, music, social
@@ -179,6 +179,45 @@ async def like(request: Request):
     return ok({"ok": True, "track": track})
 
 
+@auth()
+async def play(request: Request):
+    """Аудио трека через наш сервер: из России Audius напрямую не открывается"""
+    limit(request, "music_play")
+    try:
+        r = await run_in_threadpool(music.open_audius_stream, request.path_params["id"], request.headers.get("range"))
+    except music.Unavailable:
+        raise ApiError(502, "Трек сейчас недоступен")
+    headers = {"Accept-Ranges": "bytes", "Cache-Control": "private, max-age=3600"}
+    for h in ("Content-Length", "Content-Range"):
+        if r.headers.get(h):
+            headers[h] = r.headers[h]
+    ctype = r.headers.get("Content-Type") or "audio/mpeg"
+    status = getattr(r, "status", None) or r.getcode()
+
+    def chunks():
+        try:
+            while True:
+                b = r.read(65536)
+                if not b:
+                    break
+                yield b
+        finally:
+            r.close()
+    return StreamingResponse(chunks(), status_code=status, media_type=ctype, headers=headers)
+
+
+@auth()
+async def art(request: Request):
+    """Обложки и значки станций через наш сервер — тоже ради работы без VPN"""
+    limit(request, "music_play")
+    try:
+        data, ctype = await _call(music.fetch_art, request.query_params.get("u", ""))
+    except ApiError:
+        return Response(status_code=404)
+    return Response(data, media_type=ctype, headers={"Cache-Control": "private, max-age=604800",
+                                                     "X-Content-Type-Options": "nosniff"})
+
+
 async def status(request: Request):
     """Проверка источников музыки (для мониторинга): сколько треков и станций сейчас доступно."""
     tracks, stations, ru = await asyncio.gather(_call(music.trending, "", "week", 60, default=[]),
@@ -197,5 +236,7 @@ routes = [
     Route("/api/music/radio", radio, methods=["GET"]),
     Route("/api/music/wave", wave, methods=["GET"]),
     Route("/api/music/likes", likes, methods=["GET"]),
+    Route("/api/music/play/{id}", play, methods=["GET"]),
+    Route("/api/music/art", art, methods=["GET"]),
     Route("/api/music/likes", like, methods=["POST", "DELETE"]),
 ]

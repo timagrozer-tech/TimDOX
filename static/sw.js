@@ -1,6 +1,6 @@
 // Сервис-воркер Yarko: приложение открывается мгновенно и работает без сети (показывает сохранённое).
-const VERSION = "krug-v87";
-const SHELL = ["/", "/static/css/app.css?v=7", "/static/css/orbit.css?v=87", "/static/js/app.js?v=87", "/static/js/theme-init.js",
+const VERSION = "krug-v88";
+const SHELL = ["/", "/static/css/app.css?v=7", "/static/css/orbit.css?v=88", "/static/js/app.js?v=88", "/static/js/theme-init.js",
   "/static/img/icon-192.png", "/static/manifest.webmanifest"];
 
 self.addEventListener("install", (e) => {

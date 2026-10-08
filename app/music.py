@@ -6,6 +6,7 @@ import logging
 import random
 import re
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -234,6 +235,75 @@ def ru_indie(limit: int = 60) -> list[dict]:
         pool.sort(key=lambda t: -t.get("plays", 0))
         return pool
     return cached("ru:indie", 6 * 3600, load)[:limit]
+
+
+# ---------------------------------------------------------------- Через наш сервер
+# В России сервисы Audius и многие картинки напрямую не открываются (или сильно замедлены),
+# поэтому аудио и обложки отдаёт наш сервер — по цепочке «хостинг в РФ → Render → источник».
+ART_MAX = 3 * 1048576
+_ART_TYPES = ("image/jpeg", "image/png", "image/webp", "image/gif")
+
+
+def _public_host(host: str) -> bool:
+    """Не даём заставить сервер ходить во внутреннюю сеть: только публичные адреса"""
+    import ipaddress
+    import socket
+    try:
+        infos = socket.getaddrinfo(host, 443, proto=socket.IPPROTO_TCP)
+    except OSError:
+        return False
+    return bool(infos) and all(ipaddress.ip_address(i[4][0]).is_global for i in infos)
+
+
+class _SafeRedirect(urllib.request.HTTPRedirectHandler):
+    """Обложки Audius часто переадресуют на другой узел — следуем, но только на публичные https-адреса"""
+    max_redirections = 4
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        u = urllib.parse.urlsplit(newurl)
+        if u.scheme != "https" or not u.hostname or not _public_host(u.hostname):
+            raise Unavailable("bad redirect")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def fetch_art(url: str) -> tuple[bytes, str]:
+    """Обложка трека или значок станции: только https, публичный адрес, картинка до 3 МБ"""
+    u = urllib.parse.urlsplit(url or "")
+    if u.scheme != "https" or not u.hostname or len(url) > 600 or not _public_host(u.hostname):
+        raise Unavailable("bad url")
+    opener = urllib.request.build_opener(_SafeRedirect)
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "image/*"})
+    try:
+        with opener.open(req, timeout=10) as r:
+            ctype = (r.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            if ctype not in _ART_TYPES:
+                raise Unavailable("not image")
+            data = r.read(ART_MAX + 1)
+    except Unavailable:
+        raise
+    except Exception as e:
+        raise Unavailable(str(e)) from e
+    if len(data) > ART_MAX:
+        raise Unavailable("too big")
+    return data, ctype
+
+
+def open_audius_stream(tid: str, rng: str | None):
+    """Открывает аудиопоток трека Audius (с поддержкой перемотки через Range). Возвращает ответ urllib"""
+    if not _ID.match(tid):
+        raise Unavailable("bad id")
+    headers = {"User-Agent": UA}
+    if rng and re.fullmatch(r"bytes=\d*-\d*", rng):
+        headers["Range"] = rng
+    req = urllib.request.Request(f"{AUDIUS}/tracks/{tid}/stream?app_name={APP}", headers=headers)
+    try:
+        return urllib.request.urlopen(req, timeout=20)
+    except urllib.error.HTTPError as e:
+        if e.code == 416:
+            return e
+        raise Unavailable(f"audius {e.code}") from e
+    except Exception as e:
+        raise Unavailable(str(e)) from e
 
 
 # ---------------------------------------------------------------- Общее

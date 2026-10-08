@@ -24,7 +24,9 @@ const listeners = new Set();
 
 export const current = () => queue[index] || null;
 export const isPlaying = () => !audio.paused && !!current();
-export const streamUrl = (t) => (t.source === "audius" ? `https://api.audius.co/v1/tracks/${encodeURIComponent(t.id)}/stream?app_name=Yarko` : t.stream);
+// аудио и обложки идут через наш сервер: в России Audius и многие сайты с картинками напрямую не открываются
+export const streamUrl = (t) => (t.source === "audius" ? `/api/music/play/${encodeURIComponent(t.id)}` : t.stream);
+export const artUrl = (u) => (u && /^https:\/\//.test(u) ? `/api/music/art?u=${encodeURIComponent(u)}` : u || "");
 
 // ---------------------------------------------------------------- подписки
 export function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
@@ -221,7 +223,7 @@ function mediaSession(t) {
   try {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: t.title, artist: t.artist || "", album: ctx || "Yarko",
-      artwork: t.artwork ? [{ src: t.artwork, sizes: "480x480", type: "image/jpeg" }] : [{ src: "/static/img/icon-192.png", sizes: "192x192", type: "image/png" }],
+      artwork: t.artwork ? [{ src: artUrl(t.artwork), sizes: "480x480", type: "image/jpeg" }] : [{ src: "/static/img/icon-192.png", sizes: "192x192", type: "image/png" }],
     });
     const ms = navigator.mediaSession;
     ms.setActionHandler("play", () => play());
@@ -266,7 +268,7 @@ let mini = null, full = null, releaseOverlay = null, queueOpen = false;
 
 function cover(t, cls = "") {
   return t?.artwork
-    ? h(`img.mu-cover${cls ? "." + cls : ""}`, { src: t.artwork, alt: "", loading: "lazy", referrerpolicy: "no-referrer" })
+    ? h(`img.mu-cover${cls ? "." + cls : ""}`, { src: artUrl(t.artwork), alt: "", loading: "lazy" })
     : h(`span.mu-cover.mu-cover-empty${cls ? "." + cls : ""}`, { "aria-hidden": "true", style: { "--hue": String(hue(t?.key || "")) } },
       t?.live ? icon("radio") : icon("music"));
 }
@@ -526,7 +528,7 @@ function paintUi() {
     full.dataset.key = t.key;
     full.style.setProperty("--hue", String(hue(t.key)));
     const bg = full.querySelector(".fp-bg img");
-    if (t.artwork) { bg.src = t.artwork; bg.hidden = false; } else bg.hidden = true;
+    if (t.artwork) { bg.src = artUrl(t.artwork); bg.hidden = false; } else bg.hidden = true;
     full.querySelector(".fp-disc").replaceChildren(cover(t, "fp-cover"));
     full.querySelector(".fp-title").textContent = t.title;
     full.querySelector(".fp-artist").textContent = t.artist || "";

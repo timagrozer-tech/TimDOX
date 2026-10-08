@@ -135,3 +135,73 @@ class MusicTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class _FakeStream:
+    def __init__(self, data, status=200, headers=None):
+        self._data, self.status, self.headers = data, status, headers or {}
+
+    def read(self, n=-1):
+        out, self._data = (self._data, b"") if n < 0 else (self._data[:n], self._data[n:])
+        return out
+
+    def getcode(self):
+        return self.status
+
+    def close(self):
+        pass
+
+
+class MusicProxyTest(unittest.TestCase):
+    """Аудио и обложки через наш сервер — в России Audius напрямую не открывается"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.a = Client().register("musproxy", "Прокси Музыка")
+
+    def setUp(self):
+        rate_limiter.reset()
+        self._open, self._art = music.open_audius_stream, music.fetch_art
+
+    def tearDown(self):
+        music.open_audius_stream, music.fetch_art = self._open, self._art
+
+    def test_play_streams_with_range(self):
+        seen = {}
+
+        def fake(tid, rng):
+            seen["tid"], seen["rng"] = tid, rng
+            return _FakeStream(b"ID3" + b"x" * 97, 206, {"Content-Type": "audio/mpeg", "Content-Length": "100",
+                                                        "Content-Range": "bytes 0-99/5000"})
+        music.open_audius_stream = fake
+        r = self.a.get("/api/music/play/T1", headers={"Range": "bytes=0-99"})
+        self.assertEqual(r.status_code, 206)
+        self.assertEqual(r.content[:3], b"ID3")
+        self.assertEqual(r.headers["content-range"], "bytes 0-99/5000")
+        self.assertNotIn("content-encoding", r.headers, "аудио не сжимается — иначе ломается перемотка")
+        self.assertEqual(seen, {"tid": "T1", "rng": "bytes=0-99"})
+        self.assertEqual(Client().get("/api/music/play/T1").status_code, 401)
+
+    def test_play_unavailable(self):
+        def fake(tid, rng):
+            raise music.Unavailable("x")
+        music.open_audius_stream = fake
+        self.assertEqual(self.a.get("/api/music/play/T1").status_code, 502)
+
+    def test_bad_track_id(self):
+        with self.assertRaises(music.Unavailable):
+            self._open("../../etc", None)
+
+    def test_art_proxy(self):
+        music.fetch_art = lambda u: (b"\x89PNG", "image/png")
+        r = self.a.get("/api/music/art", params={"u": "https://img.example/1.png"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.headers["content-type"], "image/png")
+        self.assertEqual(Client().get("/api/music/art", params={"u": "https://img.example/1.png"}).status_code, 401)
+
+    def test_art_blocks_internal_addresses(self):
+        for u in ("http://img.example/1.png", "https://127.0.0.1/x.png", "https://localhost/x.png",
+                  "https://169.254.169.254/latest", "file:///etc/passwd", ""):
+            with self.assertRaises(music.Unavailable, msg=u):
+                self._art(u)
+        self.assertEqual(self.a.get("/api/music/art", params={"u": "https://127.0.0.1/x.png"}).status_code, 404)
