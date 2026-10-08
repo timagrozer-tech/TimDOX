@@ -116,6 +116,9 @@ async def delete_reel(request: Request):
     r = _reel(path_int(request), u["id"])
     if r["author_id"] != u["id"] and not u["is_admin"]:
         raise ApiError(403, "Удалить можно только свой клип")
+    if r["author_id"] != u["id"]:
+        from .. import modlog
+        modlog.log(u["id"], "delete_reel", "reel", r["id"], r["author_id"], details={"text": modlog.snippet(r.get("caption"))})
     db.run("DELETE FROM reels WHERE id=?", (r["id"],))
     media.delete_files(r["video"], r["poster"])
     return ok()
@@ -183,6 +186,9 @@ async def delete_comment(request: Request):
         raise ApiError(404, "Комментарий не найден")
     if u["id"] not in (c["author_id"], c["reel_author"]) and not u["is_admin"]:
         raise ApiError(403, "Нельзя удалить чужой комментарий")
+    if u["id"] not in (c["author_id"], c["reel_author"]):
+        from .. import modlog
+        modlog.log(u["id"], "delete_reel_comment", "reel_comment", c["id"], c["author_id"], details={"text": modlog.snippet(c["text"])})
     db.run("DELETE FROM reel_comments WHERE id=?", (c["id"],))
     return ok()
 

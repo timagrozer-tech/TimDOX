@@ -1,4 +1,4 @@
-// Модерация для создателя сети: жалобы, люди (блокировка), статистика.
+// Модерация для создателя сети: жалобы, люди (блокировка), журнал действий администрации, статистика.
 import { api, state, setCounters } from "../api.js";
 import { h, icon, avatar, vmark, timeAgo, pl } from "../dom.js";
 import { setTitle, toast, toastError, confirmDialog, busy } from "../ui.js";
@@ -43,15 +43,43 @@ function reportCard(it, onDone) {
       it.author && !it.author_banned && it.author.id !== state.me.id ? btn(it.target_type === "user" ? "Заблокировать" : "Удалить и заблокировать", it.target_type === "user" ? "ban" : "delete_ban", "danger") : null));
 }
 
+// Журнал действий администрации и модераторов: кто, что, с кем и когда — записи нельзя изменить или удалить
+function modLog() {
+  const list = h("div.card.modlog");
+  const more = h("button.btn.ghost.sm", { type: "button", hidden: true }, "Показать ещё");
+  let before = null;
+  const row = (it) => h("div.modlog-row",
+    it.actor ? avatar(it.actor, "sm", { presence: false }) : h("span.avatar.sm", "?"),
+    h("div.modlog-body",
+      h("div", h("b", it.actor?.name || "Удалённый аккаунт"), h("span.modlog-role", it.role === "moderator" ? "модератор" : "администратор")),
+      h("div.modlog-what", it.label, it.target_user ? h("span", " · ", h("a", { href: `/u/${it.target_user.username}` }, `@${it.target_user.username}`)) : null,
+        it.target_type && it.target_type !== "user" ? h("span.muted", ` · ${WHAT[it.target_type] || it.target_type} #${it.target_id}`) : null),
+      it.details?.text ? h("div.modlog-text", `«${it.details.text}»`) : null,
+      it.details?.reasons?.length ? h("div.mod-reasons", it.details.reasons.map((r) => h("span.mod-reason", r))) : null),
+    h("small.muted", { title: new Date(it.created_at).toLocaleString("ru-RU") }, timeAgo(it.created_at)));
+  const load = async () => {
+    try {
+      const d = await api.get("/api/admin/modlog", before ? { before } : undefined);
+      if (!before && !d.items.length) list.append(h("div.empty", icon("list"), h("h3", "Журнал пуст"), h("p", "Здесь появятся блокировки, удаления, решения по жалобам и выдача галочек.")));
+      list.append(...d.items.map(row));
+      before = d.items.at(-1)?.id;
+      more.hidden = !d.more;
+    } catch (e) { list.append(h("p.muted", e.message)); }
+  };
+  more.addEventListener("click", () => busy(more, load));
+  load();
+  return h("div.stack", h("p.muted", { style: { margin: "0 4px" } }, "Все действия администрации и модераторов сообществ. Записи нельзя изменить или удалить."), list, more);
+}
+
 export async function adminPage({ query }) {
   if (!state.me?.is_admin) { navigate("/", { replace: true }); return h("div"); }
   setTitle("Модерация");
-  let tab = ["reports", "people", "stats"].includes(query.tab) ? query.tab : "reports";
+  let tab = ["reports", "people", "log", "stats"].includes(query.tab) ? query.tab : "reports";
   const content = h("div.stack");
   const tabs = h("div.tabs", { role: "tablist" });
 
   async function draw() {
-    tabs.replaceChildren(...[["reports", "Жалобы", "flag"], ["people", "Люди", "users"], ["stats", "Статистика", "trend"]].map(([id, label, ic]) =>
+    tabs.replaceChildren(...[["reports", "Жалобы", "flag"], ["people", "Люди", "users"], ["log", "Журнал", "list"], ["stats", "Статистика", "trend"]].map(([id, label, ic]) =>
       h("button", { type: "button", role: "tab", "aria-selected": String(tab === id), onclick: () => { tab = id; history.replaceState(history.state, "", id === "reports" ? "/admin" : `/admin?tab=${id}`); draw(); } },
         icon(ic, "sm"), label, id === "reports" && state.counters.reports ? h("span.badge", String(state.counters.reports)) : null)));
     content.replaceChildren(h("div.spinner"));
@@ -60,6 +88,8 @@ export async function adminPage({ query }) {
         const { items } = await api.get("/api/admin/reports");
         content.replaceChildren(...(items.length ? items.map((it) => reportCard(it, () => { draw(); api.get("/api/counters").then(setCounters).catch(() => {}); }))
           : [h("div.card.empty", icon("check"), h("h3", "Жалоб нет"), h("p", "Всё спокойно. Новые жалобы появятся здесь, а в меню загорится счётчик."))]));
+      } else if (tab === "log") {
+        content.replaceChildren(modLog());
       } else if (tab === "people") {
         const q = h("input.input", { type: "search", placeholder: "Имя, логин или почта", "aria-label": "Поиск людей" });
         const onlyBanned = h("input.switch", { type: "checkbox", role: "switch", "aria-label": "Только заблокированные" });

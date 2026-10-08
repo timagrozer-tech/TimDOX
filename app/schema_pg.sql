@@ -944,3 +944,17 @@ ALTER TABLE conversation_members ADD COLUMN IF NOT EXISTS theme TEXT;
 
 -- QEVI: тёмная тема по умолчанию
 ALTER TABLE profiles ALTER COLUMN theme SET DEFAULT 'dark';
+
+-- Журнал действий администрации и модераторов (только добавление)
+CREATE TABLE IF NOT EXISTS mod_log (
+    id             BIGSERIAL PRIMARY KEY,
+    actor_id       BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    role           TEXT NOT NULL DEFAULT 'admin',
+    action         TEXT NOT NULL,
+    target_type    TEXT,
+    target_id      BIGINT,
+    target_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    details        TEXT,
+    created_at     TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE INDEX IF NOT EXISTS idx_mod_log_actor ON mod_log(actor_id, id);

@@ -127,6 +127,10 @@ async def resolve(request: Request):
         raise ApiError(400, "Некорректное действие")
     tid = int(data.get("target_id"))
     t = _target(ttype, tid)
+    from .. import modlog
+    reasons = [r["reason"] for r in db.all("SELECT DISTINCT reason FROM reports WHERE target_type=? AND target_id=? AND status='open'", (ttype, tid))]
+    modlog.log(admin["id"], f"report_{action}", ttype, tid, (t or {}).get("author_id") if ttype != "user" else tid,
+               details={"reasons": reasons[:5], "text": modlog.snippet((t or {}).get("text"))})
     if action in ("ban", "delete_ban"):
         aid = (t or {}).get("author_id")
         if not aid:
@@ -151,6 +155,8 @@ async def ban_user(request: Request):
     if not db.value("SELECT 1 FROM users WHERE id=?", (uid,)):
         raise ApiError(404, "Пользователь не найден")
     set_ban(uid, request.method == "POST")
+    from .. import modlog
+    modlog.log(admin["id"], "ban" if request.method == "POST" else "unban", "user", uid, uid)
     return ok()
 
 
@@ -176,6 +182,17 @@ async def users_list(request: Request):
     return JSONResponse({"items": [{**social.user_card(r), "email": r["email"], "banned": bool(r["is_banned"]), "admin": bool(r["is_admin"]),
                                     "joined_at": r["created_at"], "email_verified": bool(r["email_verified_at"]),
                                     "posts": r["posts"], "reports": r["reports"]} for r in rows]})
+
+
+@auth()
+async def modlog_list(request: Request):
+    """Журнал действий администрации и модераторов — только для администраторов."""
+    _admin(request)
+    from .. import modlog
+    q = request.query_params
+    before = int(q["before"]) if q.get("before", "").isdigit() else None
+    items, more = modlog.items(before)
+    return JSONResponse({"items": items, "more": more})
 
 
 @auth()
@@ -205,4 +222,5 @@ routes = [
     Route("/api/admin/users", users_list, methods=["GET"]),
     Route("/api/admin/users/{id:int}/ban", ban_user, methods=["POST", "DELETE"]),
     Route("/api/admin/stats", stats, methods=["GET"]),
+    Route("/api/admin/modlog", modlog_list, methods=["GET"]),
 ]

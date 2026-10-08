@@ -321,12 +321,15 @@ async def admin_verify(request: Request):
     uid = path_int(request)
     if not db.value("SELECT 1 FROM users WHERE id=?", (uid,)):
         raise ApiError(404, "Пользователь не найден")
+    from .. import modlog
     if request.method == "DELETE":
         db.run("UPDATE profiles SET verified=0, badge=NULL WHERE user_id=?", (uid,))
+        modlog.log(request.state.user["id"], "unverify", "user", uid, uid)
     else:
         data = await body(request)
         badge = clean_text(str(data.get("badge") or ""), 40).strip() or None
         db.run("UPDATE profiles SET verified=1, badge=? WHERE user_id=?", (badge, uid))
+        modlog.log(request.state.user["id"], "verify", "user", uid, uid, details={"badge": badge})
     social.reset_verified_cache()
     card = social.user_card(db.one("SELECT user_id, username, name, avatar, equipped, status_emoji, status_text, status_until FROM profiles WHERE user_id=?", (uid,)))
     return JSONResponse({"user": card})

@@ -868,3 +868,17 @@ CREATE TABLE IF NOT EXISTS push_subs (
     created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subs(user_id);
+
+-- Журнал действий администрации и модераторов (только добавление)
+CREATE TABLE IF NOT EXISTS mod_log (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    actor_id       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    role           TEXT NOT NULL DEFAULT 'admin',
+    action         TEXT NOT NULL,
+    target_type    TEXT,
+    target_id      INTEGER,
+    target_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    details        TEXT,
+    created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_mod_log_actor ON mod_log(actor_id, id);

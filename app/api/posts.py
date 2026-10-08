@@ -481,6 +481,10 @@ async def delete_post(request: Request):
     is_mod = bool(row and row["community_id"] and community_role(row["community_id"], v["id"]) in ("admin", "moderator"))
     if not row or (row["author_id"] != v["id"] and not v["is_admin"] and not is_mod):
         raise ApiError(404, "Запись не найдена")
+    if row["author_id"] != v["id"]:  # чужая запись — это действие администрации или модератора сообщества
+        from .. import modlog
+        modlog.log(v["id"], "delete_post", "post", pid, row["author_id"], role="admin" if v["is_admin"] else "moderator",
+                   details={"text": modlog.snippet(row["text"]), "community_id": row["community_id"]})
     delete_post_files([pid])
     # простые репосты удалённой записи теряют смысл — удаляем их тоже
     db.run("DELETE FROM posts WHERE quote_of=? AND is_repost=1", (pid,))
@@ -683,6 +687,9 @@ async def delete_comment(request: Request):
                     WHERE c.id=?""", (cid,))
     if not row or u["id"] not in (row["author_id"], row["post_author"]) and not u["is_admin"]:
         raise ApiError(404, "Комментарий не найден")
+    if u["id"] not in (row["author_id"], row["post_author"]):  # удаляет администратор
+        from .. import modlog
+        modlog.log(u["id"], "delete_comment", "comment", cid, row["author_id"], details={"text": modlog.snippet(row["text"])})
     db.run("DELETE FROM comments WHERE id=?", (cid,))
     economy.on_comment_deleted(row["author_id"], cid, row["created_at"])
     return ok()
