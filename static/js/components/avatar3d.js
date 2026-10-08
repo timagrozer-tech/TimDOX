@@ -50,7 +50,7 @@ export const OPTIONS = {
   neck: [["none", "Без"], ["chain", "Цепь"], ["pendant", "Кулон"], ["pearls", "Жемчуг"], ["choker", "Чокер"], ["scarf", "🧣 Шарф"], ["bowtie", "Бабочка"], ["tie", "👔 Галстук"], ["medal", "🥇 Медаль"]],
   outfit: [["hoodie", "Худи"], ["tee", "Футболка"], ["shirt", "Рубашка"], ["jacket", "Куртка"], ["biker", "Косуха"], ["sweater", "Свитер"], ["turtleneck", "Водолазка"], ["coat", "Пальто с мехом"], ["suit", "🤵 Костюм"], ["kimono", "Кимоно"], ["overalls", "Комбинезон"], ["jersey", "⚽ Форма"], ["armor", "🛡 Доспехи"], ["spacesuit", "🚀 Скафандр"], ["hero", "🦸 Плащ героя"]],
   pattern: [["none", "Однотонная"], ["stripes", "Полоски"], ["dots", "Горошек"], ["checks", "Клетка"], ["camo", "Камуфляж"], ["stars", "Звёзды"], ["hearts", "Сердечки"], ["zigzag", "Зигзаг"]],
-  print: [["none", "Без"], ["star", "⭐"], ["heart", "❤️"], ["bolt", "⚡"], ["smile", "🙂"], ["fire", "🔥"], ["skull", "💀"], ["alien", "👽"], ["rocket", "🚀"], ["crown", "👑"], ["paw", "🐾"], ["music", "🎵"], ["krug", "KRUG"], ["number", "23"]],
+  print: [["none", "Без"], ["star", "⭐"], ["heart", "❤️"], ["bolt", "⚡"], ["smile", "🙂"], ["fire", "🔥"], ["skull", "💀"], ["alien", "👽"], ["rocket", "🚀"], ["crown", "👑"], ["paw", "🐾"], ["music", "🎵"], ["krug", "QEVI"], ["number", "23"]],
   pet: [["none", "Без"], ["cat", "🐱 Котик"], ["ghost", "👻 Призрак"], ["star", "⭐ Звёздочка"], ["planet", "🪐 Планета"], ["heart", "💗 Сердце"], ["slime", "🟢 Слайм"], ["robot", "🤖 Дрон"], ["bird", "🐤 Птичка"]],
   fx: [["none", "Без"], ["sparkles", "✨ Искры"], ["hearts", "💕 Сердечки"], ["stars", "⭐ Звёзды"], ["bubbles", "🫧 Пузыри"], ["snow", "❄️ Снег"], ["notes", "🎵 Ноты"], ["petals", "🌸 Лепестки"], ["fire", "🔥 Огоньки"]],
   idle: [["calm", "😌 Спокойно"], ["bouncy", "🦘 Пружинит"], ["dance", "💃 Танцует"], ["float", "🎈 Парит"], ["sway", "🌊 Качается"], ["vibe", "🎧 Кивает в такт"]],
@@ -251,7 +251,7 @@ function printTexture(T, kind, color) {
   x.textAlign = "center"; x.textBaseline = "middle";
   if (kind === "krug" || kind === "number") {
     x.fillStyle = color; x.font = `900 ${kind === "krug" ? 62 : 150}px Unbounded, Arial Black, sans-serif`;
-    x.fillText(kind === "krug" ? "KRUG" : "23", 128, 136);
+    x.fillText(kind === "krug" ? "QEVI" : "23", 128, 136);
   } else { x.font = "180px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif"; x.fillText(PRINT[kind] || "★", 128, 140); }
   const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace;
   return t;

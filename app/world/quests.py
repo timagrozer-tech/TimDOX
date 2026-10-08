@@ -10,7 +10,7 @@ _last_check: dict[int, float] = {}
 
 STARTER = [
     # code, org, persona, title, description, rule, reward, secret
-    ("start-council", "council", "mira_sovet", "Знакомство с Кругом", "Подпишитесь на председателя Совета Миру Светлову.",
+    ("start-council", "council", "mira_sovet", "Знакомство с QEVI", "Подпишитесь на председателя Совета Миру Светлову.",
      {"type": "follow_persona", "persona": "mira_sovet"}, 10, 0),
     ("start-academy", "academy", "vera_uchit", "Первый урок", "Вступите в сообщество «Академия знаний».",
      {"type": "join_community", "community": "akademiya"}, 10, 0),
@@ -25,7 +25,7 @@ STARTER = [
     ("start-media", "media", "timur_efir", "Зритель эфира", "Поставьте реакцию на 3 записи Медиацентра.",
      {"type": "react_org", "org": "media", "count": 3}, 10, 0),
     ("secret-archive", "archivists", "orest_arhiv", "Три тайные строки",
-     "Архивариусы доверяют вам тайну: опубликуйте запись с тегом #тайныйархив и расскажите, что бы вы спрятали в архиве Круга.",
+     "Архивариусы доверяют вам тайну: опубликуйте запись с тегом #тайныйархив и расскажите, что бы вы спрятали в архиве QEVI.",
      {"type": "post_tag", "tag": "тайныйархив", "unlock_rep": 30}, 40, 1),
     ("secret-explorers", "explorers", "kapitan_vega", "Сигнал из глубины",
      "Только для экипажа: напишите Капитану Веге слово «горизонт».",

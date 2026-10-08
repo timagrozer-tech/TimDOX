@@ -4707,3 +4707,66 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
 
 .chat-head .who { min-width: 0; flex: 1; }
 .chat-head .who .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+
+/* ================================================================ QEVI: логотип */
+.logo { gap: 8px; }
+.logo svg.qevi-mark { width: 36px; height: 36px; flex: none; overflow: visible; filter: drop-shadow(0 0 10px rgba(37, 99, 255, .35)); }
+.logo svg.qevi-word { height: 17px; width: auto; flex: none; color: var(--text); overflow: visible; }
+.logo:hover svg.qevi-mark { filter: drop-shadow(0 0 14px rgba(136, 255, 242, .45)); }
+.topbar .logo svg.qevi-mark { width: 32px; height: 32px; }
+.auth-brand .logo svg.qevi-mark { width: 46px; height: 46px; }
+.auth-brand .logo svg.qevi-word { height: 22px; }
+
+/* ================================================================ QEVI Design System
+   Основа: глубокий navy #0A0F2C, синий #2563FF, фиолетовый #B277FF, бирюзовый #88FFF2, стекло rgba(255,255,255,.08).
+   Включается палитрой «QEVI» (по умолчанию); остальные палитры по-прежнему доступны в «Оформлении». */
+:root[data-palette="qevi"] {
+  --qv-navy: #0A0F2C; --qv-blue: #2563FF; --qv-violet: #B277FF; --qv-cyan: #88FFF2;
+  --grad: linear-gradient(120deg, #2563FF 0%, #6C5CFF 52%, #B277FF 100%);
+  --grad-accent: linear-gradient(120deg, #B277FF, #2563FF);
+  --ring-grad: conic-gradient(from 210deg, #88FFF2, #2563FF, #B277FF, #88FFF2);
+}
+:root[data-palette="qevi"][data-theme="dark"] {
+  --bg: #0A0F2C;
+  --bg-deep: #060918;
+  --surface: #111940;
+  --glass: rgba(255, 255, 255, .06);
+  --glass-strong: rgba(18, 26, 66, .78);
+  --surface-2: rgba(255, 255, 255, .04);
+  --surface-3: rgba(255, 255, 255, .08);
+  --border: rgba(255, 255, 255, .10);
+  --border-strong: rgba(136, 255, 242, .22);
+  --text: #F4F6FF;
+  --text-2: #B7C0E4;
+  --text-3: #8790BA;
+  --primary: #7EA1FF;
+  --primary-hover: #A9C0FF;
+  --primary-soft: rgba(37, 99, 255, .18);
+  --accent: #C9A2FF;
+  --accent-soft: rgba(178, 119, 255, .16);
+  --cyan: #88FFF2;
+  --glow: 0 12px 44px -10px rgba(37, 99, 255, .55);
+  --spot: rgba(136, 255, 242, .07);
+  --star: 136, 255, 242;
+}
+:root[data-palette="qevi"]:not([data-theme="dark"]) {
+  --bg: #F4F6FF;
+  --bg-deep: #E7ECFF;
+  --surface: #FFFFFF;
+  --glass: rgba(255, 255, 255, .62);
+  --glass-strong: rgba(255, 255, 255, .86);
+  --border: rgba(10, 15, 44, .09);
+  --border-strong: rgba(37, 99, 255, .24);
+  --text: #0A0F2C;
+  --text-2: #3D4670;
+  --text-3: #646C91;
+  --primary: #2563FF;
+  --primary-soft: rgba(37, 99, 255, .10);
+  --accent: #8B4FE6;
+  --star: 37, 99, 255;
+}
+/* стекло: тонкий световой край сверху, как у VisionOS */
+:root[data-palette="qevi"] .card, :root[data-palette="qevi"] .menu, :root[data-palette="qevi"] .modal {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), var(--shadow);
+}
+:root[data-palette="qevi"][data-theme="dark"] .btn.primary { box-shadow: 0 8px 24px -10px rgba(37, 99, 255, .7), inset 0 1px 0 rgba(255, 255, 255, .25); }

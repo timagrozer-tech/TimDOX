@@ -21,7 +21,7 @@ class UpdatesTest(unittest.TestCase):
 
     def test_account(self):
         p = db.one("SELECT * FROM profiles WHERE user_id=?", (self.uid,))
-        self.assertEqual((p["username"], p["verified"], p["badge"], p["profile_visibility"]), ("krug_updates", 1, "Официальный", "public"))
+        self.assertEqual((p["username"], p["verified"], p["badge"], p["profile_visibility"]), ("qevi", 1, "Официальный", "public"))
         self.assertTrue(p["avatar"])
         self.assertEqual(updates.ensure_account(), self.uid)  # повторно не создаётся
         self.assertTrue(db.value("SELECT 1 FROM follows WHERE follower_id=? AND followee_id=?", (self.old_id, self.uid)))
@@ -35,7 +35,7 @@ class UpdatesTest(unittest.TestCase):
         pid = updates.publish_next()
         self.assertTrue(pid)
         post = db.one("SELECT * FROM posts WHERE id=?", (pid,))
-        self.assertIn("KRUG Обновления", post["text"])
+        self.assertIn("QEVI Обновления", post["text"])
         self.assertEqual(db.value("SELECT count(*) FROM post_media WHERE post_id=?", (pid,)), 1)  # обложка
         self.assertIsNone(updates.publish_next())                                                # пауза между постами
         db.run("UPDATE posts SET created_at=? WHERE author_id=?", (db.future(hours=-2), self.uid))
@@ -44,7 +44,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("Созвездие", db.value("SELECT text FROM posts WHERE id=?", (pid2,)))
         # пост видят подписчики, хэштеги проиндексированы
         feed = self.old.get(f"/api/posts/{pid2}").json()
-        self.assertEqual(feed["author"]["username"], "krug_updates")
+        self.assertEqual(feed["author"]["username"], "qevi")
         self.assertTrue(db.value("SELECT 1 FROM ai_state WHERE key='release:constellation-live'"))
 
     def test_ai_reply_and_admin_notice(self):

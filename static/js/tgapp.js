@@ -1,4 +1,4 @@
-// KRUG как мини-приложение Telegram: на весь экран, системная кнопка «Назад», цвета шапки под тему,
+// QEVI как мини-приложение Telegram: на весь экран, системная кнопка «Назад», цвета шапки под тему,
 // лёгкая вибрация на нажатиях и защита от случайного закрытия свайпом вниз.
 // Работаем напрямую по протоколу Telegram WebView (postEvent / receiveEvent) — без внешних скриптов.
 import { canGoBack, navigate } from "./router.js";
@@ -71,7 +71,7 @@ export function initTelegramApp() {
 
   post("web_app_ready");
   post("web_app_expand");
-  post("web_app_setup_swipe_behavior", { allow_vertical_swipe: false }); // прокрутка ленты вверх больше не сворачивает KRUG
+  post("web_app_setup_swipe_behavior", { allow_vertical_swipe: false }); // прокрутка ленты вверх больше не сворачивает QEVI
   paintChrome();
   syncBack();
 

@@ -4,6 +4,13 @@ import json
 from . import db
 from .realtime import hub
 
+# Старые адреса профилей после ребрендинга KRUG → QEVI: по ним открывается новый профиль
+USERNAME_ALIASES = {"krug_updates": "qevi"}
+
+
+def resolve_username(username: str) -> str:
+    return USERNAME_ALIASES.get((username or "").lower(), username)
+
 FRIEND_IDS_SQL = """SELECT CASE WHEN requester_id = :v THEN addressee_id ELSE requester_id END
                     FROM friendships WHERE status = 'accepted' AND (requester_id = :v OR addressee_id = :v)"""
 
@@ -101,7 +108,7 @@ _ai_at = float("-inf")
 
 
 def ai_ids() -> set[int]:
-    """Персонажи Мира Круга — у них в карточке отметка «ИИ»."""
+    """Персонажи Мира QEVI — у них в карточке отметка «ИИ»."""
     global _ai, _ai_at
     import time
     if time.monotonic() - _ai_at > 300:

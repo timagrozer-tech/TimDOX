@@ -59,7 +59,7 @@ def _template_post(p: dict) -> dict:
         return {"text": f"{th[4]} Идёт {th[1].lower()}! Делитесь мыслями с тегом #{th[2]} — лучшие записи попадут в итоги Совета.",
                 "community": community}
     used = set(_used(p["slug"]))
-    pool = texts.POSTS.get(p["slug"]) or ["Привет, Круг!"]
+    pool = texts.POSTS.get(p["slug"]) or ["Привет, QEVI!"]
     text = next((t for t in random.sample(pool, len(pool)) if t[:60] not in used), random.choice(pool))
     return {"text": text, "community": community}
 
@@ -74,7 +74,7 @@ def _llm_posts(org: str, people: list[dict], counts: dict[str, int]) -> dict[str
             heads += [h["title"] for h in news.headlines(ch, 3)]
     cast = "\n".join(f'- "{p["slug"]}": {p["name"]}, {p["role"]}; тема: {p["specialty"]}; стиль: {p["style"]}; нужно постов: {counts[p["slug"]]}'
                      for p in people)
-    system = ("Ты — сценарист живой соцсети «Круг». Пишешь посты от лица её ИИ-персонажей по-русски: живо, коротко (1–4 предложения), "
+    system = ("Ты — сценарист живой соцсети QEVI. Пишешь посты от лица её ИИ-персонажей по-русски: живо, коротко (1–4 предложения), "
               "дружелюбно, с 1–2 эмодзи, без политики, рекламы и мата. СТРОГО: не придумывай цифры, проценты, даты, имена, цитаты и события. "
               "Если опираешься на заголовок новости — перескажи только то, что в нём сказано, и добавь мнение персонажа или вопрос подписчикам. "
               "Лучше всего работают: общеизвестные достоверные факты, советы, вопросы к аудитории, мнения, шутки. "
@@ -153,7 +153,7 @@ def daily_news() -> None:
         req = "\n".join(f'"{ch}" (ведущий {o["name"]}, стиль: {o["style"]}): ' + " | ".join(i["title"] for i in items)
                         for ch, (o, items) in blocks.items())
         data = llm.parse_json(llm.complete(
-            "Ты редактор новостных каналов соцсети «Круг». По каждому каналу напиши одно короткое вступление (до 200 символов) "
+            "Ты редактор новостных каналов соцсети QEVI. По каждому каналу напиши одно короткое вступление (до 200 символов) "
             "от лица ведущего к подборке заголовков. Не добавляй фактов, которых нет в заголовках. Ответ — JSON {\"канал\": \"вступление\"}.",
             req, max_tokens=900, want_json=True))
         if isinstance(data, dict):
@@ -188,10 +188,10 @@ def weekly_start() -> None:
               {"type": "event_going", "event_id": event_id}, 15, ends)
     add_quest(f"w{wk}-comment", org, host["slug"], "Слово в обсуждении", f"Оставьте 2 комментария под записями организации «{core.orgs()[org]['name']}».",
               {"type": "comment_org", "org": org, "count": 2}, 15, ends)
-    core.schedule(mira["user_id"], "post", {"text": f"{emoji} Совет Круга объявляет: началась {title.lower()}! Пишите с тегом #{tag}, "
-                                                    f"выполняйте задания в «Мире Круга» и приходите на вечер организации «{core.orgs()[org]['name']}». "
+    core.schedule(mira["user_id"], "post", {"text": f"{emoji} Совет QEVI объявляет: началась {title.lower()}! Пишите с тегом #{tag}, "
+                                                    f"выполняйте задания в «Мире QEVI» и приходите на вечер организации «{core.orgs()[org]['name']}». "
                                                     "Очки влияния получит организация, чьи задания вы выполните 🏛", "community": "sovet"}, core.soon(0, 5))
-    core.schedule(lev["user_id"], "post", {"text": f"📯 Новые задания недели уже в «Мире Круга»! Первые три выполнивших — герои вечернего выпуска!"},
+    core.schedule(lev["user_id"], "post", {"text": f"📯 Новые задания недели уже в «Мире QEVI»! Первые три выполнивших — герои вечернего выпуска!"},
                   core.soon(30, 90))
 
 
@@ -202,7 +202,7 @@ def weekly_results() -> None:
     medals = ["🥇", "🥈", "🥉"]
     lines = "\n".join(f"{medals[i] if i < 3 else '•'} {r['emoji']} {r['name']} — {r['pts']}" for i, r in enumerate(rows))
     core.schedule(core.personas()["mira_sovet"]["user_id"], "post",
-                  {"text": f"🏛 Итоги недели: рейтинг организаций по очкам, которые принесли жители Круга:\n\n{lines}\n\n"
+                  {"text": f"🏛 Итоги недели: рейтинг организаций по очкам, которые принесли жители QEVI:\n\n{lines}\n\n"
                            "Спасибо каждому! Новая неделя — новые задания.", "community": "sovet"}, core.soon(0, 10))
     top = db.all("""SELECT p.id, pr.name, count(x.user_id) AS n FROM posts p JOIN profiles pr ON pr.user_id=p.author_id
                     LEFT JOIN reactions x ON x.post_id=p.id WHERE p.created_at > ? AND p.visibility='public'
@@ -223,14 +223,14 @@ def interview() -> None:
     text = None
     if llm.enabled():
         data = llm.parse_json(llm.complete(
-            "Ты сценарист шоу «Интервью недели» в соцсети «Круг». Короткое интервью (4 вопроса и ответа) по-русски, весело и тепло. JSON {\"text\": \"...\"}.",
+            "Ты сценарист шоу «Интервью недели» в соцсети QEVI. Короткое интервью (4 вопроса и ответа) по-русски, весело и тепло. JSON {\"text\": \"...\"}.",
             f"Ведущий: {host['name']} ({host['style']}). Гость: {guest['name']}, {guest['role']}, тема: {guest['specialty']}, стиль: {guest['style']}. "
             f"Биография гостя: {guest['bio']}", max_tokens=900, want_json=True))
         if isinstance(data, dict) and data.get("text"):
             text = censor(clean_text(str(data["text"]), 2500))
     if not text:
         text = (f"🎙 Интервью недели! Сегодня у нас в гостях {guest['name']} — {guest['role'].lower()}.\n\n"
-                f"— Чем вы занимаетесь в Круге?\n— {guest['bio']}\n\n"
+                f"— Чем вы занимаетесь в QEVI?\n— {guest['bio']}\n\n"
                 f"— Что вы посоветуете новым жителям?\n— Не бойтесь писать первыми. Здесь любят тех, кто делится.\n\n"
                 f"— Ваше главное увлечение?\n— {guest['specialty'].capitalize()}, конечно! Заглядывайте ко мне в профиль @{guest['slug']}.\n\n"
                 "Задавайте свои вопросы гостю в комментариях 👇")

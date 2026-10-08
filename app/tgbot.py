@@ -1,11 +1,11 @@
-"""Бот KRUG Stickers в Telegram — мост между Telegram и Кругом.
+"""Бот QEVI Stickers в Telegram — мост между Telegram и QEVI.
 
 Что умеет:
-• Привязка аккаунта KRUG (кнопка в настройках → /start link_<код>). После неё:
-  – пришли стикер или ссылку на набор → набор сразу появляется в KRUG, прогресс виден прямо в сообщении;
-  – пришли фото (можно с подписью) → бот вырежет фон, сделает стикер с белой обводкой, пришлёт его и сохранит в KRUG;
+• Привязка аккаунта QEVI (кнопка в настройках → /start link_<код>). После неё:
+  – пришли стикер или ссылку на набор → набор сразу появляется в QEVI, прогресс виден прямо в сообщении;
+  – пришли фото (можно с подписью) → бот вырежет фон, сделает стикер с белой обводкой, пришлёт его и сохранит в QEVI;
   – уведомления о новых сообщениях (когда вы не в сети), заявках в друзья, упоминаниях и комментариях;
-  – вход в мини-приложение KRUG внутри Telegram одним касанием (подпись initData проверяется по токену бота).
+  – вход в мини-приложение QEVI внутри Telegram одним касанием (подпись initData проверяется по токену бота).
 • Без привязки: стикер или ссылка → кнопка импорта на сайте; фото → готовый стикер.
 • /packs — моя коллекция, /notify — уведомления, /unlink — отвязать, /help.
 Обновления приходят через вебхук; секрет вебхука выводится из токена — отдельных настроек нет."""
@@ -152,19 +152,20 @@ def setup() -> None:
     log.info("Бот Telegram @%s: вебхук %s", BOT["username"], "подключён" if r and r.get("ok") else f"не подключён ({(r or {}).get('description')})")
     _call("setMyCommands", {"commands": [
         {"command": "start", "description": "Что я умею"},
-        {"command": "packs", "description": "Моя коллекция в KRUG"},
+        {"command": "packs", "description": "Моя коллекция в QEVI"},
         {"command": "all", "description": "Перенести все наборы разом"},
-        {"command": "export", "description": "Мои наборы KRUG → в Telegram"},
-        {"command": "notify", "description": "Уведомления из KRUG"},
-        {"command": "link", "description": "Привязать аккаунт KRUG"},
+        {"command": "export", "description": "Мои наборы QEVI → в Telegram"},
+        {"command": "notify", "description": "Уведомления из QEVI"},
+        {"command": "link", "description": "Привязать аккаунт QEVI"},
         {"command": "unlink", "description": "Отвязать аккаунт"},
         {"command": "help", "description": "Помощь"}]})
-    _call("setMyShortDescription", {"short_description": "Перенесу стикеры в KRUG, сделаю стикер из фото и пришлю уведомления."})
+    _call("setMyName", {"name": "QEVI"})
+    _call("setMyShortDescription", {"short_description": "Перенесу стикеры в QEVI, сделаю стикер из фото и пришлю уведомления."})
     _call("setMyDescription", {"description": "Мост между Telegram и соцсетью KRUG.\n\n"
                                               "• Пришлите стикер или ссылку на набор — перенесу весь набор в KRUG.\n"
                                               "• Пришлите фото (можно с подписью) — сделаю из него стикер.\n"
-                                              "• Привяжите аккаунт — буду присылать уведомления, а KRUG откроется прямо в Telegram."})
-    _call("setChatMenuButton", {"menu_button": {"type": "web_app", "text": "KRUG", "web_app": {"url": app_url("/")}}})
+                                              "• Привяжите аккаунт — буду присылать уведомления, а QEVI откроется прямо в Telegram."})
+    _call("setChatMenuButton", {"menu_button": {"type": "web_app", "text": "QEVI", "web_app": {"url": app_url("/")}}})
 
 
 # ---------------------------------------------------------------- привязка аккаунта
@@ -193,7 +194,7 @@ def _bind(code: str, frm: dict) -> dict | None:
 
 def _bind_user(uid: int, frm: dict) -> dict | None:
     tg_id = int(frm["id"])
-    db.run("DELETE FROM tg_links WHERE user_id=? OR tg_id=?", (uid, tg_id))  # один Telegram — один аккаунт KRUG
+    db.run("DELETE FROM tg_links WHERE user_id=? OR tg_id=?", (uid, tg_id))  # один Telegram — один аккаунт QEVI
     name = " ".join(x for x in (frm.get("first_name"), frm.get("last_name")) if x)[:64]
     db.run("INSERT INTO tg_links (user_id, tg_id, tg_username, tg_name) VALUES (?,?,?,?)", (uid, tg_id, (frm.get("username") or "")[:64], name))
     from . import social
@@ -204,7 +205,7 @@ def _bind_user(uid: int, frm: dict) -> dict | None:
 
 
 # ---------------------------------------------------------------- сообщения боту
-MAIN_ROWS_LINKED = lambda: [[("Открыть KRUG", "app:/")], [("Мои стикеры", "app:/stickers"), ("Сообщения", "app:/messages")]]  # noqa: E731
+MAIN_ROWS_LINKED = lambda: [[("Открыть QEVI", "app:/")], [("Мои стикеры", "app:/stickers"), ("Сообщения", "app:/messages")]]  # noqa: E731
 
 
 ALL_HOWTO = ("📚 <b>Как перенести все наборы разом</b>\n\n"
@@ -217,18 +218,18 @@ ALL_HOWTO = ("📚 <b>Как перенести все наборы разом</
 
 def _menu(cid: int, link: dict | None) -> None:
     if link:
-        send(cid, f"Привет, <b>{esc(link['name'])}</b>! Аккаунт KRUG <b>@{esc(link['username'])}</b> привязан 💜\n\n"
-                  "• пришлите стикер или ссылку на набор — сразу добавлю его в KRUG;\n"
-                  "• пришлите фото (можно с подписью) — сделаю стикер и сохраню в KRUG;\n"
+        send(cid, f"Привет, <b>{esc(link['name'])}</b>! Аккаунт QEVI <b>@{esc(link['username'])}</b> привязан 💜\n\n"
+                  "• пришлите стикер или ссылку на набор — сразу добавлю его в QEVI;\n"
+                  "• пришлите фото (можно с подписью) — сделаю стикер и сохраню в QEVI;\n"
                   "• /all — как перенести все свои наборы разом;\n"
-                  "• /export — ваши наборы KRUG (и 3D-стикеры) настоящим стикерпаком в Telegram;\n"
+                  "• /export — ваши наборы QEVI (и 3D-стикеры) настоящим стикерпаком в Telegram;\n"
                   "• /packs — ваша коллекция, /notify — уведомления.", MAIN_ROWS_LINKED())
     else:
-        send(cid, "Привет! Я мост между Telegram и <b>KRUG</b> 💜\n\n"
-                  "• пришлите стикер или ссылку на набор — перенесу весь набор в KRUG;\n"
+        send(cid, "Привет! Я мост между Telegram и <b>QEVI</b> 💜\n\n"
+                  "• пришлите стикер или ссылку на набор — перенесу весь набор в QEVI;\n"
                   "• пришлите фото (можно с подписью) — сделаю из него стикер;\n"
-                  "• привяжите аккаунт — наборы будут добавляться одним касанием, а уведомления из KRUG придут сюда.",
-             [[("Открыть KRUG", "app:/")], [("Привязать аккаунт", "app:/settings?tab=telegram")]])
+                  "• привяжите аккаунт — наборы будут добавляться одним касанием, а уведомления из QEVI придут сюда.",
+             [[("Открыть QEVI", "app:/")], [("Привязать аккаунт", "app:/settings?tab=telegram")]])
 
 
 def _bar(done: int, total: int) -> str:
@@ -246,9 +247,9 @@ def _import(cid: int, link: dict | None, name: str) -> None:
     title = s.get("title") or name
     count = len(s.get("stickers") or [])
     if not link:
-        send(cid, f"Набор <b>{esc(title)}</b> · {count} стикеров ✨\n\nНажмите — KRUG откроется, и набор перенесётся целиком, вместе с анимациями. "
+        send(cid, f"Набор <b>{esc(title)}</b> · {count} стикеров ✨\n\nНажмите — QEVI откроется, и набор перенесётся целиком, вместе с анимациями. "
                   "А если привязать аккаунт, буду добавлять наборы сразу, без лишних шагов.",
-             [[("Перенести в KRUG", "app:/stickers?tab=import&ref=" + urllib.parse.quote(name))],
+             [[("Перенести в QEVI", "app:/stickers?tab=import&ref=" + urllib.parse.quote(name))],
               [("📦 Скачать ZIP", f"zip:{name}"), ("Привязать аккаунт", "app:/settings?tab=telegram")]])
         return
     stickers2.remember_sets(link["user_id"], [s["name"]])
@@ -258,7 +259,7 @@ def _import(cid: int, link: dict | None, name: str) -> None:
         send(cid, f"😕 {esc(e.args[1] if len(e.args) > 1 else 'Не получилось')}")
         return
     if job["status"] == "done":
-        send(cid, f"✅ <b>{esc(title)}</b> уже в вашем KRUG — {job['done']} стикеров.",
+        send(cid, f"✅ <b>{esc(title)}</b> уже в вашем QEVI — {job['done']} стикеров.",
              [[("Открыть набор", f"app:/stickers/{job.get('slug') or ''}")], [("📦 Скачать ZIP", f"zip:{name}")]])
         return
     mid = send(cid, f"⏳ Переношу <b>{esc(title)}</b>\n{_bar(0, job['total'] or count)}")
@@ -272,7 +273,7 @@ def _import_many(cid: int, link: dict | None, names: list[str]) -> None:
         rows = [[("Привязать аккаунт", "app:/settings?tab=telegram")]]
         if len(refs) < 900:
             rows.insert(0, [("Перенести все на сайте", "app:/stickers?tab=import&ref=" + urllib.parse.quote(refs))])
-        send(cid, f"Нашёл <b>{n}</b> наборов ✨\n\nПривяжите аккаунт KRUG — и я перенесу их все разом, а на сайте они появятся "
+        send(cid, f"Нашёл <b>{n}</b> наборов ✨\n\nПривяжите аккаунт QEVI — и я перенесу их все разом, а на сайте они появятся "
                   "в списке «Ваши наборы из Telegram».", rows)
         return
     uid = link["user_id"]
@@ -287,12 +288,12 @@ def _import_many(cid: int, link: dict | None, names: list[str]) -> None:
     def progress(i, todo, name, ok):
         if mid and (time.time() - state["last"] > 2.5 or i == todo):
             state["last"] = time.time()
-            edit(cid, mid, f"⏳ Переношу наборы в KRUG\n{_bar(i, todo)}\nСейчас: {esc(name)}")
+            edit(cid, mid, f"⏳ Переношу наборы в QEVI\n{_bar(i, todo)}\nСейчас: {esc(name)}")
 
     if mid:
-        edit(cid, mid, f"⏳ Переношу <b>{total}</b> наборов в KRUG — по одному, это займёт пару минут.\n{_bar(0, total)}")
+        edit(cid, mid, f"⏳ Переношу <b>{total}</b> наборов в QEVI — по одному, это займёт пару минут.\n{_bar(0, total)}")
     r = stickers2.import_many(uid, [x["name"] for x in sets], progress)
-    lines = [f"✅ Готово: в вашем KRUG <b>{r['done']}</b> из {r['total']} наборов."]
+    lines = [f"✅ Готово: в вашем QEVI <b>{r['done']}</b> из {r['total']} наборов."]
     if r["already"]:
         lines.append(f"Уже были раньше: {r['already']}.")
     if r["failed"]:
@@ -311,7 +312,7 @@ def _watch(cid: int, mid: int | None, job_id: int, title: str) -> None:
         if j["status"] in ("done", "error"):
             view = stickers2.job_view(j)
             if j["status"] == "done":
-                text, rows = f"✅ <b>{esc(title)}</b> в вашем KRUG — {j['done']} стикеров.\nИщите во вкладке «Стикеры» в любом чате.", \
+                text, rows = f"✅ <b>{esc(title)}</b> в вашем QEVI — {j['done']} стикеров.\nИщите во вкладке «Стикеры» в любом чате.", \
                     [[("Открыть набор", f"app:/stickers/{view.get('slug') or ''}")]]
             else:
                 text, rows = f"😕 Не получилось перенести <b>{esc(title)}</b>: {esc(j['error'] or 'ошибка')}", None
@@ -344,9 +345,9 @@ def _photo_sticker(cid: int, link: dict | None, file_id: str, caption: str) -> N
         pid = _lab_target(link["user_id"], None, "Из Telegram")
         st = _store_result(link["user_id"], pid, img, False, "✨", "telegram фото")
         slug = db.value("SELECT slug FROM sticker_packs WHERE id=?", (pid,))
-        send(cid, "Сохранил в KRUG, набор «Из Telegram» ✨", [[("Открыть набор", f"app:/stickers/{slug}")]])
+        send(cid, "Сохранил в QEVI, набор «Из Telegram» ✨", [[("Открыть набор", f"app:/stickers/{slug}")]])
         return st
-    send(cid, "Готово! Сохраните стикер в Telegram или привяжите KRUG — буду складывать такие стикеры в ваш набор.",
+    send(cid, "Готово! Сохраните стикер в Telegram или привяжите QEVI — буду складывать такие стикеры в ваш набор.",
          [[("Привязать аккаунт", "app:/settings?tab=telegram")]])
 
 
@@ -397,15 +398,15 @@ def _export_menu(cid: int, link: dict) -> None:
     rows = [r for r in rows if r["n"]]
     if not rows:
         return send(cid, "У вас пока нет своих наборов в KRUG. Создайте 3D-аватар — и получите набор стикеров с вашим персонажем 😎",
-                    [[("Создать в KRUG", "app:/stickers")]])
-    send(cid, "📤 Какой набор KRUG отправить в Telegram? Я создам настоящий стикерпак — он будет вашим.",
+                    [[("Создать в QEVI", "app:/stickers")]])
+    send(cid, "📤 Какой набор QEVI отправить в Telegram? Я создам настоящий стикерпак — он будет вашим.",
          [[(f"{r['title'][:40]} · {r['n']}", f"ex:{r['id']}")] for r in rows])
 
 
 def _notify_rows(link: dict) -> list:
     on = lambda v: "🔔" if v else "🔕"  # noqa: E731
     return [[(f"{on(link['notify_messages'])} Сообщения", "n:m")], [(f"{on(link['notify_social'])} Друзья и упоминания", "n:s")],
-            [(f"{'🔓' if link['webapp_login'] else '🔒'} Вход в KRUG из Telegram", "n:w")]]
+            [(f"{'🔓' if link['webapp_login'] else '🔒'} Вход в QEVI из Telegram", "n:w")]]
 
 
 def _packs(cid: int, link: dict) -> None:
@@ -433,10 +434,10 @@ def handle(update: dict) -> None:
         code = text.split("link_", 1)[-1] if "link_" in text else text.split(" ", 1)[1]
         new = _bind(code.strip(), frm)
         if new:
-            send(cid, f"🎉 Готово! Аккаунт KRUG <b>@{esc(new['username'])}</b> привязан.\n\n"
-                      "Теперь стикеры и наборы, которые вы мне пришлёте, сразу попадут в KRUG, а уведомления придут сюда.", MAIN_ROWS_LINKED())
+            send(cid, f"🎉 Готово! Аккаунт QEVI <b>@{esc(new['username'])}</b> привязан.\n\n"
+                      "Теперь стикеры и наборы, которые вы мне пришлёте, сразу попадут в QEVI, а уведомления придут сюда.", MAIN_ROWS_LINKED())
         else:
-            send(cid, "Ссылка для привязки устарела. Откройте KRUG → Настройки → Telegram и нажмите «Привязать» ещё раз.",
+            send(cid, "Ссылка для привязки устарела. Откройте QEVI → Настройки → Telegram и нажмите «Привязать» ещё раз.",
                  [[("Открыть настройки", "app:/settings?tab=telegram")]])
         return
     if text in ("/start", "/help") or text.startswith("/start "):
@@ -446,11 +447,11 @@ def handle(update: dict) -> None:
     if text == "/all":
         return send(cid, ALL_HOWTO)
     if text == "/link":
-        return send(cid, "Откройте настройки KRUG и нажмите «Привязать Telegram» — займёт секунду.", [[("Привязать", "app:/settings?tab=telegram")]])
+        return send(cid, "Откройте настройки QEVI и нажмите «Привязать Telegram» — займёт секунду.", [[("Привязать", "app:/settings?tab=telegram")]])
     if text == "/packs":
         return _packs(cid, link) if link else send(cid, "Сначала привяжите аккаунт KRUG.", [[("Привязать", "app:/settings?tab=telegram")]])
     if text == "/notify":
-        return send(cid, "Что присылать из KRUG? Нажмите, чтобы включить или выключить.", _notify_rows(link)) if link \
+        return send(cid, "Что присылать из QEVI? Нажмите, чтобы включить или выключить.", _notify_rows(link)) if link \
             else send(cid, "Уведомления приходят после привязки аккаунта.", [[("Привязать", "app:/settings?tab=telegram")]])
     if text == "/unlink":
         if not link:
@@ -514,7 +515,7 @@ def _callback(q: dict) -> None:
     _call("answerCallbackQuery", {"callback_query_id": q.get("id"), "text": note})
 
 
-# ---------------------------------------------------------------- уведомления из KRUG
+# ---------------------------------------------------------------- уведомления из QEVI
 _jobs: "queue.Queue" = queue.Queue(maxsize=2000)
 _last: dict = {}
 
@@ -563,7 +564,7 @@ def notify_message(uid: int, sender_name: str, conv_id: int, preview: str) -> No
     link = link_of_user(uid)
     if not link or not link["notify_messages"] or _throttled(("m", uid, conv_id), 120):
         return
-    _enqueue(send, link["tg_id"], f"💬 <b>{esc(sender_name)}</b>\n{esc(preview[:300])}", [[("Ответить в KRUG", f"app:/messages/{conv_id}")]])
+    _enqueue(send, link["tg_id"], f"💬 <b>{esc(sender_name)}</b>\n{esc(preview[:300])}", [[("Ответить в QEVI", f"app:/messages/{conv_id}")]])
 
 
 SOCIAL = {"friend_request": ("🤝", "хочет добавить вас в друзья", "/friends?tab=requests"),
@@ -582,7 +583,7 @@ def notify_social(uid: int, actor_name: str, type_: str, post_id: int | None = N
         return
     ic, what, path = SOCIAL[type_]
     path = path or (f"/post/{post_id}" if post_id else "/notifications")
-    _enqueue(send, link["tg_id"], f"{ic} <b>{esc(actor_name)}</b> {what}", [[("Открыть в KRUG", f"app:{path}")]])
+    _enqueue(send, link["tg_id"], f"{ic} <b>{esc(actor_name)}</b> {what}", [[("Открыть в QEVI", f"app:{path}")]])
 
 
 # ---------------------------------------------------------------- вход из мини-приложения
@@ -615,7 +616,7 @@ async def webapp_login(request: Request):
         raise ApiError(400, "Не удалось проверить вход из Telegram")
     link = link_of_tg(int(user["id"]))
     if not link:
-        raise ApiError(404, "Этот Telegram не привязан к аккаунту KRUG — войдите как обычно и привяжите его в настройках", "tg_not_linked")
+        raise ApiError(404, "Этот Telegram не привязан к аккаунту QEVI — войдите как обычно и привяжите его в настройках", "tg_not_linked")
     if not link["webapp_login"]:
         raise ApiError(403, "Вход из Telegram выключен в настройках", "tg_login_off")
     from . import twofa
@@ -646,7 +647,7 @@ async def settings(request: Request):
         link = link_of_user(v)
         db.run("DELETE FROM tg_links WHERE user_id=?", (v,))
         if link:
-            _enqueue(send, link["tg_id"], "Аккаунт KRUG отвязан. Привязать снова можно в настройках.", None)
+            _enqueue(send, link["tg_id"], "Аккаунт QEVI отвязан. Привязать снова можно в настройках.", None)
     return JSONResponse(_view(v))
 
 
@@ -661,11 +662,11 @@ async def link_start(request: Request):
         # открыто внутри мини-приложения: Telegram уже подписал, кто это — привязываем сразу
         tg_user = check_init_data(str(data["init_data"]), max_age=24 * 3600)
         if not tg_user or not tg_user.get("id"):
-            raise ApiError(400, "Данные Telegram устарели — откройте KRUG из бота заново", "tg_init_bad")
+            raise ApiError(400, "Данные Telegram устарели — откройте QEVI из бота заново", "tg_init_bad")
         new = _bind_user(v, tg_user)
         if new:
-            _enqueue(send, new["tg_id"], f"🎉 Готово! Аккаунт KRUG <b>@{esc(new['username'])}</b> привязан.\n\n"
-                                         "Теперь стикеры и наборы, которые вы мне пришлёте, сразу попадут в KRUG, а уведомления придут сюда.",
+            _enqueue(send, new["tg_id"], f"🎉 Готово! Аккаунт QEVI <b>@{esc(new['username'])}</b> привязан.\n\n"
+                                         "Теперь стикеры и наборы, которые вы мне пришлёте, сразу попадут в QEVI, а уведомления придут сюда.",
                      MAIN_ROWS_LINKED())
         return JSONResponse(_view(v))
     code = new_link_code(v)

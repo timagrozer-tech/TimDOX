@@ -1,4 +1,4 @@
-// Раздел «Музыка»: только полные треки — «Волна Круга», радио, русскоязычная сцена, тренды, жанры, подборки, «Моя музыка», поиск.
+// Раздел «Музыка»: только полные треки — «Волна QEVI», радио, русскоязычная сцена, тренды, жанры, подборки, «Моя музыка», поиск.
 import { api } from "../api.js";
 import { h, icon, pl } from "../dom.js";
 import { setTitle, toastError } from "../ui.js";
@@ -28,7 +28,7 @@ function offline() {
     h("a.btn.primary", { href: "/music?tab=radio" }, "Включить радио"));
 }
 
-// «Волна Круга» — бесконечный поток под вкус человека
+// «Волна QEVI» — бесконечный поток под вкус человека
 function waveCard() {
   const btn = h("button.mw-play", { type: "button" }, icon("play"), h("span", "Слушать"));
   const NS = "http://www.w3.org/2000/svg";
@@ -37,11 +37,11 @@ function waveCard() {
   svg.setAttribute("preserveAspectRatio", "none");
   svg.setAttribute("aria-hidden", "true");
   svg.setAttribute("class", "mw-waves");
-  const card = h("section.mw", { "aria-label": "Волна Круга" },
+  const card = h("section.mw", { "aria-label": "Волна QEVI" },
     svg,
     h("div.mw-body",
       h("span.mw-kicker", icon("headphones", "sm"), "Только для вас"),
-      h("h2", "Волна Круга"),
+      h("h2", "Волна QEVI"),
       h("p", "Бесконечная музыка под ваш вкус. Отмечайте треки сердечком — волна будет точнее."),
       btn));
   // волны — SVG-пути (без innerHTML)
@@ -65,7 +65,7 @@ function waveCard() {
     try {
       const d = await api.get("/api/music/wave");
       setShuffle(false);
-      playQueue(d.items, 0, "Волна Круга");
+      playQueue(d.items, 0, "Волна QEVI");
       card.dataset.active = "1";
     } catch (e) { toastError(e); }
     btn.disabled = false;
@@ -99,8 +99,8 @@ async function homeTab(box) {
         h("a.btn.soft.sm", { href: "/music?tab=russian" }, "Все")),
       h("div.card.mu-card", trackList(ruTracks.slice(0, 8), "На русском"))) : null,
     d.friends.length ? shelf("Друзья слушают", d.friends.map((t) => trackCard(t, d.friends, "Друзья слушают")), { sub: "Что недавно отметили сердечком ваши друзья и подписки" }) : null,
-    d.krug_top.length ? h("section.mu-shelf", h("div.mu-shelf-head", h("div", h("h2", "Любят в Круге"), h("p", "Больше всего сердечек за месяц"))),
-      h("div.card.mu-card", trackList(d.krug_top, "Любят в Круге"))) : null,
+    d.krug_top.length ? h("section.mu-shelf", h("div.mu-shelf-head", h("div", h("h2", "Любят в QEVI"), h("p", "Больше всего сердечек за месяц"))),
+      h("div.card.mu-card", trackList(d.krug_top, "Любят в QEVI"))) : null,
     allTrending.length ? h("section.mu-shelf",
       h("div.mu-shelf-head", h("div", h("h2", "В тренде недели"), h("p", "Самое популярное у независимых музыкантов мира")),
         h("button.btn.soft.sm", { type: "button", onclick: () => playQueue(allTrending, 0, "В тренде") }, icon("play", "sm"), "Слушать все")),
@@ -130,7 +130,7 @@ async function myTab(box) {
   setLiked(d.items.map((t) => t.key));
   if (!d.items.length) {
     box.replaceChildren(h("div.card.empty.mu-empty", h("span.mu-empty-ic", icon("heart")), h("h3", "Здесь будет ваша музыка"),
-      h("p", "Нажимайте ♥ у треков и радиостанций — они соберутся здесь, а «Волна Круга» начнёт подстраиваться под ваш вкус."),
+      h("p", "Нажимайте ♥ у треков и радиостанций — они соберутся здесь, а «Волна QEVI» начнёт подстраиваться под ваш вкус."),
       h("a.btn.primary", { href: "/music" }, "Найти музыку")));
     return;
   }

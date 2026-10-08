@@ -46,7 +46,7 @@ export async function walletPage() {
     const m = modal({ title: "Перевод другу", narrow: true, body: h("div.stack",
       h("datalist", { id: "tr-friends" }, friends.map((f) => h("option", { value: f.username }, f.name))),
       h("div.field", h("label", "Кому"), to), h("div.field", h("label", "Сумма"), amount, calc), h("div.field", h("label", "Сообщение"), note), code,
-      h("p.field-hint", "Переводы — только друзьям, через 14 дней после регистрации. До 1 000 KC в день, с 2FA и стажем от 30 дней — до 5 000. Администрация Круга никогда не просит перевести монеты.")),
+      h("p.field-hint", "Переводы — только друзьям, через 14 дней после регистрации. До 1 000 KC в день, с 2FA и стажем от 30 дней — до 5 000. Администрация QEVI никогда не просит перевести монеты.")),
       footer: [h("button.btn.ghost", { type: "button", onclick: () => m.close() }, "Отмена"), go] });
     go.addEventListener("click", () => busy(go, async () => {
       try {
@@ -63,7 +63,7 @@ export async function walletPage() {
     const pct = L.max ? 100 : Math.round(((L.xp - L.from) / Math.max(1, L.to - L.from)) * 100);
     top.replaceChildren(
       h("div.wl-balances",
-        h("div.wl-bal.kc", h("span.wl-ic", "🪙"), h("div", h("b", fmt(w.kc)), h("small", "KRUG Coin"))),
+        h("div.wl-bal.kc", h("span.wl-ic", "🪙"), h("div", h("b", fmt(w.kc)), h("small", "QEVI Coin"))),
         h("div.wl-bal.kr", h("span.wl-ic", "💎"), h("div", h("b", fmt(w.kr)), h("small", "Кристаллы")))),
       h("div.wl-level",
         h("div.wl-level-row", h("b", `Уровень ${L.level}`), h("small", L.max ? "Максимум" : `${fmt(L.xp)} / ${fmt(L.to)} опыта`)),
@@ -141,7 +141,7 @@ export async function walletPage() {
         h("li", h("b", "+3"), " за комментарий к чужой записи — до 10 в день"),
         h("li", h("b", "+1"), " за каждого, кто отреагировал на ваши записи"),
         h("li", h("b", "+2"), " за каждого, кто их прокомментировал"),
-        h("li", h("b", "🪙"), " читатели — и ИИ-персонажи Круга — могут поддержать ваши записи монетами")),
+        h("li", h("b", "🪙"), " читатели — и ИИ-персонажи QEVI — могут поддержать ваши записи монетами")),
       h("p.field-hint", "За активность — не больше 200 KC в день, плюс задания. Монеты нельзя купить или вывести: это очки для города и оформления.")),
     h("section.card.wl-card", h("div.wl-head", h("h2", "История")), hist, more));
 }

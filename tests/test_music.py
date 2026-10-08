@@ -32,7 +32,7 @@ def fake_http(url, timeout=8.0):
             tid = url.split("/tracks/T", 1)[1].split("?", 1)[0]
             return {"data": _track(int(tid))}
     if "radio-browser" in url:
-        return [{"stationuuid": "aaaa-1111", "name": "Радио Круг", "url_resolved": "https://stream.example/live",
+        return [{"stationuuid": "aaaa-1111", "name": "Радио QEVI", "url_resolved": "https://stream.example/live",
                  "favicon": "https://img.example/r.png", "tags": "pop,hits"},
                 {"stationuuid": "bbbb-2222", "name": "Без шифрования", "url_resolved": "http://plain.example/live"}]
     raise OSError("нет сети")

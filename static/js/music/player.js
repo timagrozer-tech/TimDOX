@@ -1,4 +1,4 @@
-// Музыкальный плеер Круга: один на всё приложение, продолжает играть при переходах между страницами.
+// Музыкальный плеер QEVI: один на всё приложение, продолжает играть при переходах между страницами.
 // Мини-плеер над нижней панелью и полноэкранный плеер «Орбита» с очередью, перемешиванием и повтором.
 import { api, state, on as onApp } from "../api.js";
 import { h, icon } from "../dom.js";
@@ -13,7 +13,7 @@ audio.preload = "metadata";
 let queue = [];        // треки в порядке воспроизведения
 let original = null;   // порядок до перемешивания
 let index = -1;
-let ctx = "";          // откуда играет: «Волна Круга», «Жанр: Поп»…
+let ctx = "";          // откуда играет: «Волна QEVI», «Жанр: Поп»…
 let shuffle = false;
 let repeat = "off";    // off | all | one
 let errors = 0;
@@ -24,7 +24,7 @@ const listeners = new Set();
 
 export const current = () => queue[index] || null;
 export const isPlaying = () => !audio.paused && !!current();
-export const streamUrl = (t) => (t.source === "audius" ? `https://api.audius.co/v1/tracks/${encodeURIComponent(t.id)}/stream?app_name=KRUG` : t.stream);
+export const streamUrl = (t) => (t.source === "audius" ? `https://api.audius.co/v1/tracks/${encodeURIComponent(t.id)}/stream?app_name=QEVI` : t.stream);
 
 // ---------------------------------------------------------------- подписки
 export function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
@@ -220,7 +220,7 @@ function mediaSession(t) {
   if (!("mediaSession" in navigator)) return;
   try {
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: t.title, artist: t.artist || "", album: ctx || "Круг",
+      title: t.title, artist: t.artist || "", album: ctx || "QEVI",
       artwork: t.artwork ? [{ src: t.artwork, sizes: "480x480", type: "image/jpeg" }] : [{ src: "/static/img/icon-192.png", sizes: "192x192", type: "image/png" }],
     });
     const ms = navigator.mediaSession;
@@ -518,7 +518,7 @@ function paintUi() {
   full.querySelector(".fp-queue-btn").setAttribute("aria-expanded", String(queueOpen));
   full.classList.toggle("shuffle-on", shuffle);
   full.dataset.repeat = repeat;
-  full.querySelector(".fp-ctx-name").textContent = (ctx || (t.live ? "Радио" : "Музыка Круга")) + (sleepAt ? " · ⏾" : "");
+  full.querySelector(".fp-ctx-name").textContent = (ctx || (t.live ? "Радио" : "Музыка QEVI")) + (sleepAt ? " · ⏾" : "");
   const fpPlay = full.querySelector(".fp-play");
   fpPlay.replaceChildren(icon(playing ? "pause" : "play"));
   fpPlay.setAttribute("aria-label", playing ? "Пауза" : "Играть");

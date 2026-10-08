@@ -486,7 +486,7 @@ export function report(type, id) {
     try {
       await api.post("/api/reports", { target_type: type, target_id: id, reason: note.value.trim() ? `${reason}: ${note.value.trim()}` : reason });
       m.close();
-      toast("Жалоба отправлена. Спасибо, что помогаете сделать Круг лучше!", { icon: "flag" });
+      toast("Жалоба отправлена. Спасибо, что помогаете сделать QEVI лучше!", { icon: "flag" });
     } catch (e) { toastError(e); }
   }));
 }

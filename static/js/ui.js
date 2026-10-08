@@ -339,7 +339,7 @@ try {
 } catch { /* старые браузеры */ }
 
 export function currentTheme() {
-  try { return localStorage.getItem("krug-theme") || "system"; } catch { return "system"; }
+  try { return localStorage.getItem("krug-theme") || "dark"; } catch { return "dark"; }
 }
 
-export function setTitle(t) { document.title = t ? `${t} — Круг` : "Круг — социальная сеть"; }
+export function setTitle(t) { document.title = t ? `${t} — QEVI` : "QEVI — социальная сеть нового поколения"; }

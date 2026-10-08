@@ -8,7 +8,7 @@ from app import db, worlds
 from app.security import rate_limiter
 
 GH_USER = {"login": "timagrozer-tech", "name": "Tima", "avatar_url": "https://avatars.githubusercontent.com/u/1?v=4",
-           "bio": "KRUG", "location": "Moscow", "public_repos": 7, "followers": 12, "following": 3,
+           "bio": "QEVI", "location": "Moscow", "public_repos": 7, "followers": 12, "following": 3,
            "created_at": "2024-05-01T00:00:00Z", "html_url": "https://github.com/timagrozer-tech"}
 GH_REPOS = [
     {"name": "TimDOX", "description": "Соцсеть", "stargazers_count": 5, "language": "Python", "html_url": "https://github.com/timagrozer-tech/TimDOX", "fork": False, "pushed_at": "2026-10-01"},
@@ -16,10 +16,10 @@ GH_REPOS = [
     {"name": "evil", "stargazers_count": 1, "html_url": "javascript:alert(1)", "fork": False},
 ]
 TG_HTML = """<html><head>
-<meta property="og:title" content="KRUG &amp; друзья">
+<meta property="og:title" content="QEVI &amp; друзья">
 <meta property="og:image" content="https://cdn4.telesco.pe/file/abc.jpg">
-<meta property="og:description" content="Новости соцсети KRUG">
-</head><body><div class="tgme_page_title" dir="auto"><span dir="auto">KRUG</span></div>
+<meta property="og:description" content="Новости соцсети QEVI">
+</head><body><div class="tgme_page_title" dir="auto"><span dir="auto">QEVI</span></div>
 <div class="tgme_page_extra">12 345 subscribers</div></body></html>"""
 TG_USER = """<meta property="og:title" content="Tima"><meta property="og:image" content="https://evil.example.com/p.jpg">
 <meta property="og:description" content="You can contact @groom005 right away.">
@@ -42,7 +42,7 @@ class WorldsTest(unittest.TestCase):
 
     def test_telegram_parse(self):
         d = worlds.parse_telegram(TG_HTML, "krug")
-        self.assertEqual((d["title"], d["type"], d["count"]), ("KRUG & друзья", "channel", 12345))
+        self.assertEqual((d["title"], d["type"], d["count"]), ("QEVI & друзья", "channel", 12345))
         self.assertTrue(d["photo"].startswith("https://cdn4.telesco.pe/"))
         u = worlds.parse_telegram(TG_USER, "groom005")
         self.assertEqual((u["type"], u["desc"], u["photo"]), ("user", "", None))  # чужой домен картинки отброшен

@@ -20,6 +20,8 @@ let live3d = null; // живой 3D-аватар в шапке профиля (�
 export async function profilePage({ params, query }) {
   let offPosted = null;
   const data = await api.get(`/api/users/${encodeURIComponent(params.username)}`);
+  // старый адрес профиля (например, @krug_updates после ребрендинга) — показываем новый в строке адреса
+  if (data.user?.username && data.user.username !== params.username) history.replaceState(history.state, "", `/u/${data.user.username}${location.search}`);
   const u = data.user;
   const isMe = u.id === state.me.id;
   setTitle(u.name);

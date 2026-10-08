@@ -2,7 +2,7 @@
 (function () {
   var root = document.documentElement;
   try {
-    var t = localStorage.getItem("krug-theme") || "system";
+    var t = localStorage.getItem("krug-theme") || "dark";
     var dark = t === "dark" || (t === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
     // открыто в Telegram: «как в системе» = как в Telegram (по цвету фона его темы)
     var tp = /tgWebAppThemeParams=([^&]+)/.exec(location.hash);
@@ -23,6 +23,7 @@
     if (look && look.vars) {
       for (var k in look.vars) root.style.setProperty(k, look.vars[k]);
       root.dataset.bg = look.bg || "orbit";
+      root.dataset.palette = look.palette || "qevi";
       root.dataset.shape = look.shape || "soft";
       if (look.font) {
         var l = document.createElement("link");

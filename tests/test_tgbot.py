@@ -1,4 +1,4 @@
-"""Бот KRUG Stickers: вебхук с секретом, привязка аккаунта, перенос набора с прогрессом, ZIP, уведомления, вход из мини-приложения."""
+"""Бот QEVI Stickers: вебхук с секретом, привязка аккаунта, перенос набора с прогрессом, ZIP, уведомления, вход из мини-приложения."""
 import hashlib
 import hmac
 import io
@@ -124,7 +124,7 @@ class TgBotTest(unittest.TestCase):
         self.assertIn("устарела", self.texts()[-1])
         # теперь набор переносится прямо из чата, с прогрессом
         self.msg("https://t.me/addstickers/FunnyCats")
-        self.assertTrue(self.wait(lambda: any("в вашем KRUG" in t for t in self.texts()), 15), self.texts()[-3:])
+        self.assertTrue(self.wait(lambda: any("в вашем QEVI" in t for t in self.texts()), 15), self.texts()[-3:])
         self.assertTrue(db.value("SELECT 1 FROM user_sticker_packs u JOIN sticker_packs p ON p.id=u.pack_id "
                                  "WHERE u.user_id=? AND p.source_ref='FunnyCats'", (self.uid,)))
         self.msg("/packs")

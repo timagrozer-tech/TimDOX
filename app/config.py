@@ -24,7 +24,9 @@ def _bool(name: str, default: bool) -> bool:
     return os.environ.get(name, str(default)).lower() in ("1", "true", "yes", "on")
 
 
-APP_NAME = os.environ.get("APP_NAME", "Круг")
+APP_NAME = os.environ.get("APP_NAME", "QEVI")
+if APP_NAME.strip() in ("Круг", "KRUG", "Krug"):  # ребрендинг: старое значение из окружения не должно вернуть прежнее имя
+    APP_NAME = "QEVI"
 # На Render адрес сервиса приходит в RENDER_EXTERNAL_URL
 APP_URL = os.environ.get("APP_URL") or os.environ.get("RENDER_EXTERNAL_URL") or "http://localhost:8000"
 APP_URL = APP_URL.rstrip("/")
@@ -46,7 +48,7 @@ SMTP_HOST = os.environ.get("SMTP_HOST", "")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER", "")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-SMTP_FROM = os.environ.get("SMTP_FROM", "Круг <no-reply@krug.local>")
+SMTP_FROM = os.environ.get("SMTP_FROM", "QEVI <no-reply@krug.local>")
 SMTP_TLS = _bool("SMTP_TLS", True)
 
 # Brevo (бывш. Sendinblue): письма через HTTPS API — работает там, где SMTP-порты закрыты (бесплатный Render)
@@ -59,7 +61,9 @@ MAIL_WEBHOOK_SECRET = os.environ.get("MAIL_WEBHOOK_SECRET", "").strip()
 def _from_parts(raw: str) -> tuple[str, str]:
     from email.utils import parseaddr
     name, addr = parseaddr(raw)
-    return name or "Круг", addr or "no-reply@krug.local"
+    if name.strip() in ("Круг", "KRUG", "Krug"):
+        name = "QEVI"
+    return name or "QEVI", addr or "no-reply@krug.local"
 
 
 MAIL_FROM_NAME, MAIL_FROM_EMAIL = _from_parts(SMTP_FROM)

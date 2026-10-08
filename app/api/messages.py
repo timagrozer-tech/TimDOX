@@ -248,7 +248,7 @@ def _tg_notify(conv_id: int, sender: int, sender_card: dict, text: str, kind: st
     try:
         from .. import tgbot, webpush
         preview = _preview_text({"kind": kind, "text": text}) or "Новое сообщение"
-        name = sender_card.get("name") or sender_card.get("username") or "KRUG"
+        name = sender_card.get("name") or sender_card.get("username") or "QEVI"
         for uid in member_ids(conv_id):
             if uid != sender:
                 webpush.notify_message(uid, name, conv_id, preview, sender_card.get("avatar"))
@@ -590,7 +590,7 @@ async def send_media(request: Request):
 
 @auth()
 async def share(request: Request):
-    """Местоположение или контакт (профиль из Круга) в переписке."""
+    """Местоположение или контакт (профиль из QEVI) в переписке."""
     limit(request, "write")
     v = request.state.user["id"]
     conv_id = path_int(request)

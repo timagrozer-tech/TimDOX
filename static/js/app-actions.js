@@ -8,7 +8,7 @@ import { applyLook, DEFAULT_LOOK } from "./look.js";
 export function applyUserLook() {
   if (!state.me) return;
   // у каждого аккаунта своё оформление: если своего нет — стандартное, а не оставшееся от другого аккаунта
-  applyTheme(state.me.theme || "system");
+  applyTheme(state.me.theme || "dark");
   applyLook(state.me.appearance || DEFAULT_LOOK, state.me.background || null);
 }
 

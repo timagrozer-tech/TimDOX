@@ -86,7 +86,7 @@ export function appearanceSection(settings) {
 
   // ------------------------------------------------ режим
   const modeSeg = h("div.segmented", { role: "group", "aria-label": "Светлая или тёмная" });
-  const paintMode = () => modeSeg.replaceChildren(...[["system", "Авто"], ["light", "Светлая"], ["dark", "Тёмная"]].map(([v, t]) => h("button", {
+  const paintMode = () => modeSeg.replaceChildren(...[["dark", "QEVI Dark"], ["light", "QEVI Light"], ["system", "Как в системе"]].map(([v, t]) => h("button", {
     type: "button", "aria-pressed": String(v === mode), onclick: () => { setMode(v); paintMode(); },
   }, t)));
 
@@ -215,8 +215,8 @@ export function appearanceSection(settings) {
   paintMotion(currentMotion());
 
   const reset = h("button.btn.ghost.sm.icon-only", { type: "button", onclick: () => {
-    setMode("system");
-    update({ ...PRESETS.orbit, preset: "orbit", palette: "violet", custom: null, dim: 35, blur: 0 }, { keepPreset: true });
+    setMode("dark");
+    update({ ...PRESETS.qevi, preset: "qevi", palette: "qevi", custom: null, dim: 35, blur: 0 }, { keepPreset: true });
     paint();
   }, title: "Сбросить оформление", "aria-label": "Сбросить оформление" }, icon("repeat", "sm"));
 

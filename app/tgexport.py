@@ -1,7 +1,7 @@
-"""Экспорт наборов KRUG в Telegram: бот создаёт настоящий стикерпак от имени владельца (Bot API createNewStickerSet).
+"""Экспорт наборов QEVI в Telegram: бот создаёт настоящий стикерпак от имени владельца (Bot API createNewStickerSet).
 
 Набор принадлежит самому человеку (его Telegram-аккаунту), имя вида krug<slug>v<N>_by_<бот>. Повторный экспорт
-после изменений удаляет прежнюю версию и создаёт новую. Анимированные стикеры KRUG уходят первым кадром."""
+после изменений удаляет прежнюю версию и создаёт новую. Анимированные стикеры QEVI уходят первым кадром."""
 import io
 import logging
 import re
@@ -122,7 +122,7 @@ def _run(uid: int, link: dict, pack: dict, rows: list[dict]) -> None:
         if old:
             bot._call("deleteStickerSet", {"name": old["set_name"]})
         name = f"krug{pack['slug']}v{version}_by_{bot.bot_username()}"
-        title = (pack["title"] or "KRUG")[:56] + " · KRUG"
+        title = (pack["title"] or "QEVI")[:56] + " · QEVI"
         res = bot._call("createNewStickerSet", {"user_id": tg_id, "name": name, "title": title, "stickers": files[:50], "sticker_type": "regular"}) or {}
         if not res.get("ok"):
             raise ApiError(400, f"Telegram не создал набор: {res.get('description') or 'нет ответа'}")

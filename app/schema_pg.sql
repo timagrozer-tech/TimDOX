@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     friends_visibility TEXT NOT NULL DEFAULT 'public'  CHECK (friends_visibility IN ('public','friends','only_me')),
     show_birth_date    INTEGER NOT NULL DEFAULT 1,
     default_visibility TEXT NOT NULL DEFAULT 'public'  CHECK (default_visibility IN ('public','friends','only_me')),
-    theme              TEXT NOT NULL DEFAULT 'system'  CHECK (theme IN ('system','light','dark')),
+    theme              TEXT NOT NULL DEFAULT 'dark'    CHECK (theme IN ('system','light','dark')),
     school             TEXT NOT NULL DEFAULT '',
     school_year        INTEGER,
     university         TEXT NOT NULL DEFAULT '',
@@ -941,3 +941,6 @@ CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subs(user_id);
 -- Чат 2.0: оформление чата (общее и личное)
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS theme TEXT;
 ALTER TABLE conversation_members ADD COLUMN IF NOT EXISTS theme TEXT;
+
+-- QEVI: тёмная тема по умолчанию
+ALTER TABLE users ALTER COLUMN theme SET DEFAULT 'dark';

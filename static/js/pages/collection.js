@@ -31,7 +31,7 @@ export async function collectionPage({ query }) {
       h("div.coll-ring", { style: { "--p": String(pct) } }, h("b", `${data.owned_count}`), h("small", `из ${data.total}`)),
       h("div.coll-text",
         h("h1", "Моя коллекция"),
-        h("p.muted", "Редкие рамки, анимации, эффекты и питомцы. Их нельзя купить — только заработать активностью в Круге."),
+        h("p.muted", "Редкие рамки, анимации, эффекты и питомцы. Их нельзя купить — только заработать активностью в QEVI."),
         h("div.rarity-chips", byRarity.map(([r, n]) => h(`span.rarity-chip.${r}`, `${RARITY_LABEL[r]}: ${n}`)))));
   }
 

@@ -17,6 +17,9 @@ from .posts import delete_post_files
 def _profile(username: str) -> dict:
     row = db.one("SELECT p.*, u.created_at AS joined_at FROM profiles p JOIN users u ON u.id=p.user_id WHERE p.username=?",
                  (username,))
+    if not row and social.resolve_username(username) != username:  # старый адрес после ребрендинга
+        row = db.one("SELECT p.*, u.created_at AS joined_at FROM profiles p JOIN users u ON u.id=p.user_id WHERE p.username=?",
+                     (social.resolve_username(username),))
     if not row:
         raise ApiError(404, "Пользователь не найден")
     return row

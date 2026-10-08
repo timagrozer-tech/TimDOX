@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     friends_visibility TEXT NOT NULL DEFAULT 'public'  CHECK (friends_visibility IN ('public','friends','only_me')),
     show_birth_date    INTEGER NOT NULL DEFAULT 1,
     default_visibility TEXT NOT NULL DEFAULT 'public'  CHECK (default_visibility IN ('public','friends','only_me')),
-    theme              TEXT NOT NULL DEFAULT 'system'  CHECK (theme IN ('system','light','dark'))
+    theme              TEXT NOT NULL DEFAULT 'dark'    CHECK (theme IN ('system','light','dark'))
 );
 CREATE INDEX IF NOT EXISTS idx_profiles_name ON profiles(name COLLATE NOCASE);
 

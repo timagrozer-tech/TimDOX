@@ -35,7 +35,7 @@ export function notifText(n, many = false) {
     case "market_sold": return `купил(а) ваш лот «${n.extra?.name || ""}» на рынке: +${n.extra?.amount || ""} KC 🪙`;
     case "transfer": return `перевёл(а) вам ${n.extra?.amount || ""} KC${n.extra?.note ? ` — «${n.extra.note}»` : ""} 🪙`;
     case "item": return `Новый предмет в коллекции: «${n.extra?.name || ""}» ✨`;
-    case "invite_joined": return "присоединился(-ась) к Кругу по вашему приглашению 🎉";
+    case "invite_joined": return "присоединился(-ась) к QEVI по вашему приглашению 🎉";
     case "invite_qualified": return `стал(а) активным участником — приглашение засчитано (всего: ${n.extra?.count || 1})`;
     case "invite_tier": return `— благодаря этому приглашению у вас ${n.extra?.name || "новая галочка"}! 🏆`;
     default: return "новое событие";

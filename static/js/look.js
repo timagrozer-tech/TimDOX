@@ -3,6 +3,7 @@
 // чтобы theme-init.js отрисовал нужный вид ещё до загрузки приложения (без «вспышки»).
 
 export const PALETTES = {
+  qevi:     { name: "QEVI",       pl: "#2563FF", pd: "#8AA8FF", al: "#B277FF", ad: "#C9A2FF", c: ["#2563FF", "#B277FF", "#88FFF2", "#6E9BFF"] },
   violet:   { name: "Фиолетовый", pl: "#5b3df5", pd: "#a48dff", al: "#d6246e", ad: "#ff5fa2", c: ["#6d4bff", "#ff5fa2", "#22d3ee", "#a78bfa"] },
   ocean:    { name: "Океан",      pl: "#1d4ed8", pd: "#7aa2ff", al: "#0e7490", ad: "#22d3ee", c: ["#2563eb", "#06b6d4", "#6366f1", "#38bdf8"] },
   mint:     { name: "Мята",       pl: "#0f766e", pd: "#2dd4bf", al: "#0369a1", ad: "#38bdf8", c: ["#14b8a6", "#0ea5e9", "#22c55e", "#5eead4"] },
@@ -57,6 +58,7 @@ export const SHAPES = { soft: "Мягкие", medium: "Средние", sharp: "
 
 // Готовые темы: палитра + фон + шрифт + углы + светлая/тёмная
 export const PRESETS = {
+  qevi:     { name: "QEVI",     palette: "qevi",     bg: "orbit",    font: "manrope",    shape: "soft",   mode: "dark" },
   orbit:    { name: "Орбита",   palette: "violet",   bg: "orbit",    font: "manrope",    shape: "soft",   mode: "dark" },
   dawn:     { name: "Рассвет",  palette: "lavender", bg: "aurora",   font: "manrope",    shape: "soft",   mode: "light" },
   ocean:    { name: "Океан",    palette: "ocean",    bg: "aurora",   font: "inter",      shape: "medium", mode: "light" },
@@ -77,7 +79,7 @@ export const PRESETS = {
   minimal:  { name: "Минимализм", palette: "graphite", bg: "plain",  font: "ubuntu",     shape: "medium", mode: "dark" },
 };
 
-export const DEFAULT_LOOK = { preset: "orbit", palette: "violet", custom: null, bg: "orbit", dim: 35, blur: 0, font: "manrope", shape: "soft" };
+export const DEFAULT_LOOK = { brand: "qevi", preset: "qevi", palette: "qevi", custom: null, bg: "orbit", dim: 35, blur: 0, font: "manrope", shape: "soft" };
 
 // ---------------------------------------------------------------- цвет
 const hex2rgb = (h) => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
@@ -142,7 +144,11 @@ export function currentLook() { return { ...current }; }
 export function currentBgImage() { return bgImage; }
 
 export function normalizeLook(raw) {
-  const l = { ...DEFAULT_LOOK, ...(raw && typeof raw === "object" ? raw : {}) };
+  const src = raw && typeof raw === "object" ? raw : {};
+  const l = { ...DEFAULT_LOOK, ...src };
+  // ребрендинг: стандартное оформление QEVI (фиолетовая палитра без своих настроек) становится QEVI
+  if (src.brand !== "qevi" && (!src.palette || src.palette === "violet") && !src.custom) l.palette = "qevi";
+  l.brand = "qevi";
   if (!PALETTES[l.palette] && l.palette !== "custom") l.palette = DEFAULT_LOOK.palette;
   if (!BACKGROUNDS[l.bg]) l.bg = DEFAULT_LOOK.bg;
   if (!FONTS[l.font]) l.font = DEFAULT_LOOK.font;
@@ -178,11 +184,12 @@ export function applyLook(look, image = bgImage) {
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
   root.dataset.bg = bg;
   root.dataset.shape = current.shape;
+  root.dataset.palette = current.palette;
   const href = fontHref(current.font);
   setFontLink(href);
   updateThemeColor();
   try {
-    localStorage.setItem("krug-look", JSON.stringify({ vars, bg, shape: current.shape, font: href, look: current, image: bgImage }));
+    localStorage.setItem("krug-look", JSON.stringify({ vars, bg, shape: current.shape, palette: current.palette, font: href, look: current, image: bgImage }));
   } catch { /* приватный режим */ }
   return current;
 }

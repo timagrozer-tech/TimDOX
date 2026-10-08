@@ -15,7 +15,7 @@ class SeoTest(unittest.TestCase):
         cls.b = Client().register("seo_closed", "Скрытый Автор")
         db.run("UPDATE profiles SET bio='Пишу про \"дизайн\" & код', profile_visibility='public' WHERE username='seo_open'")
         db.run("UPDATE profiles SET bio='секретная биография', profile_visibility='friends' WHERE username='seo_closed'")
-        cls.pub = cls.a.post("/api/posts", data={"text": "Открытый пост про KRUG", "visibility": "public"}).json()["id"]
+        cls.pub = cls.a.post("/api/posts", data={"text": "Открытый пост про QEVI", "visibility": "public"}).json()["id"]
         cls.priv = cls.a.post("/api/posts", data={"text": "Тайный пост только друзьям", "visibility": "friends"}).json()["id"]
         cls.hidden = cls.b.post("/api/posts", data={"text": "Пост закрытого автора", "visibility": "public"}).json()["id"]
 
@@ -27,7 +27,7 @@ class SeoTest(unittest.TestCase):
 
     def test_profile(self):
         h = self.page("/u/seo_open")
-        self.assertIn('og:title" content="Открытый &lt;Автор&gt; (@seo_open) — Круг"', h)
+        self.assertIn('og:title" content="Открытый &lt;Автор&gt; (@seo_open) — QEVI"', h)
         self.assertIn("Пишу про &quot;дизайн&quot; &amp; код", h)
         self.assertNotIn("<Автор>", h)
         h = self.page("/u/seo_closed")
@@ -35,7 +35,7 @@ class SeoTest(unittest.TestCase):
         self.assertIn("Закрытый профиль", h)
 
     def test_posts(self):
-        self.assertIn("Открытый пост про KRUG", self.page(f"/post/{self.pub}"))
+        self.assertIn("Открытый пост про QEVI", self.page(f"/post/{self.pub}"))
         self.assertNotIn("Тайный пост", self.page(f"/post/{self.priv}"))
         self.assertNotIn("Пост закрытого автора", self.page(f"/post/{self.hidden}"))
 
@@ -44,8 +44,8 @@ class SeoTest(unittest.TestCase):
         self.assertIn('og:image" content="', h)
         self.assertIn("/static/img/og.png", h)
         self.assertIn("summary_large_image", h)
-        self.assertIn("Круг", self.page("/u/nobody_here_404"))
-        self.assertIn("Круг", self.page("/post/999999"))
+        self.assertIn("QEVI", self.page("/u/nobody_here_404"))
+        self.assertIn("QEVI", self.page("/post/999999"))
 
 
 if __name__ == "__main__":

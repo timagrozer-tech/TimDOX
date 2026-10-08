@@ -1,4 +1,4 @@
-"""Сердце Мира Круга: тик раз в 2 минуты и реакции на действия людей.
+"""Сердце Мира QEVI: тик раз в 2 минуты и реакции на действия людей.
 
 Тик: публикует созревшие задания очереди → дополняет очередь → реагирует на свежие записи людей →
 ежедневные и еженедельные работы по календарю → двигает сюжеты. Всё идемпотентно и дёшево.
@@ -97,7 +97,7 @@ def calendar() -> None:
     se = gen.season()
     if se and core.once(f"season:{d.year}:{se[4]}"):
         core.schedule(core.personas()["mira_sovet"]["user_id"], "post",
-                      {"text": f"{se[5]} В Круге начинается «{se[3]}»! Делитесь настроением с тегом #{se[4]} — Совет отметит самые тёплые записи.",
+                      {"text": f"{se[5]} В QEVI начинается «{se[3]}»! Делитесь настроением с тегом #{se[4]} — Совет отметит самые тёплые записи.",
                        "community": "sovet"}, core.soon(0, 10))
     if d.hour == 4 and core.once(f"cleanup:{d.date()}"):
         db.run("DELETE FROM ai_queue WHERE status<>'pending' AND run_at<?", (db.future(days=-7),))
@@ -121,9 +121,9 @@ async def loop() -> None:
     try:
         await asyncio.to_thread(setup)
     except Exception:
-        log.exception("Мир Круга не запустился")
+        log.exception("Мир QEVI не запустился")
         return
-    log.info("Мир Круга запущен (нейросеть: %s)", "да" if llm.enabled() else "нет, шаблоны")
+    log.info("Мир QEVI запущен (нейросеть: %s)", "да" if llm.enabled() else "нет, шаблоны")
     while True:
         try:
             await asyncio.to_thread(tick)
@@ -169,7 +169,7 @@ def _welcome(uid: int) -> None:
     if not mira or db.value("SELECT 1 FROM ai_memory WHERE user_id=? AND persona_id=?", (uid, mira["user_id"])):
         return
     if (db.value("SELECT created_at FROM users WHERE id=?", (uid,)) or "") < db.future(days=-14):
-        quests.remember(uid, mira["user_id"], "давний житель Круга", 0)
+        quests.remember(uid, mira["user_id"], "давний житель QEVI", 0)
         return
     name = (db.value("SELECT name FROM profiles WHERE user_id=?", (uid,)) or "").split(" ")[0]
     quests.remember(uid, mira["user_id"], "новый житель", 1)
@@ -217,10 +217,10 @@ def _compose_reply(conv: int, persona_id: int, uid: int) -> str | None:
     db.run("UPDATE ai_memory SET chats_day=? WHERE user_id=? AND persona_id=?", (f"{day}:{n_today + 1}", uid, persona_id))
     if llm.enabled() and n_today < CHAT_PER_DAY:
         history = "\n".join(f"{'Ты' if r['sender_id'] == persona_id else name}: {r['text']}" for r in reversed(last) if r["text"])
-        system = (f"Ты — {p['name']}, {p['role']} в организации «{org.get('name')}» соцсети «Круг». Ты ИИ-персонаж и не скрываешь этого. "
+        system = (f"Ты — {p['name']}, {p['role']} в организации «{org.get('name')}» соцсети QEVI. Ты ИИ-персонаж и не скрываешь этого. "
                   f"О себе: {p['bio']} Стиль: {p['style']}. Отвечай по-русски, коротко (1–3 предложения), тепло и по делу, без выдуманных фактов. "
                   f"Что ты помнишь о собеседнике ({name}): {', '.join(facts) or 'пока ничего'}. Его репутация у вашей организации: {points} "
-                  f"(звание «{texts.title_for(points)}»). Можешь предлагать задания из раздела «Мир Круга».")
+                  f"(звание «{texts.title_for(points)}»). Можешь предлагать задания из раздела «Мир QEVI».")
         answer = llm.complete(system, f"Переписка:\n{history}\n\nОтветь на последнее сообщение.", max_tokens=300)
         if answer:
             return answer.strip()[:800]

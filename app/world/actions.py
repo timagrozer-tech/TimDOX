@@ -1,4 +1,4 @@
-"""Исполнение действий персонажей: всё пишется в обычные таблицы Круга, поэтому лента, уведомления и чат работают как есть."""
+"""Исполнение действий персонажей: всё пишется в обычные таблицы QEVI, поэтому лента, уведомления и чат работают как есть."""
 import json
 import logging
 import random
@@ -90,7 +90,7 @@ def create_event(persona_id: int, community: str | None, title: str, description
     from datetime import timedelta
     start = core.parse_ts(starts_at)
     return db.run("""INSERT INTO events (creator_id, community_id, title, description, place, starts_at, ends_at, visibility)
-                     VALUES (?,?,?,?, 'Мир Круга', ?, ?, 'public')""",
+                     VALUES (?,?,?,?, 'Мир QEVI', ?, ?, 'public')""",
                   (persona_id, core.community_id(community) if community else None, title, description, starts_at,
                    core.iso(start + timedelta(hours=hours)))).lastrowid
 

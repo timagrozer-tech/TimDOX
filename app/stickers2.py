@@ -275,7 +275,7 @@ def _add(pid: int, saved: dict, emoji: str, pos: int, thumb: str | None = None, 
 
 
 def start_tg_import(uid: int, name: str) -> dict:
-    """Набор уже есть в KRUG — мгновенно добавляем; нет — скачиваем в фоне (по стикеру за раз, с прогрессом)."""
+    """Набор уже есть в QEVI — мгновенно добавляем; нет — скачиваем в фоне (по стикеру за раз, с прогрессом)."""
     s = tg_set(name)
     title = (s.get("title") or s["name"])[:64]
     kind = "emoji" if s.get("sticker_type") == "custom_emoji" else "stickers"

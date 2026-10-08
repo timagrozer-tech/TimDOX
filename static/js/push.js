@@ -58,12 +58,12 @@ export function pushSettingsBox() {
   const row = (title, hint, control) => h("div.setting-row", h("div.label-block", h("b", title), hint ? h("small", hint) : null), control);
   async function render() {
     if (inTelegram()) {
-      box.replaceChildren(h("p.muted", "Внутри Telegram уведомления присылает бот KRUG — настройте их во вкладке «Telegram»."));
+      box.replaceChildren(h("p.muted", "Внутри Telegram уведомления присылает бот QEVI — настройте их во вкладке «Telegram»."));
       return;
     }
     if (!pushSupported()) {
       box.replaceChildren(h("p.muted", needsInstallForPush()
-        ? "На iPhone уведомления работают, когда KRUG добавлен на экран «Домой»: «Поделиться» → «На экран „Домой“», затем откройте KRUG оттуда."
+        ? "На iPhone уведомления работают, когда QEVI добавлен на экран «Домой»: «Поделиться» → «На экран „Домой“», затем откройте QEVI оттуда."
         : "Этот браузер не поддерживает уведомления. Попробуйте Chrome, Edge, Firefox или Safari."));
       return;
     }
@@ -77,7 +77,7 @@ export function pushSettingsBox() {
       box.replaceChildren(
         h("div.push-hero", h("div.push-hero-ic", icon("bell")), h("div.label-block",
           h("b", "Узнавайте о главном сразу"),
-          h("small", "Новые сообщения, заявки в друзья, ответы и упоминания — на этот телефон или компьютер, даже когда KRUG закрыт."))),
+          h("small", "Новые сообщения, заявки в друзья, ответы и упоминания — на этот телефон или компьютер, даже когда QEVI закрыт."))),
         Notification.permission === "denied"
           ? h("p.stk-warn", "Уведомления для сайта запрещены в настройках браузера. Разрешите их (значок замка у адреса) и вернитесь сюда.")
           : h("div.row", btn),

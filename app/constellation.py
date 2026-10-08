@@ -1,5 +1,5 @@
 """Constellation — цифровая вселенная профиля: внешние миры (соцсети, игры, код, медиа)
-и миры Круга. Хранится в profiles.constellation как JSON {style, items:[{kind, value}]}.
+и миры QEVI. Хранится в profiles.constellation как JSON {style, items:[{kind, value}]}.
 
 Сервер — единственный источник правды о ссылках: клиент присылает «вид + ник или адрес»,
 сервер сам строит адрес по белому списку доменов. Произвольных ссылок, кроме «Сайта», нет."""
@@ -37,7 +37,7 @@ KINDS = {
     "spotify": ("Spotify", "media", None, ("open.spotify.com",)),
     "soundcloud": ("SoundCloud", "media", "https://soundcloud.com/{h}", ("soundcloud.com",)),
 }
-# миры Круга считаются автоматически
+# миры QEVI считаются автоматически
 KRUG_KINDS = ("network", "communities", "gallery", "collection", "stickers")
 
 URL = re.compile(r"^https://([a-z0-9.\-]+\.[a-z]{2,})(/[^\s<>\"']*)?$", re.I)
@@ -114,7 +114,7 @@ def validate(payload: dict) -> dict:
 
 
 def public(uid: int, raw) -> dict:
-    """То, что видит гость профиля: внешние миры + живые числа миров Круга."""
+    """То, что видит гость профиля: внешние миры + живые числа миров QEVI."""
     d = load(raw)
     stats = {}
     kinds = {i["kind"] for i in d["items"]}

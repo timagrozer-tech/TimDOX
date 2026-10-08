@@ -1,6 +1,7 @@
 // Небольшие утилиты для построения интерфейса без фреймворков.
 // Весь пользовательский текст вставляется через textContent — это защищает от XSS.
 
+import { QEVI_MARK, QEVI_WORDMARK } from "./brand.js";
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 // Встроенные append/prepend/replaceChildren превращают null в текст «null».
@@ -177,15 +178,21 @@ export function icon(name, cls = "") {
 
 let logoSeq = 0;
 export function logo(withText = true) {
-  const gid = `lg-k${++logoSeq}`; // у каждого логотипа свой градиент: скрытые SVG не отдают свои <defs>
+  // символ Q-планеты с орбитой; у каждого экземпляра свои id градиентов — скрытые SVG не отдают свои <defs>
   const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("viewBox", "0 0 64 64");
+  svg.setAttribute("viewBox", "0 0 200 200");
   svg.setAttribute("aria-hidden", "true");
-  svg.innerHTML = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--c1,#6d4bff)"/>`
-    + `<stop offset=".55" style="stop-color:var(--pl,#9a3cff)"/><stop offset="1" style="stop-color:var(--al,#e0357f)"/></linearGradient></defs>`
-    + `<rect width="64" height="64" rx="20" fill="url(#${gid})"/><circle cx="32" cy="32" r="14" fill="none" stroke="#fff" stroke-width="6.5"/>`
-    + `<g class="orbit-dot"><circle cx="32" cy="7.5" r="5.5" style="fill:var(--c3,#33e0ff)" stroke="#fff" stroke-width="2"/></g>`;
-  return h("a.logo", { href: "/", "aria-label": "Круг — на главную" }, svg, withText ? h("span", "Круг") : null);
+  svg.classList.add("qevi-mark");
+  svg.innerHTML = QEVI_MARK.replaceAll("__ID__", `qv${++logoSeq}`);
+  let word = null;
+  if (withText) {
+    word = document.createElementNS(SVG_NS, "svg");
+    word.setAttribute("viewBox", "90 12 156 76");
+    word.setAttribute("aria-hidden", "true");
+    word.classList.add("qevi-word");
+    word.innerHTML = QEVI_WORDMARK.replace('<circle cx="36" cy="50" r="30"/><path d="M54 68 L70 82"/>', "");
+  }
+  return h("a.logo", { href: "/", "aria-label": "QEVI — на главную" }, svg, word);
 }
 
 // ---------------------------------------------------------------- Аватар
@@ -200,7 +207,7 @@ export function vmark(u) {
     out.push(h("span.vbadge", { title: t, role: "img", "aria-label": t }));
   }
   if (u?.tier) out.push(tierBadge(u.tier));
-  if (u?.ai) out.push(h("span.ai-chip", { title: "Персонаж Мира Круга — искусственный интеллект" }, "ИИ"));
+  if (u?.ai) out.push(h("span.ai-chip", { title: "Персонаж Мира QEVI — искусственный интеллект" }, "ИИ"));
   return out.length ? out : null;
 }
 
@@ -214,7 +221,7 @@ export const TIERS = {
 export function tierBadge(tier, size = "") {
   const t = TIERS[tier];
   if (!t) return null;
-  const title = `${t.name} — пригласил(а) в Круг ${t.need}+ друзей`;
+  const title = `${t.name} — пригласил(а) в QEVI ${t.need}+ друзей`;
   return h(`span.tbadge.t-${tier}${size ? "." + size : ""}`, { title, role: "img", "aria-label": title });
 }
 
