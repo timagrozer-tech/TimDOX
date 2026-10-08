@@ -157,6 +157,27 @@ async def body_too_large(request: Request, exc: BodyTooLarge):
     return JSONResponse({"error": "Слишком большой запрос", "code": "too_large"}, status_code=413)
 
 
+class CanonicalHost:
+    """Переезд на свой домен: страницы со старого адреса *.onrender.com открываются по адресу из APP_URL (301).
+    API, поток событий и вебхуки не перенаправляем — POST-запросы и открытые вкладки продолжают работать."""
+
+    def __init__(self, app):
+        self.app = app
+        from urllib.parse import urlsplit
+        self.host = urlsplit(config.APP_URL).netloc.lower()
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["method"] in ("GET", "HEAD") and not scope["path"].startswith(("/api/", "/uploads/")):
+            host = dict(scope.get("headers") or []).get(b"host", b"").decode("latin-1").lower()
+            if host.endswith(".onrender.com") and self.host and not self.host.endswith(".onrender.com") and host != self.host:
+                qs = scope.get("query_string", b"").decode("latin-1")
+                url = f"https://{self.host}{scope['path']}" + (f"?{qs}" if qs else "")
+                await send({"type": "http.response.start", "status": 301, "headers": [(b"location", url.encode()), (b"cache-control", b"max-age=3600")]})
+                await send({"type": "http.response.body", "body": b""})
+                return
+        return await self.app(scope, receive, send)
+
+
 class SelectiveGZip:
     """Сжимает текстовые ответы: JSON API, страницу приложения, JS и CSS (в 4–8 раз меньше трафика).
     Не трогает поток событий (сжатие копило бы события в буфере), фото, видео и музыку — они уже сжаты,
@@ -351,4 +372,4 @@ app = Starlette(
     exception_handlers={ApiError: api_error, BodyTooLarge: body_too_large, HTTPException: http_error, Exception: server_error},
     lifespan=lifespan,
 )
-app = SelectiveGZip(SecurityMiddleware(app))
+app = CanonicalHost(SelectiveGZip(SecurityMiddleware(app)))
