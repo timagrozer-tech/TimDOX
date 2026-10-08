@@ -67,3 +67,10 @@ class PollTest(unittest.TestCase):
     def test_poll_disabled_in_memory_mode(self):
         with mock.patch.object(realtime, "POLLING", False):
             self.assertEqual(self.a.get("/api/poll").status_code, 404)
+
+
+class StreamInPollModeTest(unittest.TestCase):
+    def test_stream_returns_204(self):
+        c = Client().register("pollstream", "Поток")
+        with mock.patch.object(realtime, "POLLING", True):
+            self.assertEqual(c.get("/api/stream").status_code, 204)

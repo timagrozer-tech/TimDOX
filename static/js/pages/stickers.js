@@ -419,7 +419,7 @@ function botCard(connect) {
     box.replaceChildren(
       h("div.stk-import-head", h("span.stk-logo.tg", "🤖"), h("div", h("h3", "Бот Yarko Stickers"),
         h("p.muted", st.linked ? "Подключён. Пересылайте боту стикеры — и переносите наборы в Yarko одной кнопкой прямо из Telegram."
-          : "Подключите аккаунт: пересылайте боту любые стикеры — наборы будут сразу появляться в вашем KRUG. Ещё бот покажет состав набора и соберёт его в ZIP."))),
+          : "Подключите аккаунт: пересылайте боту любые стикеры — наборы будут сразу появляться в вашем Yarko. Ещё бот покажет состав набора и соберёт его в ZIP."))),
       h("div.row", { style: { gap: "8px", flexWrap: "wrap", alignItems: "center" } },
         st.linked ? h("span.stk-badge.ok", `✓ Telegram${st.tg_username ? ` @${st.tg_username}` : ""}`) : null,
         st.linked ? open : h("button.btn.primary", { type: "button", onclick: (e) => busy(e.currentTarget, async () => {

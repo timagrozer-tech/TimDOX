@@ -1170,11 +1170,12 @@ a.showcase:hover { border-color: var(--border-strong); }
 .rl-comment-text { font-size: 14.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .rl-comment-form { display: flex; gap: 8px; width: 100%; }
 .rl-comment-form .input { flex: 1; }
-.reel-upload-modal, .reel-upload { display: flex; gap: 16px; }
-.modal .reel-upload { flex-wrap: wrap; }
-.ru-preview { width: 180px; aspect-ratio: 9 / 16; border-radius: 16px; overflow: hidden; background: #000; flex: none; }
+/* окно «Новый клип» (класс отдельный: .reel-upload — это кнопка «+ Клип» в шапке клипов) */
+.reel-upload-form { display: flex; gap: 16px; align-items: flex-start; }
+.ru-preview { width: 160px; aspect-ratio: 9 / 16; border-radius: 16px; overflow: hidden; background: #000; flex: none; }
 .ru-preview video { width: 100%; height: 100%; object-fit: cover; }
-.reel-upload .grow { flex: 1; min-width: 200px; }
+.reel-upload-form .grow { flex: 1; min-width: 0; }
+.reel-upload-form .textarea { min-height: 96px; }
 .reel-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
 .reel-tile { position: relative; aspect-ratio: 9 / 16; background: #111; overflow: hidden; display: block; }
 .reel-tile img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
@@ -1197,7 +1198,7 @@ a.showcase:hover { border-color: var(--border-strong); }
   body.reels-mode .tabbar a.active { color: #fff; }
   .sp-panel { left: 6px; right: 6px; max-width: none; height: 320px; }
   .sticker-img img { width: 140px; height: 140px; }
-  .ru-preview { width: 120px; }
+  .ru-preview { width: 112px; }
 }
 .reels-page.is-empty .reel-upload, .reels-page.is-empty .reels-nav { display: none; }
 body.on-search .aside-search { display: none; }
@@ -4866,3 +4867,7 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
   body.reels-mode .rl-rail { bottom: calc(var(--dock) + 30px); }
   body.reels-mode .rl-time { bottom: 34px; }
 }
+
+/* имя в шапке профиля всегда поверх рамки и свечения аватара (рамки «Легенда» и др. выступают вниз) */
+.profile-name { position: relative; z-index: 3; }
+.profile-name h1 { padding-top: 6px; }

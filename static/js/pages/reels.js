@@ -437,7 +437,7 @@ export function openUpload(onDone) {
     let upload = null;
     const m = modal({
       title: "Новый клип",
-      body: h("div.reel-upload",
+      body: h("div.reel-upload-form",
         h("div.ru-preview", h("video", { src: url, autoplay: true, muted: true, loop: true, playsinline: true })),
         h("div.stack.grow", caption, status, bar)),
       footer: [h("button.btn.ghost", { type: "button", onclick: () => { upload?.abort(); m.close(); } }, "Отмена"), publish],

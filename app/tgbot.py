@@ -161,7 +161,7 @@ def setup() -> None:
         {"command": "help", "description": "Помощь"}]})
     _call("setMyName", {"name": "Yarko"})
     _call("setMyShortDescription", {"short_description": "Перенесу стикеры в Yarko, сделаю стикер из фото и пришлю уведомления."})
-    _call("setMyDescription", {"description": "Мост между Telegram и соцсетью KRUG.\n\n"
+    _call("setMyDescription", {"description": "Мост между Telegram и соцсетью Yarko.\n\n"
                                               "• Пришлите стикер или ссылку на набор — перенесу весь набор в KRUG.\n"
                                               "• Пришлите фото (можно с подписью) — сделаю из него стикер.\n"
                                               "• Привяжите аккаунт — буду присылать уведомления, а Yarko откроется прямо в Telegram."})

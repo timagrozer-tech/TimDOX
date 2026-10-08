@@ -153,38 +153,7 @@ done
 mkdir -p "$SITE/uploads" "$SITE/tmp"
 rm -rf "$SITE/static" && cp -R "$Y/current/static" "$SITE/static" || die "Не удалось скопировать static"
 sed "s|__YARKO_HOME__|$Y|" "$Y/current/deploy/reghost/passenger_wsgi.py" > "$SITE/passenger_wsgi.py" || die "Нет шаблона passenger_wsgi.py"
-cat > "$SITE/.htaccess" <<'EOF'
-# Yarko: Python-приложение (Passenger). Готовые файлы (static, uploads) отдаёт сам веб-сервер.
-<FilesMatch "^(passenger_wsgi\.py|\.restart-app|\.htaccess)$">
-  <IfModule mod_authz_core.c>
-    Require all denied
-  </IfModule>
-  <IfModule !mod_authz_core.c>
-    Order allow,deny
-    Deny from all
-  </IfModule>
-</FilesMatch>
-RewriteEngine On
-RewriteCond %{HTTPS} !=on
-RewriteCond %{HTTP:X-Forwarded-Proto} !=https
-RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-RewriteRule ^(tmp|cache)(/|$) - [F,L]
-AddType application/javascript .js .mjs
-AddType application/manifest+json .webmanifest
-AddType image/svg+xml .svg
-AddType image/webp .webp
-AddType font/woff2 .woff2
-<IfModule mod_deflate.c>
-  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml application/manifest+json
-</IfModule>
-<IfModule mod_expires.c>
-  ExpiresActive On
-  ExpiresByType image/jpeg "access plus 1 year"
-  ExpiresByType image/png "access plus 1 year"
-  ExpiresByType image/webp "access plus 1 year"
-  ExpiresByType video/mp4 "access plus 1 year"
-</IfModule>
-EOF
+cp "$Y/current/deploy/reghost/htaccess" "$SITE/.htaccess" || die "Нет шаблона .htaccess"
 rm -f "$Y/startup-error.log" "$Y/passenger-trace.log"
 touch "$SITE/.restart-app" "$SITE/tmp/restart.txt"
 ok "сайт переключён (старый вход сохранён в $BK)"

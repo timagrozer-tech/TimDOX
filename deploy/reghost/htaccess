@@ -1,0 +1,40 @@
+# Yarko: Python-приложение (Passenger). Готовые файлы (static, uploads) отдаёт сам веб-сервер.
+# Файл ставит установщик и обновляет самообновление (deploy/reghost/htaccess в репозитории).
+<FilesMatch "^(passenger_wsgi\.py|\.restart-app|\.htaccess)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+RewriteRule ^(tmp|cache)(/|$) - [F,L]
+AddType application/javascript .js .mjs
+AddType application/manifest+json .webmanifest
+AddType image/svg+xml .svg
+AddType image/webp .webp
+AddType font/woff2 .woff2
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml application/manifest+json
+</IfModule>
+<IfModule mod_expires.c>
+  ExpiresActive On
+  # скрипты и стили — всегда сверять с сервером (быстрый ответ 304, если не менялись): после обновления
+  # у всех сразу новая версия, а не смесь старых и новых файлов из кэша браузера
+  ExpiresByType application/javascript "access plus 0 seconds"
+  ExpiresByType text/javascript "access plus 0 seconds"
+  ExpiresByType text/css "access plus 0 seconds"
+  ExpiresByType application/manifest+json "access plus 0 seconds"
+  ExpiresByType image/jpeg "access plus 7 days"
+  ExpiresByType image/png "access plus 7 days"
+  ExpiresByType image/webp "access plus 7 days"
+  ExpiresByType image/svg+xml "access plus 1 day"
+  ExpiresByType font/woff2 "access plus 30 days"
+  ExpiresByType video/mp4 "access plus 30 days"
+  ExpiresByType audio/mpeg "access plus 30 days"
+</IfModule>

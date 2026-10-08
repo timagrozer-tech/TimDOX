@@ -135,7 +135,7 @@ export function boostPoll(ms = 90000) {
 function pollDelay() {
   if (pollFails) return Math.min(2000 * 2 ** pollFails, 30000);
   if (Date.now() < boostUntil) return 700;
-  return document.hidden ? 15000 : 2000;
+  return document.hidden ? 25000 : 3000;
 }
 async function pollOnce() {
   pollTimer = null;

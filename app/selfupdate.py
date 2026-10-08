@@ -129,6 +129,11 @@ def activate(home: Path, target: Path) -> None:
     site = os.environ.get("YARKO_SITE")
     if site:
         sync_static(Path(site), target)
+        tpl = target / "deploy" / "reghost" / "htaccess"
+        if tpl.exists():  # настройки веб-сервера тоже обновляются вместе с кодом
+            tmp = Path(site) / ".htaccess.new"
+            shutil.copyfile(tpl, tmp)
+            os.replace(tmp, Path(site) / ".htaccess")
         (Path(site) / ".restart-app").touch()        # так перезапуск просит Рег.ру
         (Path(site) / "tmp").mkdir(exist_ok=True)
         (Path(site) / "tmp" / "restart.txt").touch()  # и так — стандартный Passenger

@@ -688,6 +688,12 @@ def session_alive(sid: str) -> bool:
 
 @auth()
 async def stream(request: Request):
+    from ..realtime import POLLING
+    if POLLING:
+        # хостинг без постоянных соединений: открытая со старой версии вкладка не должна держать процесс сервера.
+        # Ответ 204 по стандарту останавливает переподключения EventSource; новая версия страницы работает опросом.
+        from starlette.responses import Response
+        return Response(status_code=204, headers={"Cache-Control": "no-store"})
     v = request.state.user["id"]
     sid = request.state.session["id"]
     q, first = hub.subscribe(v)
