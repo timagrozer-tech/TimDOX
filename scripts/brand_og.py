@@ -12,10 +12,10 @@ BRAND = ROOT / "static" / "img" / "brand"
 
 
 def html() -> str:
-    mark = (BRAND / "qevi-mark.svg").read_text().replace("<svg ", '<svg width="420" height="420" ', 1)
-    word = (BRAND / "qevi-logo-dark.svg").read_text()
+    mark = (BRAND / "yarko-mark.svg").read_text().replace("<svg ", '<svg width="420" height="420" ', 1)
+    word = (BRAND / "yarko-logo-dark.svg").read_text()
     # только надпись из полного логотипа
-    word = word.replace('viewBox="0 0 368 100"', 'viewBox="122 12 240 76" width="430" height="136"', 1)
+    word = word.replace('viewBox="0 0 456 100"', 'viewBox="112 12 338 76" width="470" height="106"', 1)
     rnd = random.Random(7)
     stars = "".join(f'<i style="left:{rnd.random() * 100:.1f}%;top:{rnd.random() * 100:.1f}%;opacity:{.2 + rnd.random() * .6:.2f};'
                     f'transform:scale({.5 + rnd.random():.2f})"></i>' for _ in range(70))
@@ -24,13 +24,12 @@ body{{margin:0;width:1200px;height:630px;overflow:hidden;font-family:'DejaVu San
 background:radial-gradient(60% 80% at 22% 45%,#1b2a6b 0%,#0A0F2C 55%,#060918 100%)}}
 .s i{{position:absolute;width:3px;height:3px;border-radius:50%;background:#88FFF2}}
 .mark{{position:absolute;left:70px;top:105px}}
-.mark svg g{{display:none}}
 .text{{position:absolute;left:560px;top:205px}}
 .text p{{margin:26px 0 0 4px;font-size:34px;line-height:1.3;color:#c9d4ff;letter-spacing:.01em}}
 .glass{{position:absolute;right:-120px;bottom:-160px;width:520px;height:520px;border-radius:50%;
 background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}}
 </style></head><body><div class="s">{stars}</div><div class="glass"></div>
-<div class="mark">{mark}</div><div class="text">{word}<p>Цифровая экосистема<br>нового поколения</p></div></body></html>"""
+<div class="mark">{mark}</div><div class="text">{word}<p>Социальная сеть,<br>где каждый день — яркий</p></div></body></html>"""
 
 
 async def main():

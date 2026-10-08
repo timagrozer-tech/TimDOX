@@ -1,4 +1,4 @@
-// Студия стикеров QEVI: мои наборы, коллекция (избранное, реакции, папки), каталог (бесплатно и за KC),
+// Студия стикеров Yarko: мои наборы, коллекция (избранное, реакции, папки), каталог (бесплатно и за KC),
 // импорт (Telegram по ссылке, архивы, перетаскивание файлов) и AI Sticker Lab. Плюс окно набора и страница по ссылке.
 import { linkTelegram, inTelegram } from "../components/tglink.js";
 import { api, emit, on, state } from "../api.js";
@@ -58,7 +58,7 @@ export async function showPackPreview(slug) {
     addBtn.onclick = () => busy(addBtn, async () => {
       try {
         if (p.locked) {
-          if (!await confirmDialog({ title: `Купить «${p.title}»?`, text: `${p.price} KC уйдут автору набора (7% — комиссия QEVI). Набор останется у вас навсегда.`, confirm: `Купить за ${p.price} KC` })) return;
+          if (!await confirmDialog({ title: `Купить «${p.title}»?`, text: `${p.price} KC уйдут автору набора (7% — комиссия Yarko). Набор останется у вас навсегда.`, confirm: `Купить за ${p.price} KC` })) return;
           Object.assign(p, (await api.post(`/api/sticker-packs/${p.id}/buy`, {})).pack);
           toast("Набор ваш! Ищите его во вкладке «Стикеры» 🎉", { icon: "check" });
           m.close(); showPackPreview(slug);
@@ -249,7 +249,7 @@ export async function editPack(p, onChange) {
     const price = h("input.input", { type: "number", min: 0, max: 5000, step: 10, value: p.price || 0 });
     const desc = h("textarea.input", { rows: 2, maxlength: 300, placeholder: "Пара слов о наборе — это увидят в каталоге" }, p.description || "");
     const mm = modal({ title: p.published ? "Набор в каталоге" : "Опубликовать в каталоге", narrow: true,
-      body: h("div.stack", h("p.muted", { style: { margin: 0 } }, "Любой человек найдёт набор в каталоге и добавит себе. Можно раздавать бесплатно или продавать за KC — монеты придут вам (7% — комиссия QEVI)."),
+      body: h("div.stack", h("p.muted", { style: { margin: 0 } }, "Любой человек найдёт набор в каталоге и добавит себе. Можно раздавать бесплатно или продавать за KC — монеты придут вам (7% — комиссия Yarko)."),
         h("div.field", h("label", "Описание"), desc), h("div.field", h("label", "Цена, KC (0 — бесплатно)"), price),
         h("p.muted.small-note", "Публиковать можно свои рисунки, наборы из AI Lab и ремиксы своих стикеров. Импортированные из Telegram — нельзя: это чужое творчество.")),
       footer: [p.published ? h("button.btn.ghost", { type: "button", onclick: async () => { try { await api.post(`/api/sticker-packs/${p.id}/publish`, { published: false }); mm.close(); toast("Снято с каталога"); reload(); } catch (e) { toastError(e); } } }, "Снять с каталога") : null,
@@ -409,7 +409,7 @@ async function tabCatalog(root) {
   load();
 }
 
-// бот QEVI Stickers: привязка аккаунта — после неё наборы переносятся прямо из Telegram
+// бот Yarko Stickers: привязка аккаунта — после неё наборы переносятся прямо из Telegram
 function botCard(connect) {
   const box = h("section.card.card-pad.stk-import.stk-bot", { id: "tg-bot" }, h("div.spinner"));
   const paint = (raw) => {
@@ -417,8 +417,8 @@ function botCard(connect) {
     if (!st.enabled || !st.bot) { box.remove(); return; }
     const open = h("a.btn.soft.sm", { href: `https://t.me/${st.bot}`, target: "_blank", rel: "noopener" }, "Открыть бота");
     box.replaceChildren(
-      h("div.stk-import-head", h("span.stk-logo.tg", "🤖"), h("div", h("h3", "Бот QEVI Stickers"),
-        h("p.muted", st.linked ? "Подключён. Пересылайте боту стикеры — и переносите наборы в QEVI одной кнопкой прямо из Telegram."
+      h("div.stk-import-head", h("span.stk-logo.tg", "🤖"), h("div", h("h3", "Бот Yarko Stickers"),
+        h("p.muted", st.linked ? "Подключён. Пересылайте боту стикеры — и переносите наборы в Yarko одной кнопкой прямо из Telegram."
           : "Подключите аккаунт: пересылайте боту любые стикеры — наборы будут сразу появляться в вашем KRUG. Ещё бот покажет состав набора и соберёт его в ZIP."))),
       h("div.row", { style: { gap: "8px", flexWrap: "wrap", alignItems: "center" } },
         st.linked ? h("span.stk-badge.ok", `✓ Telegram${st.tg_username ? ` @${st.tg_username}` : ""}`) : null,
@@ -448,7 +448,7 @@ function botCard(connect) {
 const TG_HOWTO = [
   "Telegram → Настройки → «Стикеры и эмодзи»",
   "Зажмите любой набор (на iPhone — «Изменить») и отметьте остальные",
-  "«Поделиться» → выберите бота QEVI — он перенесёт всё сам",
+  "«Поделиться» → выберите бота Yarko — он перенесёт всё сам",
 ];
 
 function tgSetsCard(bot, prefill = []) {
@@ -466,7 +466,7 @@ function tgSetsCard(bot, prefill = []) {
   };
   const addBtn = h("button.btn.soft", { type: "button", onclick: (e) => busy(e.currentTarget, () => send({ text: area.value })) }, icon("download", "sm"), "Перенести");
   const pasteRow = h("div.stack.stk-tgsets-paste", area, h("div.row", addBtn));
-  const STATUS = { done: ["✓ В QEVI", "ok"], running: ["Переносим…", "run"], queued: ["В очереди", "run"] };
+  const STATUS = { done: ["✓ В Yarko", "ok"], running: ["Переносим…", "run"], queued: ["В очереди", "run"] };
 
   function paint(items) {
     clearTimeout(poll);
@@ -474,7 +474,7 @@ function tgSetsCard(bot, prefill = []) {
     const left = items.filter((x) => x.status !== "done");
     const head = h("div.stk-import-head", h("span.stk-logo.tg", "📚"),
       h("div", h("h3", "Ваши наборы из Telegram"),
-        h("p.muted", items.length ? `${pl(items.length, ["набор", "набора", "наборов"])} из вашего Telegram · в QEVI уже ${items.length - left.length}`
+        h("p.muted", items.length ? `${pl(items.length, ["набор", "набора", "наборов"])} из вашего Telegram · в Yarko уже ${items.length - left.length}`
           : "Telegram не показывает сайтам ваши наборы, но их можно передать боту за 10 секунд — все сразу.")));
     if (!items.length) {
       box.replaceChildren(head,
@@ -541,7 +541,7 @@ async function tabImport(root, ref = "", connect = false) {
           prog.replaceChildren(h("div.stk-progress", bar, label));
           const job = await watchJob(await api.post("/api/sticker-import/telegram", { ref }), bar, label);
           emit("stickers-changed");
-          if (job.status === "done") { toast(`«${p.title}» теперь в QEVI ✨`, { icon: "check" }); if (job.slug) showPackPreview(job.slug); }
+          if (job.status === "done") { toast(`«${p.title}» теперь в Yarko ✨`, { icon: "check" }); if (job.slug) showPackPreview(job.slug); }
           else toast(job.error || "Не получилось", { error: true });
         } catch (e) { toastError(e); }
       });
@@ -550,7 +550,7 @@ async function tabImport(root, ref = "", connect = false) {
         h("div.stk-tg-info", h("b", p.title), h("small.muted", `${nStickers(p.count)} · ${mb(p.size)}`),
           h("div.stk-badges", p.static ? h("span.stk-badge", `${p.static} картинок`) : null, p.animated ? h("span.stk-badge", `${p.animated} анимаций`) : null,
             p.video ? h("span.stk-badge", `${p.video} видео`) : null, p.kind === "emoji" ? h("span.stk-badge", "Эмодзи") : null,
-            p.ready ? h("span.stk-badge.ok", "Уже есть в QEVI") : null)),
+            p.ready ? h("span.stk-badge.ok", "Уже есть в Yarko") : null)),
         imp), prog);
     } catch (e) { tgBox.replaceChildren(h("p.stk-error", e.message)); }
   }
@@ -614,7 +614,7 @@ function tabLab(root) {
   const pickFile = (cb) => { const i = h("input", { type: "file", accept: "image/png,image/jpeg,image/webp,image/gif" }); i.onchange = () => i.files[0] && cb(i.files[0]); i.click(); };
   const lab = () => import("../components/remix.js");
   const tools = [
-    ["🌀", "QEVI Remix", "Цвет, фон, надписи, обводка, элементы и анимации для любого стикера. Оригинал не меняется.", () => pickSticker("Какой стикер ремиксуем?", (s) => lab().then((m) => m.openRemix(s)))],
+    ["🌀", "Yarko Remix", "Цвет, фон, надписи, обводка, элементы и анимации для любого стикера. Оригинал не меняется.", () => pickSticker("Какой стикер ремиксуем?", (s) => lab().then((m) => m.openRemix(s)))],
     ["📸", "Набор из фото", "Одно фото → 10 стикеров: фон уберём, подписи придумает ИИ, добавим анимации.", () => lab().then((m) => m.openPhotoPack())],
     ["✍️", "По описанию", "Опишите идею словами — ИИ придумает стикеры из эмодзи и надписей.", () => lab().then((m) => m.openTextStickers())],
     ["🤡", "Мем-стикер", "Картинка + текст сверху и снизу в классическом мемном стиле.", () => pickFile((f) => lab().then((m) => m.openRemix({ file: f }, { mode: "meme" })))],
@@ -639,7 +639,7 @@ export async function stickersPage({ params, query }) {
   const root = h("div.stk-body");
   const nav = h("nav.stk-tabs", { role: "tablist" }, TABS.map(([k, label]) => h(`button${tab === k ? ".on" : ""}`, { type: "button", role: "tab", "aria-selected": String(tab === k),
     onclick: () => navigate(`/stickers${k === "packs" ? "" : `?tab=${k}`}`, { replace: true }) }, label)));
-  const page = h("div.stk-page", h("div.stk-head", h("div", h("h1", "Стикеры"), h("p.muted", "Ваша коллекция — часть вашей цифровой личности в QEVI")),
+  const page = h("div.stk-page", h("div.stk-head", h("div", h("h1", "Стикеры"), h("p.muted", "Ваша коллекция — часть вашей цифровой личности в Yarko")),
     h("button.btn.soft.sm", { type: "button", onclick: () => navigate(`/u/${state.me?.username}?tab=stickers`) }, icon("star", "sm"), "Моя витрина")), nav, root);
   // файлы можно бросить прямо на страницу — сразу импорт
   const onDrop = (e) => {

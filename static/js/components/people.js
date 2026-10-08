@@ -22,7 +22,7 @@ export function friendButton(user, relation, onChange, { small = false } = {}) {
     } catch (e) { toastError(e); }
   };
   const id = user.id;
-  // официальные профили (новости QEVI) — не «в друзья», а подписка
+  // официальные профили (новости Yarko) — не «в друзья», а подписка
   if (user.badge === "Официальный" && relation.status !== "friends") {
     return relation.following
       ? h(`button.btn.outline${sz}`, { type: "button", onclick: () => act(() => api.del(`/api/people/${id}/follow`), "Вы отписались") }, icon("check", "sm"), "Вы подписаны")

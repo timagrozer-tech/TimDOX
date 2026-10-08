@@ -2,14 +2,14 @@
 ссылка на профиль, запись или сообщество в Telegram/VK/WhatsApp показывается карточкой с именем, текстом и фото.
 
 Только открытое: публичный профиль, запись «для всех» от автора с открытым профилем, открытое сообщество.
-Закрытое получает общую карточку QEVI — по ссылке нельзя узнать, что внутри."""
+Закрытое получает общую карточку Yarko — по ссылке нельзя узнать, что внутри."""
 import re
 from html import escape
 from pathlib import Path
 
 from . import config, db, social
 
-DEFAULT_TITLE = "QEVI — социальная сеть нового поколения"
+DEFAULT_TITLE = "Yarko — социальная сеть нового поколения"
 DEFAULT_DESC = "Цифровая экосистема нового поколения: друзья и сообщества, переписка, ИИ-помощники, цифровой город и созвездие ваших связей."
 _tpl = {"mtime": 0.0, "html": ""}
 
@@ -47,15 +47,15 @@ def meta_for(path: str) -> dict:
             p = db.one("""SELECT p.user_id, p.username, p.name, p.bio, p.avatar, p.profile_visibility, u.is_banned
                           FROM profiles p JOIN users u ON u.id = p.user_id WHERE p.username=?""", (social.resolve_username(m.group(1)),))
             if p and not p["is_banned"]:
-                out["title"] = f"{p['name']} (@{p['username']}) — QEVI"
+                out["title"] = f"{p['name']} (@{p['username']}) — Yarko"
                 if p["profile_visibility"] == "public":
                     friends = db.value("SELECT count(*) FROM follows WHERE followee_id=?", (p["user_id"],)) or 0
-                    stats = f"{friends} {_plural(friends, ('подписчик', 'подписчика', 'подписчиков'))} в QEVI"
+                    stats = f"{friends} {_plural(friends, ('подписчик', 'подписчика', 'подписчиков'))} в Yarko"
                     out["desc"] = _clip(f"{p['bio']} · {stats}" if p["bio"] else stats)
                     if p["avatar"]:
                         out.update(image=_abs(p["avatar"]), large=False)
                 else:
-                    out["desc"] = "Закрытый профиль в QEVI. Войдите, чтобы попросить доступ."
+                    out["desc"] = "Закрытый профиль в Yarko. Войдите, чтобы попросить доступ."
                 out["type"] = "profile"
             return out
         m = re.match(r"^/post/(\d{1,12})/?$", path)
@@ -64,7 +64,7 @@ def meta_for(path: str) -> dict:
                           FROM posts po JOIN profiles pr ON pr.user_id = po.author_id JOIN users u ON u.id = po.author_id
                           WHERE po.id=?""", (int(m.group(1)),))
             if r and not r["is_banned"] and r["visibility"] == "public" and not r["circle_id"] and r["profile_visibility"] == "public":
-                out["title"] = f"{r['name']} в QEVI"
+                out["title"] = f"{r['name']} в Yarko"
                 out["desc"] = _clip(r["text"]) or f"Запись @{r['username']}"
                 img = db.value("SELECT path FROM post_media WHERE post_id=? ORDER BY position LIMIT 1", (r["id"],))
                 if img:
@@ -75,7 +75,7 @@ def meta_for(path: str) -> dict:
         if m:
             c = db.one("SELECT id, name, description, avatar, cover, is_private FROM communities WHERE slug=?", (m.group(1),))
             if c:
-                out["title"] = f"{c['name']} — сообщество в QEVI"
+                out["title"] = f"{c['name']} — сообщество в Yarko"
                 if not c["is_private"]:
                     n = db.value("SELECT count(*) FROM community_members WHERE community_id=? AND status='member'", (c["id"],)) or 0
                     out["desc"] = _clip(f"{c['description'] or ''} · {n} {_plural(n, ('участник', 'участника', 'участников'))}".strip(" ·"))
@@ -83,7 +83,7 @@ def meta_for(path: str) -> dict:
                         out["image"] = _abs(c["cover"] or c["avatar"])
                         out["large"] = bool(c["cover"])
                 else:
-                    out["desc"] = "Закрытое сообщество в QEVI."
+                    out["desc"] = "Закрытое сообщество в Yarko."
             return out
     except Exception:  # превью никогда не должно ронять страницу
         return {"title": DEFAULT_TITLE, "desc": DEFAULT_DESC, "image": _abs("/static/img/og.png"), "large": True, "type": "website"}
@@ -96,7 +96,7 @@ def render(path: str) -> str:
     url = f"{config.APP_URL}{path}"
     e = lambda s: escape(s or "", quote=True)  # noqa: E731
     tags = "\n  ".join([
-        f'<meta property="og:site_name" content="QEVI">',
+        f'<meta property="og:site_name" content="Yarko">',
         f'<meta property="og:type" content="{e(m["type"])}">',
         f'<meta property="og:title" content="{e(m["title"])}">',
         f'<meta property="og:description" content="{e(m["desc"])}">',

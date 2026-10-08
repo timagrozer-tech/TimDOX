@@ -86,7 +86,7 @@ export function musicAttachment(t, { removable = null } = {}) {
     h("div.ma-main",
       h("b.ma-title", t.title),
       h("span.ma-artist", t.artist),
-      h("span.ma-src", t.live ? icon("radio", "sm") : icon("music", "sm"), t.live ? "Радио в QEVI" : "Музыка QEVI", t.duration ? ` · ${fmtDur(t.duration)}` : "")),
+      h("span.ma-src", t.live ? icon("radio", "sm") : icon("music", "sm"), t.live ? "Радио в Yarko" : "Музыка Yarko", t.duration ? ` · ${fmtDur(t.duration)}` : "")),
     removable ? h("button.btn.ghost.icon-only.sm", { type: "button", "aria-label": "Убрать трек", onclick: removable }, icon("x", "sm")) : likeButton(t, "ma-like"));
   card.querySelector(".ma-play").addEventListener("click", (e) => {
     e.preventDefault(); e.stopPropagation();

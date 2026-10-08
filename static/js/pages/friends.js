@@ -82,7 +82,7 @@ export async function friendsPage({ query }) {
         const { items, featured } = await api.get("/api/friends/suggestions");
         content.replaceChildren(h("div.stack", featuredStrip({ items: featured || [] }), card(h("div.card-pad", { style: { paddingBottom: 0 } }, h("div.card-title", "Возможно, вы знакомы"),
           h("p.muted", { style: { fontSize: "14px", marginTop: "-6px" } }, "Друзья ваших друзей и люди из вашего города. Ищете кого-то конкретного? ", h("a", { href: "/search" }, "Воспользуйтесь поиском"), ".")),
-          items.length ? h("div.people", items.map((p) => personRow(p, defaultPersonActions))) : empty("users", "Пока некого предложить", "Приглашайте друзей в QEVI!"))));
+          items.length ? h("div.people", items.map((p) => personRow(p, defaultPersonActions))) : empty("users", "Пока некого предложить", "Приглашайте друзей в Yarko!"))));
       } else {
         const { blocked } = await api.get("/api/friends/requests");
         content.replaceChildren(card(

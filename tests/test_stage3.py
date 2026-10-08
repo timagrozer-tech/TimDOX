@@ -80,7 +80,7 @@ class Stage3Test(unittest.TestCase):
         # нельзя надеть то, чего нет
         self.assertEqual(c.patch("/api/collection/equip", {"slot": "frame", "item_id": "frame_bronze"}).status_code, 403)
         # первая запись → бронзовая рамка, первый друг → «Пульс»
-        c.post("/api/posts", data={"text": "Привет, QEVI!"})
+        c.post("/api/posts", data={"text": "Привет, Yarko!"})
         make_friends(c, friend)
         col = c.get("/api/collection").json()
         owned = {i["id"] for i in col["items"] if i["owned"]}

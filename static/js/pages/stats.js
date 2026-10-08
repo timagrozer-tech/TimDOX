@@ -173,7 +173,7 @@ function overallCard(data) {
   return h("section.card.card-pad.st-card",
     h("div.st-card-head", h("h2", "Ваш аккаунт целиком")),
     h("div.st-minis",
-      item(o.days_on_krug, ["день", "дня", "дней"][pluralIdx(o.days_on_krug)] + " в QEVI"),
+      item(o.days_on_krug, ["день", "дня", "дней"][pluralIdx(o.days_on_krug)] + " в Yarko"),
       item(o.followers, "подписчиков"), item(o.friends, "друзей"), item(o.following, "подписок"),
       item(o.posts, "записей"), item(o.reactions, "реакций всего"), item(o.guests_30, "гостей за 30 дней"),
       r.n ? item(r.views, `просмотров клипов (${r.n})`) : null, r.n ? item(r.likes, "лайков клипов") : null),

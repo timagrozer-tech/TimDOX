@@ -86,7 +86,7 @@ export function appearanceSection(settings) {
 
   // ------------------------------------------------ режим
   const modeSeg = h("div.segmented", { role: "group", "aria-label": "Светлая или тёмная" });
-  const paintMode = () => modeSeg.replaceChildren(...[["dark", "QEVI Dark"], ["light", "QEVI Light"], ["system", "Как в системе"]].map(([v, t]) => h("button", {
+  const paintMode = () => modeSeg.replaceChildren(...[["dark", "Yarko Dark"], ["light", "Yarko Light"], ["system", "Как в системе"]].map(([v, t]) => h("button", {
     type: "button", "aria-pressed": String(v === mode), onclick: () => { setMode(v); paintMode(); },
   }, t)));
 

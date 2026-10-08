@@ -101,7 +101,7 @@ export async function feedPage({ path, query }) {
   }));
 
   const welcome = query.welcome ? h("div.card.card-pad",
-    h("h2", { style: { fontSize: "20px", marginBottom: "6px" } }, `Добро пожаловать в QEVI, ${state.me.name.split(" ")[0]}! 👋`),
+    h("h2", { style: { fontSize: "20px", marginBottom: "6px" } }, `Добро пожаловать в Yarko, ${state.me.name.split(" ")[0]}! 👋`),
     h("p.text-2", "Заполните профиль, найдите друзей и опубликуйте первую запись."),
     h("div.row", { style: { marginTop: "12px", flexWrap: "wrap" } },
       h("a.btn.primary", { href: "/settings" }, icon("user", "sm"), "Заполнить профиль"),

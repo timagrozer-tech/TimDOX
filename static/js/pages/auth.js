@@ -24,8 +24,8 @@ function brand() {
   const item = (ic, text) => h("li", h("span.dot", icon(ic, "sm")), h("span", text));
   return h("section.auth-brand", { "aria-hidden": "true" },
     logo(),
-    h("h2", "Все ваши люди — ", h("span.grad-text", "на одной орбите")),
-    h("p", "Друзья и семья, истории и фото, сообщества, встречи и мессенджер. Вы сами решаете, чем для вас будет QEVI."),
+    h("h2", "Живи ", h("span.grad-text", "ярко"), " — вместе со своими людьми"),
+    h("p", "Друзья и семья, истории и фото, сообщества, встречи и мессенджер. Вы сами решаете, чем для вас будет Yarko."),
     orbitScene(),
     h("ul",
       item("lock", "Для каждой записи: все, друзья, круг или только вы"),
@@ -93,7 +93,7 @@ export async function loginPage({ query }) {
     field({ label: "Пароль", name: "password", type: "password", autocomplete: "current-password" }),
     h("div.row", h("div.spacer"), h("a", { href: "/forgot", style: { fontSize: "14px" } }, "Забыли пароль?")),
     submit,
-    adding ? h("p.auth-switch", h("a", { href: "/" }, "Отмена — вернуться в QEVI"))
+    adding ? h("p.auth-switch", h("a", { href: "/" }, "Отмена — вернуться в Yarko"))
       : h("p.auth-switch", "Ещё нет аккаунта? ", h("a", { href: `/register${query.next ? "?next=" + encodeURIComponent(query.next) : ""}` }, "Зарегистрироваться")));
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -120,7 +120,7 @@ function codeStep(ticket, next, adding = false) {
     logo(),
     h("div.tfa-shield", { "aria-hidden": "true" }, icon("shield")),
     h("h1", "Код подтверждения"),
-    h("p.sub.tfa-sub", "Откройте приложение-аутентификатор и введите 6 цифр для QEVI."),
+    h("p.sub.tfa-sub", "Откройте приложение-аутентификатор и введите 6 цифр для Yarko."),
     h("div.form-error.hidden", { role: "alert" }),
     h("div.field", { dataset: { field: "code" } },
       h("input.input.tfa-code", { name: "code", inputmode: "numeric", autocomplete: "one-time-code", maxlength: 6, placeholder: "000000",
@@ -135,7 +135,7 @@ function codeStep(ticket, next, adding = false) {
     inp.maxLength = backup ? 9 : 6;
     inp.inputMode = backup ? "text" : "numeric";
     inp.placeholder = backup ? "XXXX-XXXX" : "000000";
-    form.querySelector(".tfa-sub").textContent = backup ? "Введите один из резервных кодов, которые вы сохранили при включении защиты. Каждый код работает один раз." : "Откройте приложение-аутентификатор и введите 6 цифр для QEVI.";
+    form.querySelector(".tfa-sub").textContent = backup ? "Введите один из резервных кодов, которые вы сохранили при включении защиты. Каждый код работает один раз." : "Откройте приложение-аутентификатор и введите 6 цифр для Yarko.";
     switcher.textContent = backup ? "Ввести код из приложения" : "Нет доступа к приложению? Ввести резервный код";
     inp.focus();
   });
@@ -192,7 +192,7 @@ export async function registerPage({ query }) {
     api.get(`/api/invites/code/${encodeURIComponent(ref)}`).then((d) => {
       form.querySelector("h1").after(h("div.iv-invited",
         avatar(d.inviter, "md"),
-        h("div", h("b", d.inviter.name, vmark(d.inviter)), h("small", "приглашает вас в QEVI — после регистрации вы сразу будете на связи"))));
+        h("div", h("b", d.inviter.name, vmark(d.inviter)), h("small", "приглашает вас в Yarko — после регистрации вы сразу будете на связи"))));
     }).catch(() => {});
   }
 
@@ -279,7 +279,7 @@ export async function verifyPage({ query }) {
   try {
     await api.post("/api/auth/verify", { token: query.token || "" });
     if (state.me) state.me.email_verified = true;
-    box.replaceChildren(logo(), h("h1", "E-mail подтверждён ✓"), h("p.sub", "Спасибо! Теперь вам доступны все возможности QEVI."),
+    box.replaceChildren(logo(), h("h1", "E-mail подтверждён ✓"), h("p.sub", "Спасибо! Теперь вам доступны все возможности Yarko."),
       h("a.btn.primary.lg.block", { href: "/" }, "Перейти в ленту"));
   } catch (err) {
     box.replaceChildren(logo(), h("h1", "Ссылка не сработала"), h("p.sub", err.message),

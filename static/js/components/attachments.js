@@ -1,4 +1,4 @@
-// Вложения «что угодно»: любой файл, местоположение, контакт из QEVI.
+// Вложения «что угодно»: любой файл, местоположение, контакт из Yarko.
 import { h, icon, avatar, vmark } from "../dom.js";
 import { fmtSize } from "./mediakit.js";
 

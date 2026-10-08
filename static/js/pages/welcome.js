@@ -61,7 +61,7 @@ export async function welcomePage() {
       return card;
     });
     return [
-      h("h1", `Привет, ${state.me.name.split(" ")[0]}! Каким будет ваш QEVI?`),
+      h("h1", `Привет, ${state.me.name.split(" ")[0]}! Каким будет ваш Yarko?`),
       h("p.ob-sub", "Выберите характер интерфейса — он сразу изменится. Поменять можно в любой момент в настройках."),
       h("div.ob-styles", cards),
       nav("Дальше", { skip: false }),
@@ -111,7 +111,7 @@ export async function welcomePage() {
   }
 
   function stepPost() {
-    const ideas = ["Привет, QEVI! 👋", "Я здесь новенький(ая) — давайте знакомиться!", "Сегодня отличный день, чтобы начать 🌱"];
+    const ideas = ["Привет, Yarko! 👋", "Я здесь новенький(ая) — давайте знакомиться!", "Сегодня отличный день, чтобы начать 🌱"];
     const text = h("textarea.textarea.ob-text", { rows: 3, maxlength: 500, placeholder: "Расскажите о себе в паре слов" });
     const chips = h("div.ob-chips", ideas.map((t) => h("button.chip", { type: "button", onclick: () => { text.value = t; text.focus(); } }, t)));
     const publish = h("button.btn.primary.lg", { type: "button" }, icon("send", "sm"), "Опубликовать и начать");

@@ -1,4 +1,4 @@
-"""API Мира QEVI: организации, репутация, задания, сюжеты, персонажи."""
+"""API Мира Yarko: организации, репутация, задания, сюжеты, персонажи."""
 import json
 
 from starlette.requests import Request
@@ -75,7 +75,7 @@ async def persona_info(request: Request):
                   LEFT JOIN ai_orgs o ON o.id=a.org_id JOIN profiles pr ON pr.user_id=a.user_id WHERE pr.username=?""",
                (request.path_params["username"],))
     if not p:
-        raise ApiError(404, "Это не персонаж Мира QEVI")
+        raise ApiError(404, "Это не персонаж Мира Yarko")
     mem = db.one("SELECT closeness, facts FROM ai_memory WHERE user_id=? AND persona_id=?", (uid, p["user_id"])) or {}
     pts = quests.rep(uid, p["org_id"]) if p["org_id"] else 0
     return JSONResponse({"role": p["role"], "specialty": p["specialty"], "org": {"slug": p["org_slug"], "name": p["org_name"],

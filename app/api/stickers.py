@@ -1,7 +1,7 @@
-"""Стикеры QEVI 2.0: наборы как в Telegram и больше.
+"""Стикеры Yarko 2.0: наборы как в Telegram и больше.
 
 Свои наборы, импорт (Telegram, ZIP, файлы), коллекция (избранное, недавние, реакции, папки), умный поиск,
-редактор наборов (обложка, объединить, разделить, копия), QEVI Remix и AI Sticker Lab, каталог с бесплатными
+редактор наборов (обложка, объединить, разделить, копия), Yarko Remix и AI Sticker Lab, каталог с бесплатными
 и платными (за KC) наборами, витрина в профиле. Форматы: WebP (в т. ч. анимированный), TGS (Lottie), WEBM."""
 import hashlib
 import json
@@ -655,7 +655,7 @@ async def imports(request: Request):
     return JSONResponse({"items": [stickers2.job_view(r) for r in rows], "telegram": bool(stickers2.tg_token())})
 
 
-# ---------------------------------------------------------------- QEVI Remix и AI Sticker Lab
+# ---------------------------------------------------------------- Yarko Remix и AI Sticker Lab
 def _lab_target(v: int, pack_id, default_title: str) -> int:
     if pack_id:
         p = _own_pack(int(pack_id), v)
@@ -918,7 +918,7 @@ async def publish(request: Request):
         if not 0 <= price <= MAX_PRICE:
             raise ApiError(400, f"Цена — от 0 до {MAX_PRICE} KC")
         if price and economy._age_days(v) < 7:
-            raise ApiError(400, "Продавать наборы можно с 7-го дня в QEVI")
+            raise ApiError(400, "Продавать наборы можно с 7-го дня в Yarko")
     db.run("UPDATE sticker_packs SET published=?, price=? WHERE id=?", (1 if on else 0, price if on else p.get("price") or 0, p["id"]))
     return JSONResponse(pack_view(_pack(p["id"]), v, with_stickers=False))
 

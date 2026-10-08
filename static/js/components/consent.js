@@ -19,7 +19,7 @@ export async function ensureAI() {
     let ok = false;
     const yes = h("button.btn.primary", { type: "button" }, icon("sparkle", "sm"), "Включить ИИ-функции");
     const m = modal({
-      title: "ИИ-функции QEVI", narrow: true,
+      title: "ИИ-функции Yarko", narrow: true,
       body: h("div.stack.ai-consent",
         h("p", "Помощник в чатах, ИИ-персонажи, расшифровка голосовых и ИИ-подписи к стикерам работают с помощью нейросети."),
         h("ul",
@@ -50,7 +50,7 @@ export function cookieNotice() {
   const KEY = "qevi:cookies";
   try { if (localStorage.getItem(KEY)) return; } catch { return; }
   const bar = h("div.cookie-bar", { role: "region", "aria-label": "Cookie" },
-    h("span", "QEVI использует только необходимые cookie — для входа в аккаунт и защиты. ", h("a", { href: "/cookies" }, "Подробнее")),
+    h("span", "Yarko использует только необходимые cookie — для входа в аккаунт и защиты. ", h("a", { href: "/cookies" }, "Подробнее")),
     h("button.btn.soft.sm", { type: "button", onclick: () => {
       try { localStorage.setItem(KEY, new Date().toISOString()); } catch { /* приватный режим */ }
       if (state.me) set({ kind: "cookies", granted: true }).catch(() => {});
@@ -70,7 +70,7 @@ export function documentsReview() {
     }));
     card.hidden = false;
     card.append(h("div.push-hero-ic", icon("shield")),
-      h("div.label-block", h("b", "Мы обновили документы QEVI"),
+      h("div.label-block", h("b", "Мы обновили документы Yarko"),
         h("small", "Новые ", h("a", { href: "/terms" }, "Пользовательское соглашение"), ", ", h("a", { href: "/privacy" }, "Политика конфиденциальности"),
           " и отдельное ", h("a", { href: "/consent" }, "согласие на обработку данных"), ". Ваш аккаунт и данные не меняются.")),
       h("div.push-invite-act", accept));

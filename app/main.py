@@ -1,4 +1,4 @@
-"""Точка входа приложения QEVI."""
+"""Точка входа приложения Yarko."""
 import asyncio
 import os
 import time
@@ -141,7 +141,7 @@ class SecurityMiddleware:
             try:
                 world_engine.on_request(user["id"], scope["method"], path, new_items)
             except Exception:
-                log.exception("Мир QEVI: ошибка отклика")
+                log.exception("Мир Yarko: ошибка отклика")
 
     @staticmethod
     async def _reject(scope, receive, send, message, status=403):

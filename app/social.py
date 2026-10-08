@@ -4,8 +4,8 @@ import json
 from . import db
 from .realtime import hub
 
-# Старые адреса профилей после ребрендинга KRUG → QEVI: по ним открывается новый профиль
-USERNAME_ALIASES = {"krug_updates": "qevi"}
+# Старые адреса профилей после ребрендингов KRUG → QEVI → Yarko: по ним открывается новый профиль
+USERNAME_ALIASES = {"krug_updates": "yarko", "qevi": "yarko"}
 
 
 def resolve_username(username: str) -> str:
@@ -108,7 +108,7 @@ _ai_at = float("-inf")
 
 
 def ai_ids() -> set[int]:
-    """Персонажи Мира QEVI — у них в карточке отметка «ИИ»."""
+    """Персонажи Мира Yarko — у них в карточке отметка «ИИ»."""
     global _ai, _ai_at
     import time
     if time.monotonic() - _ai_at > 300:

@@ -14,11 +14,11 @@ async function copy(text, what = "Ссылка скопирована") {
 }
 
 function shareRow(link) {
-  const text = "Присоединяйся ко мне в QEVI — соцсети для своих!";
+  const text = "Присоединяйся ко мне в Yarko — соцсети для своих!";
   const open = (url) => window.open(url, "_blank", "noopener,noreferrer");
   const btn = (cls, label, ic, onClick) => h(`button.iv-share.${cls}`, { type: "button", onclick: onClick, "aria-label": label, title: label }, ic, h("span", label));
   const row = h("div.iv-shares",
-    navigator.share ? btn("native", "Поделиться", icon("share", "sm"), () => navigator.share({ title: "QEVI", text, url: link }).catch(() => {})) : null,
+    navigator.share ? btn("native", "Поделиться", icon("share", "sm"), () => navigator.share({ title: "Yarko", text, url: link }).catch(() => {})) : null,
     btn("tg", "Telegram", h("b", "TG"), () => open(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`)),
     btn("vk", "ВКонтакте", h("b", "VK"), () => open(`https://vk.com/share.php?url=${encodeURIComponent(link)}&title=${encodeURIComponent(text)}`)),
     btn("wa", "WhatsApp", h("b", "WA"), () => open(`https://wa.me/?text=${encodeURIComponent(`${text} ${link}`)}`)),
@@ -36,7 +36,7 @@ function hero(d) {
     h("div.iv-hero-glow", { "aria-hidden": "true" }),
     h("div.iv-hero-main",
       h("span.iv-kicker", icon("userAdd", "sm"), "Пригласить друзей"),
-      h("h1", "Пригласите друзей в QEVI"),
+      h("h1", "Пригласите друзей в Yarko"),
       h("p", "Друзья по вашей ссылке сразу подписываются на вас. Когда они станут активными, вы получаете галочки — от базовой до легендарной."),
       linkBox, shareRow(d.link)),
     qr);
@@ -56,10 +56,10 @@ function tierLadder(d) {
       h("div.iv-bar", { role: "progressbar", "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": p.next.percent },
         h("i", { style: { "--p": `${p.next.percent}%` } })),
       h("small", `Ещё ${pl(p.next.left, ["засчитанное приглашение", "засчитанных приглашения", "засчитанных приглашений"])} до ${{ base: "базовой", silver: "серебряной", gold: "золотой", legend: "легендарной" }[p.next.tier]} галочки`))
-    : h("div.iv-progress.max", h("b", "Легендарная галочка — максимальный уровень. Вы — легенда QEVI ✨"));
+    : h("div.iv-progress.max", h("b", "Легендарная галочка — максимальный уровень. Вы — легенда Yarko ✨"));
   return h("section.card.iv-tiers", h("h2", "Галочки за приглашения"), h("div.iv-tier-row", steps), bar,
     h("details.iv-rules", h("summary", "Когда приглашение засчитывается?"),
-      h("p", `Когда друг поставит фото профиля и заглянет в QEVI в ${d.rules.active_days} разных дня (и подтвердит почту). Если за ${d.rules.pending_days} дней этого не случится — приглашение не засчитается. Так галочки получают за настоящих людей, а не за пустые аккаунты.`)));
+      h("p", `Когда друг поставит фото профиля и заглянет в Yarko в ${d.rules.active_days} разных дня (и подтвердит почту). Если за ${d.rules.pending_days} дней этого не случится — приглашение не засчитается. Так галочки получают за настоящих людей, а не за пустые аккаунты.`)));
 }
 
 function statTiles(d) {
@@ -81,7 +81,7 @@ function historyTab() {
   const load = async () => {
     const d = await api.get("/api/invites/history", before ? { before } : undefined);
     if (!d.items.length && !before) {
-      list.replaceChildren(h("div.iv-empty", icon("userAdd"), h("b", "Здесь появятся приглашённые"), h("p", "Отправьте ссылку паре друзей — и следите, как растёт ваш QEVI.")));
+      list.replaceChildren(h("div.iv-empty", icon("userAdd"), h("b", "Здесь появятся приглашённые"), h("p", "Отправьте ссылку паре друзей — и следите, как растёт ваш Yarko.")));
       return;
     }
     list.append(...d.items.map((it) => h(`a.iv-row.${it.status}`, { href: `/u/${it.user.username}` },
@@ -129,7 +129,7 @@ function leaderboardTab() {
 function treeTab() {
   const box = h("div.iv-tree", h("div.spinner"));
   let scope = "me";
-  const seg = h("div.seg.iv-seg", h("button.on", { type: "button", dataset: { s: "me" } }, "Моё дерево"), h("button", { type: "button", dataset: { s: "all" } }, "Весь QEVI"));
+  const seg = h("div.seg.iv-seg", h("button.on", { type: "button", dataset: { s: "me" } }, "Моё дерево"), h("button", { type: "button", dataset: { s: "all" } }, "Весь Yarko"));
   const load = async () => {
     box.replaceChildren(h("div.spinner"));
     try {

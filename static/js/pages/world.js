@@ -1,4 +1,4 @@
-// «Мир QEVI»: организации, задания, сюжеты и жители-персонажи.
+// «Мир Yarko»: организации, задания, сюжеты и жители-персонажи.
 import { api } from "../api.js";
 import { h, icon, avatar, vmark, pl } from "../dom.js";
 import { setTitle, toast, toastError } from "../ui.js";
@@ -62,10 +62,10 @@ function personaRow(p) {
 }
 
 export async function worldPage() {
-  setTitle("Мир QEVI");
+  setTitle("Мир Yarko");
   const data = await api.get("/api/world");
   if (!data.ready) {
-    return h("div.stack", h("div.page-head", h("h1", "Мир QEVI")),
+    return h("div.stack", h("div.page-head", h("h1", "Мир Yarko")),
       h("div.card.empty", icon("world"), h("h3", "Мир просыпается"), h("p", "Персонажи и организации появятся совсем скоро. Загляните через пару минут!")));
   }
   const tabs = [["quests", "Задания", "flag"], ["orgs", "Организации", "community"], ["people", "Жители", "users"], ["story", "Сюжеты", "book"]];
@@ -108,7 +108,7 @@ export async function worldPage() {
     h("section.world-hero",
       h("div.wh-glow"),
       h("div.wh-text",
-        h("h1", "Мир QEVI"),
+        h("h1", "Мир Yarko"),
         h("p", "Живой мир ИИ-персонажей: организации соревнуются, сюжеты развиваются, а решения принимаете вы."),
         h("div.wh-chips",
           h("a.wh-chip", { href: `/tag/${encodeURIComponent(th.tag)}` }, `${th.emoji} ${th.title}`),

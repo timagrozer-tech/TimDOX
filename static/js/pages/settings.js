@@ -85,7 +85,7 @@ function showBackupCodes(codes) {
   const copy = h("button.btn.soft", { type: "button", onclick: async () => {
     try { await navigator.clipboard.writeText(text); toast("Коды скопированы", { icon: "check" }); } catch { toast("Скопируйте коды вручную", { error: true }); }
   } }, icon("copy", "sm"), "Скопировать");
-  const save = h("a.btn.soft", { href: URL.createObjectURL(new Blob([`Резервные коды QEVI (каждый работает один раз):\n\n${text}\n`], { type: "text/plain" })),
+  const save = h("a.btn.soft", { href: URL.createObjectURL(new Blob([`Резервные коды Yarko (каждый работает один раз):\n\n${text}\n`], { type: "text/plain" })),
     download: "krug-backup-codes.txt" }, icon("download", "sm"), "Скачать");
   const m = modal({
     title: "Резервные коды", narrow: true, sheet: false,
@@ -210,7 +210,7 @@ function telegramBox() {
   const sw = (checked, onchange) => h("input.switch", { type: "checkbox", role: "switch", checked: !!checked, onchange });
   const render = (d) => {
     if (!d.enabled) { box.replaceChildren(h("p.muted", "Бот Telegram скоро заработает.")); return; }
-    const bot = d.bot ? `@${d.bot}` : "бот QEVI";
+    const bot = d.bot ? `@${d.bot}` : "бот Yarko";
     if (!d.linked) {
       let poll = null;
       const btn = h("button.btn.primary", { type: "button" }, icon("send", "sm"), "Привязать Telegram");
@@ -231,7 +231,7 @@ function telegramBox() {
         h("div.tg-hero",
           h("div.tg-hero-ic", icon("send")),
           h("div.label-block", h("b", `Подключите ${bot}`),
-            h("small", "Уведомления о сообщениях и друзьях прямо в Telegram, перенос стикеров одной пересылкой, стикеры из фото и вход в QEVI без пароля."))),
+            h("small", "Уведомления о сообщениях и друзьях прямо в Telegram, перенос стикеров одной пересылкой, стикеры из фото и вход в Yarko без пароля."))),
         h("div.row", btn, d.bot ? h("a.btn.ghost", { href: `https://t.me/${d.bot}`, target: "_blank", rel: "noopener" }, "Открыть бота") : null));
       return;
     }
@@ -249,8 +249,8 @@ function telegramBox() {
         unlink),
       settingRow("Новые сообщения", "Когда вы не в сети — не чаще раза в 2 минуты на чат", sw(L.notify_messages, patch("notify_messages"))),
       settingRow("Друзья и записи", "Заявки, упоминания, комментарии, ответы, подписки, подарки", sw(L.notify_social, patch("notify_social"))),
-      settingRow("Вход из Telegram", "Кнопка «QEVI» в боте открывает сайт сразу в вашем аккаунте. С 2FA вход по паролю.", sw(L.webapp_login, patch("webapp_login"))),
-      h("p.muted.small", "В боте: перешлите стикер — набор переедет в QEVI; пришлите фото — бот вырежет фон и сделает стикер."));
+      settingRow("Вход из Telegram", "Кнопка «Yarko» в боте открывает сайт сразу в вашем аккаунте. С 2FA вход по паролю.", sw(L.webapp_login, patch("webapp_login"))),
+      h("p.muted.small", "В боте: перешлите стикер — набор переедет в Yarko; пришлите фото — бот вырежет фон и сделает стикер."));
   };
   api.get("/api/telegram").then(render).catch((e) => box.replaceChildren(h("p.muted", e.message)));
   return box;
@@ -533,9 +533,9 @@ export async function settingsPage({ query = {} } = {}) {
       section("Где выполнен вход", "Если видите незнакомое устройство — завершите сеанс и смените пароль.", sessionsBox()),
       section("Журнал входов", "Все входы и неудачные попытки за 90 дней. Мы показываем сеть, а не точный адрес.", loginsBox())]],
     ["notify", "Уведомления", "bell", () => [
-      section("Уведомления на этом устройстве", "Пуш-уведомления приходят, даже когда QEVI закрыт. Включаются отдельно на телефоне и на компьютере.", pushSettingsBox())]],
+      section("Уведомления на этом устройстве", "Пуш-уведомления приходят, даже когда Yarko закрыт. Включаются отдельно на телефоне и на компьютере.", pushSettingsBox())]],
     ["telegram", "Telegram", "send", () => [
-      section("Telegram", "Бот QEVI: уведомления, стикеры и быстрый вход.", telegramBox())]],
+      section("Telegram", "Бот Yarko: уведомления, стикеры и быстрый вход.", telegramBox())]],
     ["more", "Ещё", "more", () => [
       section("Документы и согласия", "Что вы приняли и когда. ИИ-функции можно включить или выключить здесь.", consentsBox()),
       section("Мои данные", "Копия всех ваших данных или полное удаление аккаунта.",

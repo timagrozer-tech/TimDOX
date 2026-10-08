@@ -1,4 +1,4 @@
-// Установка QEVI как приложения (PWA): регистрация сервис-воркера и кнопка «Установить».
+// Установка Yarko как приложения (PWA): регистрация сервис-воркера и кнопка «Установить».
 import { h, icon } from "./dom.js";
 import { modal, toast } from "./ui.js";
 
@@ -16,7 +16,7 @@ export function onInstallChange(fn) { listeners.add(fn); return () => listeners.
 export function initPwa() {
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
-    // нажали на уведомление, а QEVI уже открыт — переходим внутри приложения, без перезагрузки
+    // нажали на уведомление, а Yarko уже открыт — переходим внутри приложения, без перезагрузки
     navigator.serviceWorker.addEventListener("message", (e) => {
       if (e.data?.type !== "open" || !e.data.url) return;
       const u = new URL(e.data.url);
@@ -31,7 +31,7 @@ export function initPwa() {
   addEventListener("appinstalled", () => {
     deferred = null;
     listeners.forEach((fn) => fn());
-    toast("QEVI установлен — ищите значок на рабочем столе", { icon: "check" });
+    toast("Yarko установлен — ищите значок на рабочем столе", { icon: "check" });
   });
 }
 
@@ -45,13 +45,13 @@ export async function install() {
   }
   // iPhone и iPad: установка только через меню «Поделиться»
   modal({
-    title: "Установить QEVI", narrow: true,
+    title: "Установить Yarko", narrow: true,
     body: h("div.stack.install-steps",
       h("p", "На iPhone и iPad приложение ставится из Safari:"),
       h("ol",
         h("li", "Нажмите кнопку ", h("b", "«Поделиться»"), " внизу экрана (квадрат со стрелкой)."),
         h("li", "Выберите ", h("b", "«На экран „Домой“»"), "."),
-        h("li", "Нажмите ", h("b", "«Добавить»"), " — значок QEVI появится рядом с другими приложениями.")),
+        h("li", "Нажмите ", h("b", "«Добавить»"), " — значок Yarko появится рядом с другими приложениями.")),
       h("p.muted", "Откроется на весь экран, без адресной строки, как обычное приложение.")),
   });
 }

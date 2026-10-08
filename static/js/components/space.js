@@ -1,5 +1,5 @@
 // «Настроить пространство»: режим профиля и блоки, которые владелец показывает и упорядочивает.
-// Навигация QEVI, поиск, сообщения и записи не скрываются никогда — меняется только сам профиль.
+// Навигация Yarko, поиск, сообщения и записи не скрываются никогда — меняется только сам профиль.
 import { api } from "../api.js";
 import { h, icon } from "../dom.js";
 import { modal, busy, toastError, toast } from "../ui.js";
@@ -37,7 +37,7 @@ export function openSpaceEditor(space, onSave) {
     title: "Настроить пространство",
     body: h("div.stack", h("div.set-group-title", "Режим профиля"), modes,
       h("div.set-group-title", "Блоки"), blocks,
-      h("p.field-hint", "Записи, друзья и навигация QEVI всегда на месте — меняется только вид вашего профиля.")),
+      h("p.field-hint", "Записи, друзья и навигация Yarko всегда на месте — меняется только вид вашего профиля.")),
     footer: [h("button.btn.ghost", { type: "button", onclick: () => m.close() }, "Отмена"), save],
   });
   save.addEventListener("click", () => busy(save, async () => {

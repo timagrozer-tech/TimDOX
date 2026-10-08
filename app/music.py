@@ -1,4 +1,4 @@
-"""Музыка QEVI: каталог Audius (полные треки независимых музыкантов, открытый API без ключа)
+"""Музыка Yarko: каталог Audius (полные треки независимых музыкантов, открытый API без ключа)
 и интернет-радио (каталог Radio Browser). Запросы к источникам кэшируются в памяти.
 Трек везде описывается одинаково: {key, source, id, title, artist, artwork, duration, genre, permalink, stream?, live?}."""
 import json
@@ -11,12 +11,12 @@ import urllib.request
 
 log = logging.getLogger("krug.music")
 
-APP = "QEVI"
+APP = "Yarko"
 AUDIUS = "https://api.audius.co/v1"
 RADIO = ["https://de1.api.radio-browser.info", "https://de2.api.radio-browser.info", "https://fi1.api.radio-browser.info"]
 UA = "KrugSocial/1.0 (+https://krug-social.onrender.com)"
 
-GENRES = [  # (как в Audius, адрес в QEVI, по-русски, эмодзи)
+GENRES = [  # (как в Audius, адрес в Yarko, по-русски, эмодзи)
     ("Electronic", "electronic", "Электроника", "🎛️"), ("Hip-Hop/Rap", "hiphop", "Хип-хоп", "🎤"), ("Pop", "pop", "Поп", "🎧"),
     ("Rock", "rock", "Рок", "🎸"), ("Lo-Fi", "lofi", "Лоу-фай", "☕"), ("House", "house", "Хаус", "🏠"),
     ("Techno", "techno", "Техно", "⚡"), ("Ambient", "ambient", "Эмбиент", "🌌"), ("R&B/Soul", "rnb", "R&B и соул", "💜"),
@@ -251,7 +251,7 @@ def resolve(key: str) -> dict | None:
 
 
 def wave(genres: list[str], exclude: set[str], limit: int = 40) -> list[dict]:
-    """«Волна QEVI»: смесь трендов любимых жанров и новых открытий."""
+    """«Волна Yarko»: смесь трендов любимых жанров и новых открытий."""
     pool: list[dict] = []
     for g in (genres or [])[:3]:
         try:

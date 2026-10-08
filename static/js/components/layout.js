@@ -137,7 +137,7 @@ async function fillAside(aside) {
     onlineWidget,
     widget("Возможно, вы знакомы", "userPlus", sugg, h("a", { href: "/friends?tab=suggestions" }, "Все")),
     widget("Актуальное", "trend", trends),
-    h("footer.aside-footer", h("a", { href: "/privacy" }, "Конфиденциальность"), h("a", { href: "/terms" }, "Правила"), h("span", "© 2026 QEVI")));
+    h("footer.aside-footer", h("a", { href: "/privacy" }, "Конфиденциальность"), h("a", { href: "/terms" }, "Правила"), h("span", "© 2026 Yarko")));
 
   const loadOnline = async () => {
     try {

@@ -14,10 +14,10 @@ from .releases import RELEASES
 from .security import censor, clean_text, hash_password
 
 log = logging.getLogger("krug.updates")
-USERNAME = "qevi"
-LEGACY_USERNAME = "krug_updates"   # прежний адрес — открывается как алиас (social.USERNAME_ALIASES)
-NAME = "QEVI · Обновления"
-BIO = "Официальный ИИ-профиль QEVI. Рассказываю обо всём новом на сайте и отвечаю на вопросы в комментариях ✨"
+USERNAME = "yarko"
+LEGACY_USERNAMES = ("qevi", "krug_updates")   # прежние адреса — открываются как алиасы (social.USERNAME_ALIASES)
+NAME = "Yarko · Обновления"
+BIO = "Официальный ИИ-профиль Yarko. Рассказываю обо всём новом на сайте и отвечаю на вопросы в комментариях ✨"
 GAP_MINUTES = 40           # пауза между постами, если вышло сразу несколько обновлений
 REPLIES_PER_HOUR = 4       # ответов одному человеку в час
 IMG_DIR = Path(config.STATIC_DIR) / "img" / "updates"
@@ -29,9 +29,15 @@ def account_id() -> int | None:
 
 
 def migrate_legacy() -> None:
-    """Ребрендинг: профиль @krug_updates становится @qevi с новым именем и фирменным аватаром (один раз)."""
-    old = db.value("SELECT user_id FROM profiles WHERE username=?", (LEGACY_USERNAME,))
-    if not old or account_id():
+    """Ребрендинг: профиль со старым адресом (@qevi, @krug_updates) становится @yarko с новым именем и аватаром (один раз)."""
+    if account_id():
+        return
+    old = legacy = None
+    for legacy in LEGACY_USERNAMES:
+        old = db.value("SELECT user_id FROM profiles WHERE username=?", (legacy,))
+        if old:
+            break
+    if not old:
         return
     db.run("UPDATE profiles SET username=?, name=?, bio=?, verified=1, badge='Официальный' WHERE user_id=?", (USERNAME, NAME, BIO, old))
     ava = _store(IMG_DIR / "avatar.png", "avatar")
@@ -39,7 +45,7 @@ def migrate_legacy() -> None:
     if ava or cov:
         db.run("UPDATE profiles SET avatar=COALESCE(?, avatar), cover=COALESCE(?, cover) WHERE user_id=?",
                (ava and ava["path"], cov and cov["path"], old))
-    log.info("Официальный профиль переименован: @%s → @%s", LEGACY_USERNAME, USERNAME)
+    log.info("Официальный профиль переименован: @%s → @%s", legacy, USERNAME)
 
 
 def _store(path: Path, preset: str) -> dict | None:
@@ -101,7 +107,7 @@ def publish(rel: dict, uid: int) -> int:
         pid = c.execute("INSERT INTO posts (author_id, text, visibility) VALUES (?,?, 'public')", (uid, text)).lastrowid
         for i, s in enumerate(saved):
             c.execute("INSERT INTO post_media (post_id, path, thumb, width, height, alt, position) VALUES (?,?,?,?,?,?,?)",
-                      (pid, s["path"], s["thumb"], s["width"], s["height"], "Обновление QEVI" if i == 0 else "Экран новой функции", i))
+                      (pid, s["path"], s["thumb"], s["width"], s["height"], "Обновление Yarko" if i == 0 else "Экран новой функции", i))
     _index_text(pid, uid, text, "public", notify_mentions=False)
     db.run("UPDATE ai_state SET value=? WHERE key=?", (str(pid), f"release:{rel['id']}"))
     log.info("Опубликовано обновление %s (пост %s)", rel["id"], pid)
@@ -132,10 +138,10 @@ def run_once() -> None:
 
 # ---------------------------------------------------------------- ответы в комментариях
 SYSTEM = (
-    "Ты — «QEVI · Обновления», официальный ИИ-профиль платформы QEVI. Отвечаешь на комментарии под "
+    "Ты — «Yarko · Обновления», официальный ИИ-профиль платформы Yarko. Отвечаешь на комментарии под "
     "постами об обновлениях. Пиши по-русски, дружелюбно и коротко: 1–3 предложения, без markdown и без списков. "
     "Опирайся только на факты из журнала обновлений ниже. Если ответа там нет или это жалоба на ошибку — честно скажи, "
-    "что передал вопрос создателю QEVI. Не обещай сроков, не выдумывай функции, не раскрывай технические детали, "
+    "что передал вопрос создателю Yarko. Не обещай сроков, не выдумывай функции, не раскрывай технические детали, "
     "не обсуждай темы вне сайта. Не здоровайся каждый раз заново."
 )
 

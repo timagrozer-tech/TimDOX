@@ -476,7 +476,7 @@ def sniff_sticker(data: bytes) -> str:
 
 
 def process_any_sticker(data: bytes) -> dict:
-    """Любой поддерживаемый формат → внутренний формат QEVI: картинки и GIF → WebP (анимация сохраняется), TGS и WEBM — как есть после проверки."""
+    """Любой поддерживаемый формат → внутренний формат Yarko: картинки и GIF → WebP (анимация сохраняется), TGS и WEBM — как есть после проверки."""
     if not data:
         raise ApiError(400, "Пустой файл")
     kind = sniff_sticker(data)

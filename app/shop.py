@@ -76,8 +76,8 @@ TITLES = {
     "title_agent": ("Тайный агент", 2500),
     "title_fire": ("Хранитель огня", 3500),
     "title_cyber": ("Киберпанк", 4000),
-    "title_guardian": ("Страж QEVI", 5500),
-    "title_star": ("Звезда QEVI", 6000),
+    "title_guardian": ("Страж Yarko", 5500),
+    "title_star": ("Звезда Yarko", 6000),
     "title_legend": ("Легенда", 10000),
 }
 # анимированный стиль плашки титула

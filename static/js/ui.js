@@ -342,4 +342,4 @@ export function currentTheme() {
   try { return localStorage.getItem("krug-theme") || "dark"; } catch { return "dark"; }
 }
 
-export function setTitle(t) { document.title = t ? `${t} — QEVI` : "QEVI — социальная сеть нового поколения"; }
+export function setTitle(t) { document.title = t ? `${t} — Yarko` : "Yarko — социальная сеть нового поколения"; }

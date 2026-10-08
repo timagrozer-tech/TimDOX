@@ -4710,12 +4710,12 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
 
 /* ================================================================ QEVI: логотип */
 .logo { gap: 8px; }
-.logo svg.qevi-mark { width: 36px; height: 36px; flex: none; overflow: visible; filter: drop-shadow(0 0 10px rgba(37, 99, 255, .35)); }
-.logo svg.qevi-word { height: 17px; width: auto; flex: none; color: var(--text); overflow: visible; }
-.logo:hover svg.qevi-mark { filter: drop-shadow(0 0 14px rgba(136, 255, 242, .45)); }
-.topbar .logo svg.qevi-mark { width: 32px; height: 32px; }
-.auth-brand .logo svg.qevi-mark { width: 46px; height: 46px; }
-.auth-brand .logo svg.qevi-word { height: 22px; }
+.logo svg.brand-mark { width: 36px; height: 36px; flex: none; overflow: visible; filter: drop-shadow(0 0 10px rgba(37, 99, 255, .35)); }
+.logo svg.brand-word { height: 17px; width: auto; flex: none; color: var(--text); overflow: visible; }
+.logo:hover svg.brand-mark { filter: drop-shadow(0 0 14px rgba(136, 255, 242, .45)); }
+.topbar .logo svg.brand-mark { width: 32px; height: 32px; }
+.auth-brand .logo svg.brand-mark { width: 46px; height: 46px; }
+.auth-brand .logo svg.brand-word { height: 22px; }
 
 /* ================================================================ QEVI Design System
    Основа: глубокий navy #0A0F2C, синий #2563FF, фиолетовый #B277FF, бирюзовый #88FFF2, стекло rgba(255,255,255,.08).
@@ -4799,3 +4799,9 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
 .consent-state { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-3); color: var(--text-3); font-weight: 800; }
 .consent-state.on { background: color-mix(in srgb, #10b981 22%, transparent); color: #10b981; }
 .consents-box .label-block a { color: inherit; }
+
+/* ================================================================ Логотип Yarko: вспышка при наведении */
+.logo svg.brand-mark { transition: transform .5s cubic-bezier(.34, 1.56, .64, 1), filter .3s; }
+.logo:hover svg.brand-mark { transform: rotate(-12deg) scale(1.08); }
+.logo:active svg.brand-mark { transform: scale(.92); }
+@media (prefers-reduced-motion: reduce) { .logo svg.brand-mark { transition: none; } .logo:hover svg.brand-mark { transform: none; } }

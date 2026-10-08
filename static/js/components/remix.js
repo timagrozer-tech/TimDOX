@@ -1,4 +1,4 @@
-// QEVI Remix и AI Sticker Lab в браузере: редактор с живым превью (рисует сервер), стикеры по описанию (рисует браузер:
+// Yarko Remix и AI Sticker Lab в браузере: редактор с живым превью (рисует сервер), стикеры по описанию (рисует браузер:
 // эмодзи системным шрифтом + надпись), набор из фото. Оригинал стикера никогда не меняется — сохраняется новая версия.
 import { ensureAI } from "./consent.js";
 import { api, emit, state } from "../api.js";
@@ -129,7 +129,7 @@ export async function openRemix(source, { mode = "remix" } = {}) {
   ownPacks().then((list) => list.forEach((pk) => packSel.append(h("option", { value: pk.id }, pk.title))));
   const save = h("button.btn.primary", { type: "button" }, icon("check", "sm"), "Сохранить стикер");
   const m = modal({
-    title: isFile ? (mode === "meme" ? "Мем-стикер" : "AI Sticker Lab") : "QEVI Remix", wide: true,
+    title: isFile ? (mode === "meme" ? "Мем-стикер" : "AI Sticker Lab") : "Yarko Remix", wide: true,
     body: h("div.rx", h("div.rx-left", stage, h("p.muted.rx-note", isFile ? "Своя картинка → стикер. Оригинал у вас не меняется."
       : "Оригинал остаётся как есть — сохранится ваша версия.")), controls),
     footer: [packSel, save],

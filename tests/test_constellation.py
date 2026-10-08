@@ -1,4 +1,4 @@
-"""Constellation: белый список адресов, миры QEVI с живыми числами, пространство профиля."""
+"""Constellation: белый список адресов, миры Yarko с живыми числами, пространство профиля."""
 import unittest
 
 from test_api import Client

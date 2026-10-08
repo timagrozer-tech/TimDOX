@@ -10,7 +10,7 @@ import { pushOverlay, navigate } from "../router.js";
 import { BRAND_PATHS } from "../brands.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
-/** Знак мира: официальный логотип сервиса или значок для миров QEVI, сайта и портфолио */
+/** Знак мира: официальный логотип сервиса или значок для миров Yarko, сайта и портфолио */
 const GLYPHS = { xbox: "gamepad", portfolio: "work", website: "globe", network: "users", communities: "community", gallery: "image", collection: "gift", stickers: "sticker" };
 function mark(kind) {
   if (BRAND_PATHS[kind]) {
@@ -325,7 +325,7 @@ export function openConstellation(user, data, isMe, origin) {
     }) : [h("p.muted", "Пока пусто — выберите миры ниже.")]));
     const add = (kind) => { if (list.length >= 12) return toast("Не больше 12 миров", { error: true }); if (KRUG.includes(kind) && list.some((x) => x.kind === kind)) return; list.push({ kind, value: "" }); paintRows(); rows.lastElementChild?.querySelector("input")?.focus(); };
     const picker = h("div.cst-ed-pick",
-      h("div.cst-ed-group", h("small", "QEVI"), h("div.chips", ...KRUG.map((k) => h("button.chip.cst-chip", { type: "button", onclick: () => add(k) }, chipMark(k), WORLDS[k].label)))),
+      h("div.cst-ed-group", h("small", "Yarko"), h("div.chips", ...KRUG.map((k) => h("button.chip.cst-chip", { type: "button", onclick: () => add(k) }, chipMark(k), WORLDS[k].label)))),
       ...Object.entries(GROUPS).map(([g, t]) => h("div.cst-ed-group", h("small", t),
         h("div.chips", ...meta.kinds.filter((k) => k.group === g).map((k) => h("button.chip.cst-chip", { type: "button", style: { "--brand": (WORLDS[k.kind] || WORLDS.website).c[1] }, onclick: () => add(k.kind) }, chipMark(k.kind), k.label))))));
     paintStyle(); paintRows();

@@ -3,7 +3,7 @@
 // чтобы theme-init.js отрисовал нужный вид ещё до загрузки приложения (без «вспышки»).
 
 export const PALETTES = {
-  qevi:     { name: "QEVI",       pl: "#2563FF", pd: "#8AA8FF", al: "#B277FF", ad: "#C9A2FF", c: ["#2563FF", "#B277FF", "#88FFF2", "#6E9BFF"] },
+  qevi:     { name: "Yarko",       pl: "#2563FF", pd: "#8AA8FF", al: "#B277FF", ad: "#C9A2FF", c: ["#2563FF", "#B277FF", "#88FFF2", "#6E9BFF"] },
   violet:   { name: "Фиолетовый", pl: "#5b3df5", pd: "#a48dff", al: "#d6246e", ad: "#ff5fa2", c: ["#6d4bff", "#ff5fa2", "#22d3ee", "#a78bfa"] },
   ocean:    { name: "Океан",      pl: "#1d4ed8", pd: "#7aa2ff", al: "#0e7490", ad: "#22d3ee", c: ["#2563eb", "#06b6d4", "#6366f1", "#38bdf8"] },
   mint:     { name: "Мята",       pl: "#0f766e", pd: "#2dd4bf", al: "#0369a1", ad: "#38bdf8", c: ["#14b8a6", "#0ea5e9", "#22c55e", "#5eead4"] },
@@ -58,7 +58,7 @@ export const SHAPES = { soft: "Мягкие", medium: "Средние", sharp: "
 
 // Готовые темы: палитра + фон + шрифт + углы + светлая/тёмная
 export const PRESETS = {
-  qevi:     { name: "QEVI",     palette: "qevi",     bg: "orbit",    font: "manrope",    shape: "soft",   mode: "dark" },
+  qevi:     { name: "Yarko",     palette: "qevi",     bg: "orbit",    font: "manrope",    shape: "soft",   mode: "dark" },
   orbit:    { name: "Орбита",   palette: "violet",   bg: "orbit",    font: "manrope",    shape: "soft",   mode: "dark" },
   dawn:     { name: "Рассвет",  palette: "lavender", bg: "aurora",   font: "manrope",    shape: "soft",   mode: "light" },
   ocean:    { name: "Океан",    palette: "ocean",    bg: "aurora",   font: "inter",      shape: "medium", mode: "light" },
@@ -146,7 +146,7 @@ export function currentBgImage() { return bgImage; }
 export function normalizeLook(raw) {
   const src = raw && typeof raw === "object" ? raw : {};
   const l = { ...DEFAULT_LOOK, ...src };
-  // ребрендинг: стандартное оформление QEVI (фиолетовая палитра без своих настроек) становится QEVI
+  // ребрендинг: стандартное оформление Yarko (фиолетовая палитра без своих настроек) становится Yarko
   if (src.brand !== "qevi" && (!src.palette || src.palette === "violet") && !src.custom) l.palette = "qevi";
   l.brand = "qevi";
   if (!PALETTES[l.palette] && l.palette !== "custom") l.palette = DEFAULT_LOOK.palette;
