@@ -24,7 +24,7 @@ function brand() {
   const item = (ic, text) => h("li", h("span.dot", icon(ic, "sm")), h("span", text));
   return h("section.auth-brand", { "aria-hidden": "true" },
     logo(),
-    h("h2", "Все ваши люди — ", h("span.grad-text", "в одном круге")),
+    h("h2", "Все ваши люди — ", h("span.grad-text", "на одной орбите")),
     h("p", "Друзья и семья, истории и фото, сообщества, встречи и мессенджер. Вы сами решаете, чем для вас будет QEVI."),
     orbitScene(),
     h("ul",
