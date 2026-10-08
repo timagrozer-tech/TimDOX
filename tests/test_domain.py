@@ -17,6 +17,17 @@ class DomainTest(unittest.TestCase):
         c.app.host = "krug-social.onrender.com"
         self.assertNotEqual(c.get("/", follow_redirects=False).status_code, 301)
 
+    def test_legacy_domain_redirect(self):
+        """Прежний домен qevi.ru открывается напрямую на Render (в России замедлен) — уводим на основной адрес"""
+        c = TestClient(main.CanonicalHost(main.app.app), base_url="https://qevi.ru")
+        c.app.host = "xn--j1aie3d.space"
+        r = c.get("/music", follow_redirects=False)
+        self.assertEqual((r.status_code, r.headers["location"]), (301, "https://xn--j1aie3d.space/music"))
+        self.assertNotEqual(c.get("/api/health", follow_redirects=False).status_code, 301)
+        own = TestClient(main.CanonicalHost(main.app.app), base_url="https://xn--j1aie3d.space")
+        own.app.host = "xn--j1aie3d.space"
+        self.assertNotEqual(own.get("/", follow_redirects=False).status_code, 301)
+
 
     def test_edge_proxy(self):
         """Российский прокси: подписанный запрос не перенаправляется, адрес посетителя берётся из его заголовка."""

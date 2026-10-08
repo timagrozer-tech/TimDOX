@@ -157,6 +157,10 @@ async def body_too_large(request: Request, exc: BodyTooLarge):
     return JSONResponse({"error": "Слишком большой запрос", "code": "too_large"}, status_code=413)
 
 
+# прежние домены: открываются напрямую на Render, а он в России замедлен — уводим на основной адрес (через российский вход)
+LEGACY_HOSTS = {h.strip().lower() for h in os.environ.get("LEGACY_HOSTS", "qevi.ru,www.qevi.ru").split(",") if h.strip()}
+
+
 class CanonicalHost:
     """Переезд на свой домен: страницы со старого адреса *.onrender.com открываются по адресу из APP_URL (301).
     API, поток событий и вебхуки не перенаправляем — POST-запросы и открытые вкладки продолжают работать."""
@@ -172,7 +176,8 @@ class CanonicalHost:
             host = hdrs.get(b"host", b"").decode("latin-1").lower()
             # запрос пришёл через российский прокси — он уже на нашем домене, перенаправлять нельзя
             edge = from_edge({"x-yarko-edge": hdrs.get(b"x-yarko-edge", b"").decode("latin-1")})
-            if not edge and host.endswith(".onrender.com") and self.host and not self.host.endswith(".onrender.com") and host != self.host:
+            old = host.endswith(".onrender.com") or host.split(":")[0] in LEGACY_HOSTS
+            if not edge and old and self.host and not self.host.endswith(".onrender.com") and host != self.host:
                 qs = scope.get("query_string", b"").decode("latin-1")
                 url = f"https://{self.host}{scope['path']}" + (f"?{qs}" if qs else "")
                 await send({"type": "http.response.start", "status": 301, "headers": [(b"location", url.encode()), (b"cache-control", b"max-age=3600")]})
