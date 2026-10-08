@@ -111,5 +111,21 @@ NOTE_MAX_LEN = 500
 COMMENT_MAX_LEN = 2000
 MESSAGE_MAX_LEN = 4000
 
-for d in (DATA_DIR, UPLOAD_DIR):
-    d.mkdir(parents=True, exist_ok=True)
+def _writable_dir(d: Path, fallback: Path) -> Path:
+    """Постоянная папка хостинга может быть недоступна для записи (смонтирована от root) — тогда временная папка"""
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+        probe = d / ".write-test"
+        probe.write_text("ok")
+        probe.unlink()
+        return d
+    except OSError:
+        fallback.mkdir(parents=True, exist_ok=True)
+        print(f"Папка {d} недоступна для записи — использую {fallback}")
+        return fallback
+
+
+DATA_DIR = _writable_dir(DATA_DIR, Path("/tmp/yarko-data"))
+if "DB_PATH" not in os.environ:
+    DB_PATH = DATA_DIR / "krug.db"
+UPLOAD_DIR = _writable_dir(UPLOAD_DIR, Path("/tmp/yarko-uploads"))
