@@ -33,11 +33,22 @@ async def body(request: Request) -> dict:
     return {}
 
 
+def from_edge(headers) -> bool:
+    """Запрос пришёл через наш российский прокси (подписан секретом EDGE_SECRET)"""
+    import hmac
+    got = headers.get("x-yarko-edge") or ""
+    return bool(config.EDGE_SECRET) and bool(got) and hmac.compare_digest(got, config.EDGE_SECRET)
+
+
 def client_ip(request: Request) -> str:
     """Настоящий адрес посетителя. Первый адрес в X-Forwarded-For присылает сам клиент и может его подделать,
     поэтому ему не доверяем: на Render адрес берётся из заголовков Cloudflare, которые тот перезаписывает
     на каждом запросе, а в остальных случаях — из последних TRUSTED_PROXY_HOPS адресов цепочки."""
     h = request.headers
+    if from_edge(h):
+        ip = (h.get("x-edge-client-ip") or "").strip()
+        if ip:
+            return ip[:64]
     if config.ON_RENDER:
         ip = (h.get("cf-connecting-ip") or h.get("true-client-ip") or "").strip()
         if ip:

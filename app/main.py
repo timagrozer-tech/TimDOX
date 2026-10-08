@@ -25,7 +25,7 @@ from . import consents, tgbot, webpush
 from .api import accounts, admin, auth_routes, calls, collection_routes, invites, reels, stickers, communities, events, messages, misc, music as music_api, people_extra, posts, stats, stories, users
 from .security import load_extra_banned
 from .world import api as world_api, engine as world_engine
-from .web import ApiError, load_session
+from .web import ApiError, from_edge, load_session
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("krug")
@@ -168,8 +168,11 @@ class CanonicalHost:
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http" and scope["method"] in ("GET", "HEAD") and not scope["path"].startswith(("/api/", "/uploads/")):
-            host = dict(scope.get("headers") or []).get(b"host", b"").decode("latin-1").lower()
-            if host.endswith(".onrender.com") and self.host and not self.host.endswith(".onrender.com") and host != self.host:
+            hdrs = dict(scope.get("headers") or [])
+            host = hdrs.get(b"host", b"").decode("latin-1").lower()
+            # запрос пришёл через российский прокси — он уже на нашем домене, перенаправлять нельзя
+            edge = from_edge({"x-yarko-edge": hdrs.get(b"x-yarko-edge", b"").decode("latin-1")})
+            if not edge and host.endswith(".onrender.com") and self.host and not self.host.endswith(".onrender.com") and host != self.host:
                 qs = scope.get("query_string", b"").decode("latin-1")
                 url = f"https://{self.host}{scope['path']}" + (f"?{qs}" if qs else "")
                 await send({"type": "http.response.start", "status": 301, "headers": [(b"location", url.encode()), (b"cache-control", b"max-age=3600")]})

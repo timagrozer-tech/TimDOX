@@ -1,0 +1,1 @@
+["content-type: text\/javascript; charset=utf-8","last-modified: Thu, 08 Oct 2026 15:48:10 GMT","etag: \"0946a9ec3609cb70537fa3c03bad38da\"","cache-control: no-cache"]

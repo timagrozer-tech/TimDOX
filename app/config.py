@@ -97,6 +97,8 @@ MAX_JSON_KB = int(os.environ.get("MAX_JSON_KB", "512"))
 # за другим обратным прокси укажите, сколько адресов в конце X-Forwarded-For добавляют ваши прокси.
 ON_RENDER = os.environ.get("RENDER", "").lower() == "true"
 TRUSTED_PROXY_HOPS = int(os.environ.get("TRUSTED_PROXY_HOPS", "0"))
+# Российский «вход» (прокси на хостинге в РФ): он подписывает запросы этим секретом и передаёт настоящий адрес посетителя
+EDGE_SECRET = os.environ.get("EDGE_SECRET", "")
 
 MAX_PHOTOS_PER_POST = 10
 POST_MAX_LEN = 5000

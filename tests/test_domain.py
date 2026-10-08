@@ -18,5 +18,20 @@ class DomainTest(unittest.TestCase):
         self.assertNotEqual(c.get("/", follow_redirects=False).status_code, 301)
 
 
+    def test_edge_proxy(self):
+        """Российский прокси: подписанный запрос не перенаправляется, адрес посетителя берётся из его заголовка."""
+        from unittest import mock
+        from starlette.requests import Request
+        from app import config, web
+        c = TestClient(main.CanonicalHost(main.app.app), base_url="https://krug-social.onrender.com")
+        c.app.host = "xn--j1aie3d.space"
+        with mock.patch.object(config, "EDGE_SECRET", "s3cret"):
+            self.assertEqual(c.get("/", headers={"x-yarko-edge": "wrong"}, follow_redirects=False).status_code, 301)
+            self.assertNotEqual(c.get("/", headers={"x-yarko-edge": "s3cret"}, follow_redirects=False).status_code, 301)
+            scope = {"type": "http", "headers": [(b"x-yarko-edge", b"s3cret"), (b"x-edge-client-ip", b"95.1.2.3")], "client": ("10.0.0.1", 1)}
+            self.assertEqual(web.client_ip(Request(scope)), "95.1.2.3")
+            forged = {"type": "http", "headers": [(b"x-yarko-edge", b"nope"), (b"x-edge-client-ip", b"95.1.2.3")], "client": ("10.0.0.1", 1)}
+            self.assertNotEqual(web.client_ip(Request(forged)), "95.1.2.3")
+
 if __name__ == "__main__":
     unittest.main()
