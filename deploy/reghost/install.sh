@@ -123,6 +123,23 @@ print("users:", db.value("SELECT count(*) FROM users"))' "$Y/yarko.env" 2>&1 | t
 echo "    $CHECK"
 echo "$CHECK" | grep -q "^users:" || die "Код не запустился или нет связи с базой (см. выше)"
 ok "база доступна"
+SMOKE=$(cd "$Y/current" && KRUG_BACKGROUND=0 YARKO_SELFUPDATE=0 "$Y/venv/bin/python" -c '
+import io, os, sys
+for line in open(sys.argv[1], encoding="utf-8"):
+    k, _, v = line.rstrip("\n").partition("=")
+    if k and not k.startswith("#"):
+        os.environ.setdefault(k, v)
+os.environ["DATA_DIR"] = os.environ.get("DATA_DIR", "") + "/smoke"
+from app.wsgi import application
+res = {}
+body = b"".join(application({"REQUEST_METHOD": "GET", "PATH_INFO": "/api/health", "QUERY_STRING": "", "wsgi.input": io.BytesIO(),
+    "SERVER_NAME": "localhost", "SERVER_PORT": "443", "HTTP_HOST": sys.argv[2], "wsgi.url_scheme": "https", "REMOTE_ADDR": "127.0.0.1"},
+    lambda st, h, e=None: res.update(st=st)))
+print("wsgi:", res.get("st"), body[:60].decode("utf-8", "replace"))
+os._exit(0)' "$Y/yarko.env" "$DOMAIN" 2>&1 | tail -4)
+echo "    $SMOKE"
+echo "$SMOKE" | grep -q '^wsgi: 200' || die "Приложение не запускается в режиме хостинга (см. выше)"
+ok "приложение отвечает"
 
 # ------------------------------------------------------------------ 6. Переключение сайта
 say "6/7 Переключаю сайт на Python"
@@ -191,18 +208,24 @@ ok "сайт переключён (старый вход сохранён в $BK
 # ------------------------------------------------------------------ 7. Проверка сайта
 say "7/7 Проверяю ярко.space"
 GOOD=0
-for i in $(seq 1 18); do
+for i in $(seq 1 24); do
   sleep 5
-  R=$(curl -s --max-time 30 --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/api/health" 2>/dev/null)
-  [ -z "$R" ] && R=$(curl -s --max-time 30 "https://$DOMAIN/api/health" 2>/dev/null)
-  if echo "$R" | grep -q '"ok"'; then GOOD=1; break; fi
-  echo "    ждём запуска… ($i) ${R:0:80}"
+  CODE=$(curl -s --max-time 40 -o "$Y/last-response.html" -w "%{http_code}" "https://$DOMAIN/api/health" 2>/dev/null)
+  if grep -q '"ok"' "$Y/last-response.html" 2>/dev/null; then GOOD=1; break; fi
+  TXT=$(sed 's/<[^>]*>/ /g' "$Y/last-response.html" 2>/dev/null | tr -s ' \n' ' ' | cut -c1-120)
+  echo "    ждём запуска… ($i) код $CODE: $TXT"
 done
 if [ "$GOOD" != 1 ]; then
+  echo
+  echo "    ---- ответ сайта ----"
+  sed 's/<[^>]*>//g' "$Y/last-response.html" 2>/dev/null | grep -v '^[[:space:]]*$' | head -40
+  echo "    ---- журналы ошибок ----"
+  for f in "$HOME"/logs/*"$DOMAIN"*error* "$HOME"/logs/*error*; do [ -f "$f" ] && { echo "[$f]"; tail -n 25 "$f"; break; }; done
+  echo "    -------------------"
   echo "    Не запустилось — возвращаю прежний вход (через Render)"
   rm -rf "$SITE/passenger_wsgi.py" "$SITE/.htaccess" "$SITE/static"
   for f in "$BK"/* "$BK"/.htaccess "$BK"/.user.ini; do [ -e "$f" ] && mv "$f" "$SITE/"; done
-  die "Python-приложение не ответило. Проверьте, что в настройках сайта включены «CGI-скрипты» и «Python», и запустите команду ещё раз. Журнал: $Y/install.log"
+  die "Python-приложение не ответило (подробности выше). Пришлите скриншот этого экрана."
 fi
 echo
 printf '\033[1;32m✓ Готово! Yarko работает прямо на хостинге Рег.ру, без Render.\033[0m\n'
