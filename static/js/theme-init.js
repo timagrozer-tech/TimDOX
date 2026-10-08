@@ -1,6 +1,9 @@
 // Применяем тему и оформление до отрисовки страницы, чтобы не было «вспышки» другого вида.
 (function () {
   var root = document.documentElement;
+  // шрифты Google грузятся, не задерживая страницу: если сервер шрифтов недоступен, сайт открывается с системным шрифтом
+  var gf = document.querySelector("link[data-fonts]");
+  if (gf) { if (gf.sheet) gf.media = "all"; else gf.addEventListener("load", function () { gf.media = "all"; }); }
   try {
     var t = localStorage.getItem("krug-theme") || "dark";
     var dark = t === "dark" || (t === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
