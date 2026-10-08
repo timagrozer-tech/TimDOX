@@ -60,7 +60,7 @@ def to_static_webp(data: bytes) -> bytes:
     im = im.resize((max(1, round(w * k)), max(1, round(h * k))), Image.LANCZOS)
     for q in (95, 85, 75, 60, 45):
         buf = io.BytesIO()
-        im.save(buf, "WEBP", quality=q, method=6)
+        im.save(buf, "WEBP", quality=q, method=4)
         if buf.tell() <= 500 * 1024:
             return buf.getvalue()
     raise ApiError(400, "Стикер слишком тяжёлый для Telegram")
