@@ -168,7 +168,16 @@ for line in open(HOME + "/yarko.env", encoding="utf-8"):
 os.environ["YARKO_COMMIT"] = open(APP + "/.commit").read().strip()[:12]
 sys.path.insert(0, APP)
 os.chdir(APP)
-from app.wsgi import application  # noqa: E402,F401
+try:
+    from app.wsgi import application  # noqa: E402,F401
+except BaseException:  # ошибку запуска показываем на странице и пишем в журнал — иначе Passenger покажет лишь «could not be started»
+    import traceback
+    _err = traceback.format_exc()
+    open(HOME + "/startup-error.log", "a", encoding="utf-8").write(_err + "\n")
+
+    def application(environ, start_response):
+        start_response("500 Internal Server Error", [("Content-Type", "text/plain; charset=utf-8")])
+        return [("Yarko: ошибка запуска\n" + _err).encode("utf-8")]
 EOF
 cat > "$SITE/.htaccess" <<'EOF'
 # Yarko: Python-приложение (Passenger). Готовые файлы (static, uploads) отдаёт сам веб-сервер.
@@ -202,6 +211,7 @@ AddType font/woff2 .woff2
   ExpiresByType video/mp4 "access plus 1 year"
 </IfModule>
 EOF
+rm -f "$Y/startup-error.log"
 touch "$SITE/.restart-app" "$SITE/tmp/restart.txt"
 ok "сайт переключён (старый вход сохранён в $BK)"
 
@@ -219,6 +229,7 @@ if [ "$GOOD" != 1 ]; then
   echo
   echo "    ---- ответ сайта ----"
   sed 's/<[^>]*>//g' "$Y/last-response.html" 2>/dev/null | grep -v '^[[:space:]]*$' | head -40
+  [ -s "$Y/startup-error.log" ] && { echo "    ---- ошибка запуска ----"; tail -n 30 "$Y/startup-error.log"; }
   echo "    ---- журналы ошибок ----"
   for f in "$HOME"/logs/*"$DOMAIN"*error* "$HOME"/logs/*error*; do [ -f "$f" ] && { echo "[$f]"; tail -n 25 "$f"; break; }; done
   echo "    -------------------"
