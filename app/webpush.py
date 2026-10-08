@@ -228,6 +228,9 @@ async def api_subscribe(request: Request):
     v = request.state.user["id"]
     data = await body(request)
     subscribe(v, data.get("subscription") or {}, request.headers.get("user-agent", ""))
+    from . import consents
+    if not consents.has(v, "notifications"):
+        consents.record(v, "notifications", True, request)
     if data.get("hello"):
         push(v, {"title": "Уведомления включены ✨", "body": "Теперь вы не пропустите сообщения и заявки в друзья.",
                  "url": "/settings?tab=notify", "tag": "hello"}, "social")
@@ -238,6 +241,9 @@ async def api_subscribe(request: Request):
 async def api_unsubscribe(request: Request):
     v = request.state.user["id"]
     db.run("DELETE FROM push_subs WHERE user_id=? AND endpoint=?", (v, str((await body(request)).get("endpoint") or "")))
+    if not has_subs(v):
+        from . import consents
+        consents.record(v, "notifications", False, request)
     return JSONResponse({"ok": True})
 
 

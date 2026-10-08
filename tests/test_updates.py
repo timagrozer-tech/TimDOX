@@ -51,6 +51,8 @@ class UpdatesTest(unittest.TestCase):
         db.run("UPDATE users SET is_admin=1 WHERE id=?", (self.old_id,))
         pid = db.run("INSERT INTO posts (author_id, text, visibility) VALUES (?, 'Тест обновления', 'public')", (self.uid,)).lastrowid
         asker = Client().register("upd_asker", "Любопытный Человек")
+        from app import consents
+        consents.record(asker.refresh()["user"]["id"], "ai", True)
         aid = asker.refresh()["user"]["id"]
         with mock.patch("app.updates.threading.Thread") as th:
             r = asker.post(f"/api/posts/{pid}/comments", {"text": "А как добавить Steam в созвездие?"})

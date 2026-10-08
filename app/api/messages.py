@@ -582,7 +582,8 @@ async def send_media(request: Request):
     finally:
         await form.close()
     msg = deliver_message(conv_id, v, caption, kind, info, reply_to=reply_to)
-    if kind == "voice":
+    from .. import consents
+    if kind == "voice" and consents.has(v, "ai"):
         from .. import transcribe
         transcribe.run_async(msg["id"], _broadcast_update)
     return JSONResponse(msg, status_code=201)
@@ -633,6 +634,9 @@ async def transcribe_message(request: Request):
     if not transcribe.can_transcribe(m["kind"] or "", info):
         raise ApiError(400, "Расшифровать можно голосовое или аудио до 3 минут")
     if info.get("transcript") is None:
+        from .. import consents
+        if not consents.has(m["sender_id"], "ai"):
+            raise ApiError(403, "Расшифровка доступна, если автор голосового включил ИИ-функции", "ai_consent_sender")
         if not transcribe.enabled():
             raise ApiError(503, "Расшифровка пока недоступна")
         limit(request, "transcribe")

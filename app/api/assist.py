@@ -26,7 +26,10 @@ MODES = {
 }
 
 
-def _need_ai() -> None:
+def _need_ai(uid: int | None = None) -> None:
+    if uid is not None:
+        from .. import consents
+        consents.require_ai(uid)
     if not llm.enabled():
         raise ApiError(503, "ИИ пока не подключён", "ai_off")
 
@@ -66,10 +69,10 @@ def _history(conv_id: int, v: int, limit_n: int, after_id: int = 0) -> list[str]
 async def replies(request: Request):
     """Три коротких варианта ответа на последнее сообщение собеседника."""
     limit(request, "ai_assist")
-    _need_ai()
     v = request.state.user["id"]
     conv_id = path_int(request)
     _member(conv_id, v)
+    _need_ai(v)
     lines = await run_in_threadpool(_history, conv_id, v, 12)
     if not lines or lines[-1].startswith("Я:"):
         raise ApiError(400, "Варианты ответа появляются, когда вам написали", "ai_nothing")
@@ -88,10 +91,10 @@ async def replies(request: Request):
 async def summary(request: Request):
     """Кратко о пропущенном: с первого непрочитанного (from_id) или последние 80 сообщений."""
     limit(request, "ai_assist")
-    _need_ai()
     v = request.state.user["id"]
     conv_id = path_int(request)
     _member(conv_id, v)
+    _need_ai(v)
     data = await body(request)
     try:
         after = max(0, int(data.get("from_id") or 0) - 1)
@@ -111,7 +114,7 @@ async def summary(request: Request):
 @auth()
 async def rewrite(request: Request):
     limit(request, "ai_assist")
-    _need_ai()
+    _need_ai(request.state.user["id"])
     data = await body(request)
     mode = str(data.get("mode") or "")
     text = clean_text(str(data.get("text") or ""), 2000).strip()

@@ -215,7 +215,9 @@ def _compose_reply(conv: int, persona_id: int, uid: int) -> str | None:
     n_today = int(used.split(":")[1]) if used.startswith(day + ":") else 0
     quests.remember(uid, persona_id, None, closeness=1)
     db.run("UPDATE ai_memory SET chats_day=? WHERE user_id=? AND persona_id=?", (f"{day}:{n_today + 1}", uid, persona_id))
-    if llm.enabled() and n_today < CHAT_PER_DAY:
+    from .. import consents
+    # переписка уходит нейросети только с согласия человека; без него персонаж отвечает заготовками
+    if llm.enabled() and n_today < CHAT_PER_DAY and consents.has(uid, "ai"):
         history = "\n".join(f"{'Ты' if r['sender_id'] == persona_id else name}: {r['text']}" for r in reversed(last) if r["text"])
         system = (f"Ты — {p['name']}, {p['role']} в организации «{org.get('name')}» соцсети QEVI. Ты ИИ-персонаж и не скрываешь этого. "
                   f"О себе: {p['bio']} Стиль: {p['style']}. Отвечай по-русски, коротко (1–3 предложения), тепло и по делу, без выдуманных фактов. "

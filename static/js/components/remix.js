@@ -1,5 +1,6 @@
 // QEVI Remix и AI Sticker Lab в браузере: редактор с живым превью (рисует сервер), стикеры по описанию (рисует браузер:
 // эмодзи системным шрифтом + надпись), набор из фото. Оригинал стикера никогда не меняется — сохраняется новая версия.
+import { ensureAI } from "./consent.js";
 import { api, emit, state } from "../api.js";
 import { h, icon } from "../dom.js";
 import { modal, toast, toastError, busy } from "../ui.js";
@@ -213,6 +214,7 @@ export function openTextStickers() {
   };
   go.addEventListener("click", () => busy(go, async () => {
     try {
+      if (!(await ensureAI())) return;
       const r = await api.post("/api/sticker-lab/text", { prompt: prompt.value });
       designs = r.designs; chosen.clear(); designs.forEach((_, i) => chosen.add(i)); paint();
       if (!r.ai) toast("ИИ сейчас недоступен — собрали по словам из описания", { duration: 2500 });

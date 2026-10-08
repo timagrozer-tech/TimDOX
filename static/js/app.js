@@ -87,6 +87,9 @@ route("/reset", authPages.resetPage, { public: true });
 route("/verify", authPages.verifyPage, { public: true });
 route("/privacy", legalPage("privacy"), { public: true });
 route("/terms", legalPage("terms"), { public: true });
+route("/consent", legalPage("consent"), { public: true });
+route("/cookies", legalPage("cookies"), { public: true });
+route("/ai-consent", legalPage("ai"), { public: true });
 route("/", feedPage);
 route("/explore", feedPage);
 route("/u/:username", profilePage);
@@ -274,6 +277,7 @@ async function upgradeAvatarStickers() {
   start();
   try { initTelegramApp(); } catch { /* вне Telegram или старый клиент */ }
   if (state.me) setTimeout(upgradeAvatarStickers, 7000);
+  setTimeout(() => import("./components/consent.js").then((m) => m.cookieNotice()).catch(() => {}), 1500);
 })();
 
 // Аватары: если миниатюра не загрузилась — пробуем оригинал, если и он недоступен — показываем инициалы.

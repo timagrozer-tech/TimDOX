@@ -958,3 +958,16 @@ CREATE TABLE IF NOT EXISTS mod_log (
     created_at     TEXT NOT NULL DEFAULT krug_now()
 );
 CREATE INDEX IF NOT EXISTS idx_mod_log_actor ON mod_log(actor_id, id);
+
+-- Согласия пользователей: история изменений (только добавление)
+CREATE TABLE IF NOT EXISTS consents (
+    id         BIGSERIAL PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL,
+    version    TEXT NOT NULL,
+    granted    INTEGER NOT NULL,
+    network    TEXT NOT NULL DEFAULT '',
+    user_agent TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE INDEX IF NOT EXISTS idx_consents_user ON consents(user_id, kind, id);

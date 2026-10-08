@@ -160,11 +160,17 @@ function codeStep(ticket, next, adding = false) {
 export async function registerPage({ query }) {
   setTitle("Регистрация");
   const submit = h("button.btn.accent.lg.block", { type: "submit" }, "Создать аккаунт");
-  const consent = h("div.field", { dataset: { field: "consent" } },
-    h("label.check", h("input", { type: "checkbox", name: "consent" }),
-      h("span", "Я согласен(на) на обработку персональных данных и принимаю ",
-        h("a", { href: "/privacy", target: "_blank" }, "политику конфиденциальности"), " и ", h("a", { href: "/terms", target: "_blank" }, "правила"))),
-    h("div.field-error", { role: "alert" }));
+  // два отдельных согласия: Соглашение и обработка персональных данных (согласие на ПДн — отдельный документ)
+  const consent = h("div.stack.consents-reg",
+    h("div.field", { dataset: { field: "terms" } },
+      h("label.check", h("input", { type: "checkbox", name: "terms" }),
+        h("span", "Принимаю ", h("a", { href: "/terms", target: "_blank" }, "Пользовательское соглашение"), " и ознакомлен(а) с ",
+          h("a", { href: "/privacy", target: "_blank" }, "Политикой конфиденциальности"))),
+      h("div.field-error", { role: "alert" })),
+    h("div.field", { dataset: { field: "consent" } },
+      h("label.check", h("input", { type: "checkbox", name: "consent" }),
+        h("span", "Даю ", h("a", { href: "/consent", target: "_blank" }, "согласие на обработку персональных данных"))),
+      h("div.field-error", { role: "alert" })));
   const form = h("form.auth-form", { novalidate: true },
     logo(),
     h("h1", "Регистрация"),
@@ -206,7 +212,7 @@ export async function registerPage({ query }) {
       try {
         await api.post("/api/auth/register", {
           name: $(form, "name").value, username: $(form, "username").value, email: $(form, "email").value,
-          password: $(form, "password").value, consent: $(form, "consent").checked,
+          password: $(form, "password").value, consent: $(form, "consent").checked, terms: $(form, "terms").checked,
           website: $(form, "website").value, t: Math.round(performance.now() - shownAt), ref: ref || undefined,
         });
         toast("Аккаунт создан! Мы отправили письмо для подтверждения e-mail.", { icon: "mail", duration: 6000 });

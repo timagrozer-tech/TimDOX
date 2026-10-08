@@ -54,6 +54,9 @@ class Stickers2Test(unittest.TestCase):
         cls.ctx = TestClient(app).__enter__()
         cls.a = Client().register("st2_anna", "Анна Стикер")
         cls.b = Client().register("st2_boris", "Борис Коллекционер")
+        from app import consents
+        for x in (cls.a, cls.b):
+            consents.record(x.refresh()["user"]["id"], "ai", True)
         make_friends(cls.a, cls.b)
         cls.aid = cls.a.refresh()["user"]["id"]
         cls.bid = cls.b.refresh()["user"]["id"]

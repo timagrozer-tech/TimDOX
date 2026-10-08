@@ -1,5 +1,6 @@
 // Лента: записи друзей, подписок и свои. Вкладка «Обзор» — все публичные записи.
 import { pushInvite } from "../push.js";
+import { documentsReview } from "../components/consent.js";
 import { api, state, on } from "../api.js";
 import { h, icon, avatar } from "../dom.js";
 import { infiniteList, setTitle, toast, toastError } from "../ui.js";
@@ -107,7 +108,7 @@ export async function feedPage({ path, query }) {
       h("a.btn.soft", { href: "/friends?tab=suggestions" }, icon("userPlus", "sm"), "Найти друзей"),
       h("button.btn.ghost", { type: "button", onclick: (e) => { e.target.closest(".card").remove(); history.replaceState({}, "", "/"); } }, "Позже"))) : null;
 
-  return h("div.stack", verifyBanner(), welcome, welcome ? null : pushInvite(), storiesBar(), featuredStrip({ closable: true }), tabs, list.el);
+  return h("div.stack", verifyBanner(), welcome, welcome ? null : documentsReview(), welcome ? null : pushInvite(), storiesBar(), featuredStrip({ closable: true }), tabs, list.el);
 }
 
 export { navigate };

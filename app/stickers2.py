@@ -565,7 +565,11 @@ def tag_some(n: int = 6) -> int:
         return 0
     from PIL import Image
     done = 0
-    for s in db.all("SELECT id, file, thumb, format, tags FROM stickers WHERE ai_tagged=0 ORDER BY id DESC LIMIT ?", (n,)):
+    # картинки людей уходят нейросети только с их согласия; публичные наборы из Telegram и встроенные — без ограничений
+    for s in db.all("""SELECT s.id, s.file, s.thumb, s.format, s.tags FROM stickers s JOIN sticker_packs p ON p.id = s.pack_id
+                       WHERE s.ai_tagged=0 AND (p.owner_id IS NULL OR p.source='telegram'
+                             OR (SELECT granted FROM consents c WHERE c.user_id=p.owner_id AND c.kind='ai' ORDER BY c.id DESC LIMIT 1)=1)
+                       ORDER BY s.id DESC LIMIT ?""", (n,)):
         src = s["thumb"] if s["format"] != "webp" else s["file"]
         tags = None
         if src:

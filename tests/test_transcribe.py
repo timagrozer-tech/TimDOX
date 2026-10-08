@@ -20,6 +20,9 @@ class TranscribeTest(unittest.TestCase):
         cls.a = Client().register("stt_a", "Голос Первый")
         cls.b = Client().register("stt_b", "Голос Второй")
         cls.c = Client().register("stt_c", "Чужой Человек")
+        from app import consents
+        for x in (cls.a, cls.b):  # авторы голосовых включили ИИ-функции
+            consents.record(x.refresh()["user"]["id"], "ai", True)
         bid = cls.b.refresh()["user"]["id"]
         cls.conv = cls.a.post("/api/conversations", {"user_id": bid}).json()["id"]
 

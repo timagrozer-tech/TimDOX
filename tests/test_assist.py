@@ -37,10 +37,14 @@ class AssistTest(unittest.TestCase):
         conv = self.a.post("/api/conversations", {"user_id": self.b_id}).json()
         cid = conv.get("id") or conv["conversation"]["id"]
         self.a.post(f"/api/conversations/{cid}/messages", {"text": "Привет"})
-        # последнее сообщение моё — предлагать нечего
-        self.assertEqual(self.a.post(f"/api/conversations/{cid}/ai/replies", {}).json()["code"], "ai_nothing")
         for t in ("Пойдём в кино в субботу?", "Там новый фильм", "Билеты надо купить заранее"):
             self.b.post(f"/api/conversations/{cid}/messages", {"text": t})
+        # без согласия на ИИ-функции переписка нейросети не уходит
+        n = len(self.calls)
+        self.assertEqual(self.a.post(f"/api/conversations/{cid}/ai/replies", {}).json()["code"], "ai_consent")
+        self.assertEqual(len(self.calls), n)
+        from app import consents
+        consents.record(self.a.refresh()["user"]["id"], "ai", True)
         r = self.a.post(f"/api/conversations/{cid}/ai/replies", {})
         self.assertEqual(r.status_code, 200, r.text)
         self.assertEqual(len(r.json()["replies"]), 3)

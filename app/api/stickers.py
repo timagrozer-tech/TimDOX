@@ -806,7 +806,9 @@ async def lab_photo_pack(request: Request):
     media.charge_upload(len(raw))
     if db.value("SELECT count(*) FROM sticker_packs WHERE owner_id=? AND shared=0", (v,)) >= MAX_OWN_PACKS:
         raise ApiError(400, f"Можно создать не больше {MAX_OWN_PACKS} наборов")
-    caps = await run_in_threadpool(_ai_captions, raw)
+    from .. import consents
+    # подписи придумывает ИИ только с согласия; без него — готовые подписи
+    caps = await run_in_threadpool(_ai_captions, raw) if consents.has(v, "ai") else []
     items = await run_in_threadpool(stickerart.photo_pack, raw, caps, cut)
     pid = db.run("INSERT INTO sticker_packs (owner_id, slug, title, source) VALUES (?,?,?, 'lab')", (v, secrets.token_hex(5), title)).lastrowid
     db.run("INSERT OR IGNORE INTO user_sticker_packs (user_id, pack_id) VALUES (?,?)", (v, pid))
@@ -825,6 +827,8 @@ TEXT_PROMPT = """Ты дизайнер стикеров. По описанию �
 async def lab_text(request: Request):
     """Стикеры по описанию: ИИ придумывает композиции из эмодзи и надписей, браузер их рисует (эмодзи — системным шрифтом)."""
     limit(request, "sticker_preview")
+    from .. import consents
+    consents.require_ai(request.state.user["id"])
     data = await body(request)
     prompt = censor(clean_text(str(data.get("prompt") or ""), 200)).strip()
     if len(prompt) < 2:

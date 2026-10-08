@@ -152,6 +152,8 @@ async def register(request: Request):
         errors["username"] = "Этот логин уже занят"
     if not data.get("consent"):
         errors["consent"] = "Нужно согласие на обработку персональных данных"
+    if data.get("terms") is False:
+        errors["terms"] = "Нужно принять Пользовательское соглашение"
     if errors:
         return JSONResponse({"error": "Проверьте поля формы", "fields": errors}, status_code=422)
 
@@ -160,6 +162,9 @@ async def register(request: Request):
                         (email, hash_password(password), db.now()))
         uid = cur.lastrowid
         c.execute("INSERT INTO profiles (user_id, username, name) VALUES (?,?,?)", (uid, username, name))
+    from .. import consents
+    for k in ("pd", "terms", "content"):
+        consents.record(uid, k, True, request)
     for bucket in ("register", "register_day"):
         rate_limiter.hit(f"{bucket}:{ip}", *LIMITS[bucket])
     log_login(request, uid, True, "register")

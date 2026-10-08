@@ -11,6 +11,7 @@ import { refreshSidebarUser } from "../components/layout.js";
 import { logout } from "../app-actions.js";
 import { linkTelegram } from "../components/tglink.js";
 import { pushSettingsBox } from "../push.js";
+import { consentsBox } from "../components/consent.js";
 
 /** Выбор и загрузка аватара или обложки */
 export function uploadProfileImage(kind, onDone) {
@@ -536,6 +537,7 @@ export async function settingsPage({ query = {} } = {}) {
     ["telegram", "Telegram", "send", () => [
       section("Telegram", "Бот QEVI: уведомления, стикеры и быстрый вход.", telegramBox())]],
     ["more", "Ещё", "more", () => [
+      section("Документы и согласия", "Что вы приняли и когда. ИИ-функции можно включить или выключить здесь.", consentsBox()),
       section("Мои данные", "Копия всех ваших данных или полное удаление аккаунта.",
         h("div.row", { style: { flexWrap: "wrap" } },
           h("a.btn.outline", { href: "/api/me/export", download: "krug-export.json" }, icon("download", "sm"), "Скачать мои данные"),

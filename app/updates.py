@@ -154,7 +154,8 @@ def reply(comment_id: int) -> int | None:
     hour_ago = db.future(minutes=-60)
     mine = db.value("""SELECT count(*) FROM comments r JOIN comments q ON q.id = r.parent_id
                        WHERE r.author_id=? AND q.author_id=? AND r.created_at>?""", (uid, row["author_id"], hour_ago)) or 0
-    if mine >= REPLIES_PER_HOUR or not llm.enabled():
+    from . import consents
+    if mine >= REPLIES_PER_HOUR or not llm.enabled() or not consents.has(row["author_id"], "ai"):
         return None
     name = db.value("SELECT name FROM profiles WHERE user_id=?", (row["author_id"],)) or "пользователь"
     user = (f"Журнал обновлений:\n{_context()}\n\nПост, под которым вопрос:\n{row['post_text'][:1500]}\n\n"

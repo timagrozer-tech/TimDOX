@@ -2,6 +2,7 @@
 import { api } from "../api.js";
 import { h, icon } from "../dom.js";
 import { modal, showMenu, toastError } from "../ui.js";
+import { ensureAI } from "./consent.js";
 
 let aiOn = null;
 export async function aiEnabled() {
@@ -23,6 +24,7 @@ export function chatAI({ id, conv, form, ta, fit, body }) {
   const setText = (t) => { ta.value = t; fit(); ta.dispatchEvent(new Event("input")); ta.focus(); ta.setSelectionRange(t.length, t.length); };
 
   async function suggest() {
+    if (!(await ensureAI())) return;
     strip.hidden = false;
     strip.replaceChildren(h("span.ai-label", icon("sparkle", "sm"), "Думаю над ответом…"), h("span.spinner.sm"));
     try {
@@ -34,6 +36,7 @@ export function chatAI({ id, conv, form, ta, fit, body }) {
   }
 
   async function summarize(fromId = 0) {
+    if (!(await ensureAI())) return;
     const out = h("div.ai-summary", h("div.ai-thinking", h("span.spinner"), h("span", "Читаю переписку и собираю главное…")));
     modal({ title: "✨ Кратко о переписке", body: out });
     try {
@@ -44,7 +47,7 @@ export function chatAI({ id, conv, form, ta, fit, body }) {
 
   async function improve(mode, label) {
     const src = ta.value.trim();
-    if (!src) return;
+    if (!src || !(await ensureAI())) return;
     btn.disabled = true; btn.classList.add("busy");
     try {
       const r = await api.post("/api/ai/rewrite", { text: src, mode });
