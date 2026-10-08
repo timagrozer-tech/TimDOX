@@ -346,7 +346,9 @@ async def updates_loop():
         await asyncio.sleep(300)
 
 
-@asynccontextmanager
+KEEP_AWAKE_SECONDS = int(os.environ.get("KEEP_AWAKE_SECONDS", "600"))
+
+
 def warm_edge() -> None:
     """Российский вход (хостинг) хранит у себя копии стилей и скриптов. После выкладки новой версии сразу
     «прогреваем» его: он узнаёт о новой версии (сбрасывает старые копии) и заранее забирает свежие файлы —
@@ -366,13 +368,32 @@ def warm_edge() -> None:
             return 0
     if get("/api/health") != 200:
         log.info("Прогрев российского входа: хостинг не ответил")
-        return
-    exts = (".js", ".css", ".svg", ".png", ".webmanifest", ".woff2", ".webp", ".jpg")
-    files = sorted(p for p in config.STATIC_DIR.rglob("*") if p.is_file() and p.suffix in exts and p.stat().st_size < 3_000_000)
-    ok = sum(get("/static/" + p.relative_to(config.STATIC_DIR).as_posix()) == 200 for p in files)
-    log.info("Прогрев российского входа: %s из %s файлов", ok, len(files))
+    else:
+        exts = (".js", ".css", ".svg", ".png", ".webmanifest", ".woff2", ".webp", ".jpg")
+        files = sorted(p for p in config.STATIC_DIR.rglob("*") if p.is_file() and p.suffix in exts and p.stat().st_size < 3_000_000)
+        ok = sum(get("/static/" + p.relative_to(config.STATIC_DIR).as_posix()) == 200 for p in files)
+        log.info("Прогрев российского входа: %s из %s файлов", ok, len(files))
+    # Бесплатный Render усыпляет сервер после 15 минут без посетителей — тогда вместо сайта видна заставка Render
+    # «служба просыпается». Каждые 10 минут заходим на сайт сами (через российский вход — обычный внешний запрос),
+    # чтобы сервер не засыпал. 750 бесплатных часов в месяц хватает на один сервис круглосуточно.
+    fails = 0
+    while True:
+        time.sleep(KEEP_AWAKE_SECONDS)
+        if get("/api/health") == 200:
+            fails = 0
+            continue
+        fails += 1
+        direct = os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/")  # вход не ответил — будим сервер напрямую
+        if direct:
+            try:
+                urllib.request.urlopen(urllib.request.Request(direct + "/api/health", headers={"User-Agent": "YarkoWarm/1"}), timeout=60).read()
+            except Exception:  # noqa: BLE001
+                pass
+        if fails in (1, 6, 36):
+            log.warning("Поддержка сервера без сна: российский вход не ответил (%s раз подряд)", fails)
 
 
+@asynccontextmanager
 async def lifespan(app):
     db.connect()
     load_extra_banned(config.DATA_DIR / "banned_words.txt")
@@ -383,7 +404,9 @@ async def lifespan(app):
     updates_task = asyncio.create_task(updates_loop()) if os.environ.get("KRUG_UPDATES_LOOP", "1") != "0" else None
     from . import stickers2
     asyncio.get_running_loop().run_in_executor(None, tgbot.setup)
-    asyncio.get_running_loop().run_in_executor(None, warm_edge)
+    # отдельный фоновый поток (daemon): бесконечный цикл «не засыпать» не должен задерживать остановку сервера
+    import threading
+    threading.Thread(target=warm_edge, name="warm-edge", daemon=True).start()
     tag_task = asyncio.create_task(stickers2.tagging_loop()) if os.environ.get("KRUG_UPDATES_LOOP", "1") != "0" else None
     log.info("«%s» запущен: %s", config.APP_NAME, config.APP_URL)
     yield
