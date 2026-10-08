@@ -943,4 +943,4 @@ ALTER TABLE conversations ADD COLUMN IF NOT EXISTS theme TEXT;
 ALTER TABLE conversation_members ADD COLUMN IF NOT EXISTS theme TEXT;
 
 -- QEVI: тёмная тема по умолчанию
-ALTER TABLE users ALTER COLUMN theme SET DEFAULT 'dark';
+ALTER TABLE profiles ALTER COLUMN theme SET DEFAULT 'dark';
