@@ -356,6 +356,30 @@ async def updates_loop():
         await asyncio.sleep(300)
 
 
+def probe_site() -> None:
+    """Диагностика основного адреса извне (с Render): GET и POST к сайту, ответы — в журнал"""
+    import time
+    import urllib.error
+    import urllib.request
+    time.sleep(20)
+    base = config.APP_URL.rstrip("/")
+    tests = [("GET", "/api/health", None), ("GET", "/api/auth/me", None),
+             ("POST", "/api/auth/login", b'{"login":"proverka-diag","password":"x"}')]
+    for method, path, body in tests:
+        req = urllib.request.Request(base + path, data=body, method=method, headers={
+            "User-Agent": "Mozilla/5.0 YarkoProbe", "Content-Type": "application/json", "Origin": base,
+            "Accept": "application/json"})
+        t = time.time()
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                st, hd, data = r.status, dict(r.headers), r.read(400)
+        except urllib.error.HTTPError as e:
+            st, hd, data = e.code, dict(e.headers), e.read(400)
+        except Exception as e:  # noqa: BLE001
+            st, hd, data = 0, {}, repr(e).encode()
+        log.warning("ПРОБА %s %s → %s за %.1f с; заголовки %s; тело %r", method, path, st, time.time() - t, hd, data[:300])
+
+
 _BG: dict = {"loop": None, "tasks": []}
 KEEP_AWAKE_SECONDS = int(os.environ.get("KEEP_AWAKE_SECONDS", "600"))
 
@@ -432,6 +456,8 @@ async def lifespan(app):
         # отдельный фоновый поток (daemon): бесконечный цикл «не засыпать» не должен задерживать остановку сервера
         import threading
         threading.Thread(target=warm_edge, name="warm-edge", daemon=True).start()
+        if config.ON_RENDER:
+            threading.Thread(target=probe_site, name="probe-site", daemon=True).start()
     updates_task = asyncio.create_task(updates_loop()) if loops else None
     from . import stickers2
     tag_task = asyncio.create_task(stickers2.tagging_loop()) if loops else None
