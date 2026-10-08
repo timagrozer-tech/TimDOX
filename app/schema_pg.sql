@@ -971,3 +971,18 @@ CREATE TABLE IF NOT EXISTS consents (
     created_at TEXT NOT NULL DEFAULT krug_now()
 );
 CREATE INDEX IF NOT EXISTS idx_consents_user ON consents(user_id, kind, id);
+
+-- Реальное время в режиме REALTIME=db (несколько процессов сервера, опрос вместо постоянного соединения)
+CREATE TABLE IF NOT EXISTS rt_events (
+    id         BIGSERIAL PRIMARY KEY,
+    user_id    BIGINT NOT NULL,
+    event      TEXT NOT NULL,
+    data       TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT krug_now()
+);
+CREATE INDEX IF NOT EXISTS idx_rt_events_user ON rt_events(user_id, id);
+CREATE INDEX IF NOT EXISTS idx_rt_events_time ON rt_events(created_at);
+CREATE TABLE IF NOT EXISTS rt_online (
+    user_id BIGINT PRIMARY KEY,
+    seen_at TEXT NOT NULL
+);

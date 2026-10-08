@@ -1,5 +1,7 @@
 """Обработка изображений: проверка, удаление EXIF (геометки), сжатие, превью."""
 import io
+import os
+import urllib.request
 import secrets
 from collections import OrderedDict
 from contextvars import ContextVar
@@ -117,6 +119,34 @@ def _supabase_request(method: str, path: str, data: bytes | None = None, headers
         "authorization": f"Bearer {config.SUPABASE_SERVICE_KEY}", "apikey": config.SUPABASE_SERVICE_KEY, **(headers or {})})
     with urllib.request.urlopen(req, timeout=120) as resp:
         return resp.read()
+
+
+def cached_copy(rel: str):
+    """Копия файла из хранилища на своём диске (MEDIA_CACHE_DIR): скачивается один раз, дальше берётся с диска"""
+    from pathlib import Path
+    if ".." in rel or rel.startswith("/"):
+        return None
+    target = Path(config.MEDIA_CACHE_DIR) / rel
+    if target.is_file():
+        return target
+    url = public_url(rel)
+    if not url:
+        return None
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Yarko"}), timeout=120) as r:
+            data = r.read(200 * 1048576 + 1)
+    except Exception:  # noqa: BLE001 — нет файла или хранилище недоступно: браузер пойдёт по прямой ссылке
+        return None
+    if len(data) > 200 * 1048576:
+        return None
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        tmp = target.with_name(target.name + f".{os.getpid()}.tmp")
+        tmp.write_bytes(data)
+        os.replace(tmp, target)
+    except OSError:
+        return None
+    return target
 
 
 def public_url(rel: str) -> str | None:

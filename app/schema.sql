@@ -895,3 +895,18 @@ CREATE TABLE IF NOT EXISTS consents (
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_consents_user ON consents(user_id, kind, id);
+
+-- Реальное время в режиме REALTIME=db (несколько процессов сервера, опрос вместо постоянного соединения)
+CREATE TABLE IF NOT EXISTS rt_events (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL,
+    event      TEXT NOT NULL,
+    data       TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_rt_events_user ON rt_events(user_id, id);
+CREATE INDEX IF NOT EXISTS idx_rt_events_time ON rt_events(created_at);
+CREATE TABLE IF NOT EXISTS rt_online (
+    user_id INTEGER PRIMARY KEY,
+    seen_at TEXT NOT NULL
+);

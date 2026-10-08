@@ -19,16 +19,22 @@ KEYS = ["APP_URL", "DATABASE_URL", "DB_AUTO_SCHEMA", "KRUG_SECRET_KEY", "APP_NAM
         "MEDIA_STORAGE", "SUPABASE_URL", "SUPABASE_SERVICE_KEY", "SUPABASE_BUCKET",
         "MAX_UPLOAD_MB", "MAX_VIDEO_MB", "MAX_AUDIO_MB", "MAX_FILE_MB", "MAX_JSON_KB", "REEL_MAX_SECONDS",
         "REGISTER_PER_DAY", "REGISTER_PER_HOUR", "NEW_DIALOGS_NEW_ACCOUNT", "UPLOAD_DAY_FILES", "UPLOAD_DAY_FILES_UNVERIFIED",
-        "UPLOAD_DAY_MB", "UPLOAD_DAY_MB_UNVERIFIED", "KRUG_UPDATES_LOOP"]
+        "UPLOAD_DAY_MB", "UPLOAD_DAY_MB_UNVERIFIED", "KRUG_UPDATES_LOOP", "EDGE_SECRET",
+        "TURN_SECRET", "TURN_HOST", "TURN_URLS", "TURN_USERNAME", "TURN_CREDENTIAL"]
 
 
 async def export_env(request: Request):
     token = os.environ.get("MIGRATE_TOKEN", "")
     got = request.headers.get("x-migrate-token", "")
-    if len(token) < 32 or not got or not hmac.compare_digest(got, token):
+    by_token = len(token) >= 32 and got and hmac.compare_digest(got, token)
+    # переезд на хостинг, где уже стоит российский вход: он знает общий секрет EDGE_SECRET — токен не нужен
+    from .web import from_edge
+    by_edge = from_edge(request.headers)
+    if not (by_token or by_edge):
         return JSONResponse({"error": "Не найдено"}, status_code=404)
     out = {k: os.environ[k] for k in KEYS if os.environ.get(k)}
-    out.setdefault("TRUSTED_PROXY_HOPS", "1")  # на новом сервере перед сайтом один прокси хостинга
+    if not by_edge:
+        out.setdefault("TRUSTED_PROXY_HOPS", "1")  # на новом сервере перед сайтом один прокси хостинга
     return JSONResponse(out)
 
 

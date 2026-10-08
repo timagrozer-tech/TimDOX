@@ -1,5 +1,6 @@
 """Точка входа приложения Yarko."""
 import asyncio
+import json
 import os
 import time
 import logging
@@ -8,6 +9,7 @@ from urllib.parse import quote
 from contextlib import asynccontextmanager
 
 from starlette.applications import Starlette
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
@@ -40,7 +42,7 @@ SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
 
 # Версия сборки: когда на сервере выходит обновление, открытые вкладки перезагружаются при следующем переходе
-APP_VERSION = (os.environ.get("RENDER_GIT_COMMIT") or str(int(time.time())))[:12].encode()
+APP_VERSION = (os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("YARKO_COMMIT") or str(int(time.time())))[:12].encode()
 
 
 MAX_BODY = (max(config.MAX_VIDEO_MB, config.MAX_UPLOAD_MB * 10) + 5) * 1024 * 1024
@@ -242,6 +244,13 @@ async def uploads(request: Request):
     dl = re.sub(r'[\x00-\x1f"\\/]', "_", request.query_params.get("dl", ""))[:150].strip()
     attach = rel.endswith(".bin") or bool(dl)
     cdn = media.public_url(rel)
+    if cdn and config.MEDIA_PROXY and not attach:
+        # хостинг в России: CDN хранилища за рубежом замедлен — отдаём файл сами и сохраняем копию на диске,
+        # дальше её отдаёт веб-сервер хостинга напрямую (папка uploads в корне сайта)
+        local = await run_in_threadpool(media.cached_copy, rel)
+        if local:
+            return FileResponse(local, media_type=media.content_type_of(rel),
+                                headers={"Cache-Control": "public, max-age=31536000, immutable"})
     if cdn:
         if attach:
             cdn += ("&" if "?" in cdn else "?") + "download=" + quote(dl or rel.rsplit("/", 1)[-1])
@@ -313,7 +322,8 @@ async def robots(request: Request):
 
 async def health(request: Request):
     db.value("SELECT 1")
-    return JSONResponse({"status": "ok"})
+    # где работает сайт: render | passenger (обычный хостинг) | server — по этому Render понимает, что сайт переехал
+    return JSONResponse({"status": "ok", "runtime": "render" if config.ON_RENDER else os.environ.get("YARKO_RUNTIME", "server")})
 
 
 async def housekeeping():
@@ -346,6 +356,7 @@ async def updates_loop():
         await asyncio.sleep(300)
 
 
+_BG: dict = {"loop": None, "tasks": []}
 KEEP_AWAKE_SECONDS = int(os.environ.get("KEEP_AWAKE_SECONDS", "600"))
 
 
@@ -379,9 +390,19 @@ def warm_edge() -> None:
     fails = 0
     while True:
         time.sleep(KEEP_AWAKE_SECONDS)
-        if get("/api/health") == 200:
+        try:
+            with urllib.request.urlopen(urllib.request.Request(base + "/api/health", headers={"User-Agent": "YarkoWarm/1"}), timeout=60) as r:
+                runtime = json.loads(r.read() or b"{}").get("runtime")
+            if runtime == "passenger":
+                # сайт переехал на хостинг: Render больше не нужен — останавливаем его фоновые задачи и даём уснуть
+                log.warning("Сайт работает на хостинге — Render переходит в резерв: фоновые задачи остановлены")
+                if _BG["loop"]:
+                    _BG["loop"].call_soon_threadsafe(lambda: [t.cancel() for t in _BG["tasks"] if t])
+                return
             fails = 0
             continue
+        except Exception:  # noqa: BLE001
+            pass
         fails += 1
         direct = os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/")  # вход не ответил — будим сервер напрямую
         if direct:
@@ -397,20 +418,28 @@ def warm_edge() -> None:
 async def lifespan(app):
     db.connect()
     load_extra_banned(config.DATA_DIR / "banned_words.txt")
-    from .starter_stickers import ensure_starter_pack
-    await asyncio.to_thread(ensure_starter_pack)
-    task = asyncio.create_task(housekeeping())
-    world_task = asyncio.create_task(world_engine.loop()) if world_engine.ENABLED else None
-    updates_task = asyncio.create_task(updates_loop()) if os.environ.get("KRUG_UPDATES_LOOP", "1") != "0" else None
+    # На обычном хостинге (Passenger) запросы обслуживают несколько процессов — фоновые задачи запускает только один
+    # из них (KRUG_BACKGROUND=1, его выбирает app/wsgi.py), иначе уборка и публикации выполнялись бы по нескольку раз.
+    background = os.environ.get("KRUG_BACKGROUND", "1") != "0"
+    loops = background and os.environ.get("KRUG_UPDATES_LOOP", "1") != "0"
+    task = world_task = updates_task = tag_task = None
+    if background:
+        from .starter_stickers import ensure_starter_pack
+        await asyncio.to_thread(ensure_starter_pack)
+        task = asyncio.create_task(housekeeping())
+        world_task = asyncio.create_task(world_engine.loop()) if world_engine.ENABLED else None
+        asyncio.get_running_loop().run_in_executor(None, tgbot.setup)
+        # отдельный фоновый поток (daemon): бесконечный цикл «не засыпать» не должен задерживать остановку сервера
+        import threading
+        threading.Thread(target=warm_edge, name="warm-edge", daemon=True).start()
+    updates_task = asyncio.create_task(updates_loop()) if loops else None
     from . import stickers2
-    asyncio.get_running_loop().run_in_executor(None, tgbot.setup)
-    # отдельный фоновый поток (daemon): бесконечный цикл «не засыпать» не должен задерживать остановку сервера
-    import threading
-    threading.Thread(target=warm_edge, name="warm-edge", daemon=True).start()
-    tag_task = asyncio.create_task(stickers2.tagging_loop()) if os.environ.get("KRUG_UPDATES_LOOP", "1") != "0" else None
+    tag_task = asyncio.create_task(stickers2.tagging_loop()) if loops else None
+    _BG["loop"], _BG["tasks"] = asyncio.get_running_loop(), [task, world_task, updates_task, tag_task]
     log.info("«%s» запущен: %s", config.APP_NAME, config.APP_URL)
     yield
-    task.cancel()
+    if task:
+        task.cancel()
     if tag_task:
         tag_task.cancel()
     if updates_task:

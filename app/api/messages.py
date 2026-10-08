@@ -7,6 +7,7 @@ from sse_starlette.sse import EventSourceResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
+from starlette.concurrency import run_in_threadpool
 
 from .. import config, db, economy, media, social
 from ..realtime import hub
@@ -718,7 +719,21 @@ async def stream(request: Request):
     return EventSourceResponse(events(), ping=None, headers={"X-Accel-Buffering": "no"})
 
 
+@auth()
+async def poll(request: Request):
+    """Опрос событий (режим REALTIME=db): хостинг без постоянных соединений. Клиент передаёт курсор after."""
+    from ..realtime import POLLING
+    if not POLLING:
+        raise ApiError(404, "Не найдено")
+    v = request.state.user["id"]
+    raw = request.query_params.get("after")
+    after = int(raw) if raw and raw.isdigit() else None
+    return JSONResponse(await run_in_threadpool(hub.poll, v, after, lambda: social.friend_ids(v)),
+                        headers={"Cache-Control": "no-store"})
+
+
 routes = [
+    Route("/api/poll", poll, methods=["GET"]),
     Route("/api/conversations", list_conversations, methods=["GET"]),
     Route("/api/conversations", open_conversation, methods=["POST"]),
     Route("/api/conversations/group", create_group, methods=["POST"]),

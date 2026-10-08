@@ -126,6 +126,9 @@ def _writable_dir(d: Path, fallback: Path) -> Path:
 
 
 DATA_DIR = _writable_dir(DATA_DIR, Path("/tmp/yarko-data"))
+# Хостинг в России: файлы из зарубежного хранилища (Supabase) отдаются через свой сервер и копируются в MEDIA_CACHE_DIR
+MEDIA_PROXY = _bool("MEDIA_PROXY", False)
+MEDIA_CACHE_DIR = Path(os.environ.get("MEDIA_CACHE_DIR", DATA_DIR / "media-cache"))
 if "DB_PATH" not in os.environ:
     DB_PATH = DATA_DIR / "krug.db"
 UPLOAD_DIR = _writable_dir(UPLOAD_DIR, Path("/tmp/yarko-uploads"))

@@ -45,6 +45,7 @@ async function request(method, url, data, isForm = false) {
   } catch {
     throw new ApiError(0, { error: "Нет соединения с сервером. Проверьте интернет." });
   }
+  if (url.startsWith("/api/calls")) boostPoll();
   const ver = res.headers.get("x-app-version");
   if (ver) {
     if (!state.appVersion) state.appVersion = ver;
@@ -103,6 +104,7 @@ export async function loadMe() {
   state.csrf = me.csrf || null;
   state.requireEmailConfirm = !!me.require_email_confirm;
   state.mailEnabled = !!me.mail_enabled;
+  state.realtime = me.realtime || "sse";
   if (me.counters) setCounters(me.counters);
   return me.user;
 }
@@ -115,20 +117,70 @@ export function setCounters(c) {
 // ---------------------------------------------------------------- Реальное время (SSE)
 let source = null;
 let retry = 1000;
+const EVENTS = ["notification", "message", "message_update", "typing", "read", "presence", "counters", "items", "conv_theme",
+  "call_invite", "call_signal", "call_join", "call_leave", "call_decline", "call_end"];
+
+function dispatch(ev, data) {
+  if (ev === "counters") setCounters(data);
+  if (ev.startsWith("call_")) boostPoll();
+  emit(ev, data);
+}
+
+// ---- опрос сервера (хостинг без постоянных соединений): раз в 2 с, во время звонка — чаще, в фоне — реже
+let polling = false, pollTimer = null, cursor = null, boostUntil = 0, pollFails = 0;
+export function boostPoll(ms = 90000) {
+  boostUntil = Date.now() + ms;
+  if (polling && pollTimer) { clearTimeout(pollTimer); pollTimer = setTimeout(pollOnce, 150); }
+}
+function pollDelay() {
+  if (pollFails) return Math.min(2000 * 2 ** pollFails, 30000);
+  if (Date.now() < boostUntil) return 700;
+  return document.hidden ? 15000 : 2000;
+}
+async function pollOnce() {
+  pollTimer = null;
+  if (!polling || !state.me) return;
+  try {
+    const res = await fetch(`/api/poll${cursor == null ? "" : `?after=${cursor}`}`, { credentials: "same-origin", cache: "no-store" });
+    if (res.status === 401) { stopPolling(); if (state.me) emit("logged-out"); return; }
+    if (!res.ok) throw new Error(String(res.status));
+    const d = await res.json();
+    const first = cursor == null || pollFails > 0;
+    cursor = d.cursor;
+    pollFails = 0;
+    if (first) emit("stream-open");
+    for (const e of d.events || []) { if (EVENTS.includes(e.event)) dispatch(e.event, e.data); }
+  } catch {
+    pollFails = Math.min(pollFails + 1, 5);
+  }
+  if (polling) pollTimer = setTimeout(pollOnce, pollDelay());
+}
+function stopPolling() {
+  polling = false;
+  if (pollTimer) clearTimeout(pollTimer);
+  pollTimer = null;
+}
+document.addEventListener("visibilitychange", () => {
+  if (polling && !document.hidden && pollTimer) { clearTimeout(pollTimer); pollTimer = setTimeout(pollOnce, 50); }
+});
 
 export function connectStream() {
+  if (state.realtime === "poll") {
+    if (polling || !state.me) return;
+    polling = true; cursor = null; pollFails = 0;
+    pollOnce();
+    return;
+  }
   if (source || !state.me) return;
   source = new EventSource("/api/stream");
   source.addEventListener("hello", () => { retry = 1000; emit("stream-open"); });
   // сервер закрыл поток: сессия завершена на другом устройстве, истекла или аккаунт заблокирован
   source.addEventListener("session_end", () => { disconnectStream(); if (state.me) emit("logged-out"); });
-  for (const ev of ["notification", "message", "message_update", "typing", "read", "presence", "counters", "items", "conv_theme",
-    "call_invite", "call_signal", "call_join", "call_leave", "call_decline", "call_end"]) {
+  for (const ev of EVENTS) {
     source.addEventListener(ev, (e) => {
       let data;
       try { data = JSON.parse(e.data); } catch { return; }
-      if (ev === "counters") setCounters(data);
-      emit(ev, data);
+      dispatch(ev, data);
     });
   }
   source.onerror = () => {
@@ -141,6 +193,7 @@ export function connectStream() {
 }
 
 export function disconnectStream() {
+  stopPolling();
   source?.close();
   source = null;
 }

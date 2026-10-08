@@ -10,6 +10,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from .. import config, db, email_codes, mailer, qr, referrals, social, twofa
+from ..realtime import POLLING
 from ..security import (DISPOSABLE_DOMAINS, LIMITS, USERNAME_RE, hash_password, new_token, rate_limiter, token_hash,
                         validate_password, verify_password)
 from ..web import ApiError, auth, body, client_ip, ip_prefix, limit, ok
@@ -41,6 +42,7 @@ def me_payload(request: Request) -> dict:
         "counters": social.counters(u["id"]),
         "require_email_confirm": config.REQUIRE_EMAIL_CONFIRM,
         "mail_enabled": mailer.configured(),
+        "realtime": "poll" if POLLING else "sse",
     }
 
 
