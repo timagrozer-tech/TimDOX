@@ -152,33 +152,7 @@ for f in index.php .htaccess .user.ini cache static; do
 done
 mkdir -p "$SITE/uploads" "$SITE/tmp"
 rm -rf "$SITE/static" && cp -R "$Y/current/static" "$SITE/static" || die "Не удалось скопировать static"
-cat > "$SITE/passenger_wsgi.py" <<EOF
-# Yarko: запуск через Passenger (создано установщиком deploy/reghost/install.sh)
-import os, sys
-HOME = "$Y"
-INTERP = HOME + "/venv/bin/python"
-if sys.executable != INTERP:
-    os.execl(INTERP, INTERP, *sys.argv)
-APP = os.path.realpath(HOME + "/current")
-for line in open(HOME + "/yarko.env", encoding="utf-8"):
-    line = line.strip()
-    if line and not line.startswith("#") and "=" in line:
-        k, v = line.split("=", 1)
-        os.environ.setdefault(k, v)
-os.environ["YARKO_COMMIT"] = open(APP + "/.commit").read().strip()[:12]
-sys.path.insert(0, APP)
-os.chdir(APP)
-try:
-    from app.wsgi import application  # noqa: E402,F401
-except BaseException:  # ошибку запуска показываем на странице и пишем в журнал — иначе Passenger покажет лишь «could not be started»
-    import traceback
-    _err = traceback.format_exc()
-    open(HOME + "/startup-error.log", "a", encoding="utf-8").write(_err + "\n")
-
-    def application(environ, start_response):
-        start_response("500 Internal Server Error", [("Content-Type", "text/plain; charset=utf-8")])
-        return [("Yarko: ошибка запуска\n" + _err).encode("utf-8")]
-EOF
+sed "s|__YARKO_HOME__|$Y|" "$Y/current/deploy/reghost/passenger_wsgi.py" > "$SITE/passenger_wsgi.py" || die "Нет шаблона passenger_wsgi.py"
 cat > "$SITE/.htaccess" <<'EOF'
 # Yarko: Python-приложение (Passenger). Готовые файлы (static, uploads) отдаёт сам веб-сервер.
 <FilesMatch "^(passenger_wsgi\.py|\.restart-app|\.htaccess)$">
@@ -211,7 +185,7 @@ AddType font/woff2 .woff2
   ExpiresByType video/mp4 "access plus 1 year"
 </IfModule>
 EOF
-rm -f "$Y/startup-error.log"
+rm -f "$Y/startup-error.log" "$Y/passenger-trace.log"
 touch "$SITE/.restart-app" "$SITE/tmp/restart.txt"
 ok "сайт переключён (старый вход сохранён в $BK)"
 
@@ -229,9 +203,12 @@ if [ "$GOOD" != 1 ]; then
   echo
   echo "    ---- ответ сайта ----"
   sed 's/<[^>]*>//g' "$Y/last-response.html" 2>/dev/null | grep -v '^[[:space:]]*$' | head -40
+  echo "    ---- запуск в Passenger ----"
+  tail -n 30 "$Y/passenger-trace.log" 2>/dev/null || echo "    (Passenger ни разу не запустил passenger_wsgi.py)"
   [ -s "$Y/startup-error.log" ] && { echo "    ---- ошибка запуска ----"; tail -n 30 "$Y/startup-error.log"; }
-  echo "    ---- журналы ошибок ----"
-  for f in "$HOME"/logs/*"$DOMAIN"*error* "$HOME"/logs/*error*; do [ -f "$f" ] && { echo "[$f]"; tail -n 25 "$f"; break; }; done
+  echo "    ---- журналы Passenger ----"
+  grep -h -i -E "passenger|traceback|python" "$HOME"/logs/* 2>/dev/null | grep -v -E "nginx_proxy_temp|GET /static" | tail -n 25
+  ls "$HOME/logs" 2>/dev/null | tr '\n' ' '; echo
   echo "    -------------------"
   echo "    Не запустилось — возвращаю прежний вход (через Render)"
   rm -rf "$SITE/passenger_wsgi.py" "$SITE/.htaccess" "$SITE/static"
