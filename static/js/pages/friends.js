@@ -18,7 +18,7 @@ export async function friendsPage({ query }) {
   let current = tabs.some((t) => t.id === query.tab) ? query.tab : "all";
 
   const card = (...c) => h("div.card", ...c);
-  const empty = (ic, title, text, extra) => h("div.empty", icon(ic), h("h3", title), text ? h("p", text) : null, extra || null);
+  const empty = (ic, title, text, extra) => h("div.empty", icon(ic), h("h2", title), text ? h("p", text) : null, extra || null);
 
   async function draw() {
     tabBar.querySelectorAll("[role=tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === current)));

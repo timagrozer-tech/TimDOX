@@ -44,7 +44,7 @@ export async function marketPage({ query = {} } = {}) {
               if (!(await confirmDialog({ title: `Купить «${l.item.name}» за ${fmt(l.price)} KC?`, text: "Предмет сразу появится у вас. Монеты уйдут продавцу, 7% сгорает.", confirm: "Купить" }))) return;
               try { const r = await api.post(`/api/market/${l.id}/buy`); kc = r.kc; toast("Куплено — найдите предмет в магазине", { icon: "check" }); document.dispatchEvent(new CustomEvent("wallet:changed")); loadBuy(); } catch (err) { toastError(err); }
             }) }, `${fmt(l.price)} KC`));
-      })) : h("div.card.empty", icon("gift"), h("h3", "Лотов пока нет"), h("p", "Купленные в магазине рамки и титулы можно продать здесь через 7 дней.")));
+      })) : h("div.card.empty", icon("gift"), h("h2", "Лотов пока нет"), h("p", "Купленные в магазине рамки и титулы можно продать здесь через 7 дней.")));
     } catch (e) { body.replaceChildren(h("p.muted", e.message)); }
   }
 

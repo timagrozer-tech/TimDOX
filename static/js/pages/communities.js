@@ -192,7 +192,7 @@ export async function communityPage({ params, query }) {
       const list = infiniteList({
         load: (cursor) => api.get(`/api/communities/${slug}/posts`, { cursor }),
         render: (p) => (c.pinned && p.id === c.pinned.id ? null : postCard(p, { onPin: async () => { await reload(); select("posts"); } })),
-        empty: h("div.card.empty", icon("edit"), h("h3", "Записей пока нет")),
+        empty: h("div.card.empty", icon("edit"), h("h2", "Записей пока нет")),
         container: card,
       });
       wrap.append(list.el);

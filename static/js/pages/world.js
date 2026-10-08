@@ -66,7 +66,7 @@ export async function worldPage() {
   const data = await api.get("/api/world");
   if (!data.ready) {
     return h("div.stack", h("div.page-head", h("h1", "Мир Yarko")),
-      h("div.card.empty", icon("world"), h("h3", "Мир просыпается"), h("p", "Персонажи и организации появятся совсем скоро. Загляните через пару минут!")));
+      h("div.card.empty", icon("world"), h("h2", "Мир просыпается"), h("p", "Персонажи и организации появятся совсем скоро. Загляните через пару минут!")));
   }
   const tabs = [["quests", "Задания", "flag"], ["orgs", "Организации", "community"], ["people", "Жители", "users"], ["story", "Сюжеты", "book"]];
   let current = "quests";
@@ -77,7 +77,7 @@ export async function worldPage() {
     bar.querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.t === current)));
     if (current === "quests") {
       pane.replaceChildren(
-        open.length ? h("div.wq-grid", open.map(questCard)) : h("div.card.empty", icon("check"), h("h3", "Все задания выполнены!"), h("p", "Новые появятся в понедельник вместе с темой недели.")),
+        open.length ? h("div.wq-grid", open.map(questCard)) : h("div.card.empty", icon("check"), h("h2", "Все задания выполнены!"), h("p", "Новые появятся в понедельник вместе с темой недели.")),
         data.locked_secrets ? h("p.world-hint", `🔒 Ещё ${plural(data.locked_secrets, ["секретное задание", "секретных задания", "секретных заданий"])} — откроются, когда вы станете «Другом» организации (30 репутации).`) : null,
         data.quests.some((q) => q.done) ? h("details.world-done", h("summary", `Выполнено: ${data.quests.filter((q) => q.done).length}`),
           h("div.wq-grid", data.quests.filter((q) => q.done).map(questCard))) : null);
@@ -97,7 +97,7 @@ export async function worldPage() {
         a.status !== "pending" ? h("p", a.stage_text) : h("p.muted", "Сюжет начнётся, когда завершится текущий."),
         a.history.length ? h("ol.warc-hist", a.history.map((x) => h("li", "Выбор жителей: ", h("b", x.choice)))) : null,
         a.status === "active" && a.post_id ? h("a.btn.primary.sm", { href: `/post/${a.post_id}` }, icon("flag", "sm"), "Голосовать за продолжение") : null))
-        : [h("div.card.empty", icon("book"), h("h3", "Сюжеты скоро начнутся"))]));
+        : [h("div.card.empty", icon("book"), h("h2", "Сюжеты скоро начнутся"))]));
     }
   };
   bar.append(...tabs.map(([id, label, ic]) => h("button", { type: "button", role: "tab", dataset: { t: id }, onclick: () => { current = id; draw(); } }, icon(ic, "sm"), label)));

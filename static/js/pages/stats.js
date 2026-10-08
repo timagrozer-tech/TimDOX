@@ -223,7 +223,7 @@ export async function statsPage() {
       tile("Ваши записи", t.posts, pv("posts"), "edit"),
       tile("Просмотры историй", t.story_views, pv("story_views"), "story"));
     const empty = !engaged && !t.posts && !t.followers
-      ? h("div.card.empty", icon("trend"), h("h3", "Пока тихо"), h("p", "Опубликуйте запись или историю — здесь появится, как на неё откликаются."),
+      ? h("div.card.empty", icon("trend"), h("h2", "Пока тихо"), h("p", "Опубликуйте запись или историю — здесь появится, как на неё откликаются."),
         h("a.btn.primary", { href: "/" }, "Написать запись"))
       : null;
     body.replaceChildren(hero, tiles, ...(empty ? [empty] : [activityCard(data), reactionsCard(data), timeCard(data), topPostsCard(data), fansCard(data)]).filter(Boolean), overallCard(data));

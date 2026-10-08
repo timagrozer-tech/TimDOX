@@ -360,7 +360,7 @@ async function tabPacks(root) {
 
 async function tabCollection(root) {
   const d = await api.get("/api/stickers");
-  const sec = (title, items, extra = null, empty = "") => h("section.card.card-pad.stk-sec", h("div.row", h("h3", title), h("div.spacer"), extra),
+  const sec = (title, items, extra = null, empty = "") => h("section.card.card-pad.stk-sec", h("div.row", h("h2", title), h("div.spacer"), extra),
     items.length ? h("div.stk-mini-grid", items.map((s) => { const b = h("button.pack-cell", { type: "button", onclick: () => stickerActions(b, s) }, stickerEl(s)); return b; }))
       : h("p.muted", empty));
   root.replaceChildren(

@@ -342,4 +342,18 @@ export function currentTheme() {
   try { return localStorage.getItem("krug-theme") || "dark"; } catch { return "dark"; }
 }
 
-export function setTitle(t) { document.title = t ? `${t} — Yarko` : "Yarko — социальная сеть нового поколения"; }
+let titled = false;
+export function setTitle(t) {
+  document.title = t ? `${t} — Yarko` : "Yarko — социальная сеть нового поколения";
+  // переход между страницами без перезагрузки: программа экранного доступа сообщает, какая страница открылась (WCAG 4.1.3)
+  if (!titled) { titled = true; return; }
+  let live = document.getElementById("route-announcer");
+  if (!live) {
+    live = document.createElement("div");
+    live.id = "route-announcer"; live.className = "sr-only";
+    live.setAttribute("aria-live", "polite"); live.setAttribute("aria-atomic", "true");
+    document.body.append(live);
+  }
+  live.textContent = "";
+  setTimeout(() => { live.textContent = t || "Главная"; }, 60);
+}

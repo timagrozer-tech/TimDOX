@@ -20,7 +20,7 @@ export async function guestsPage() {
       h("div.who", h("a.name", { href: `/u/${g.username}` }, g.name),
         h("div.sub", [timeAgo(g.visited_at), g.is_friend ? "друг" : g.city].filter(Boolean).join(" · "))),
       h("div.acts", g.is_new ? h("span.new-dot", { title: "Новый гость" }, "новый") : null))))
-    : h("div.empty", icon("eye"), h("h3", "Гостей пока не было"), h("p", "Здесь появятся люди, которые заходили на вашу страницу за последние 30 дней."));
+    : h("div.empty", icon("eye"), h("h2", "Гостей пока не было"), h("p", "Здесь появятся люди, которые заходили на вашу страницу за последние 30 дней."));
   return h("div.stack",
     h("div.page-head", h("h1", "Гости")),
     h("div.card.card-pad", h("label.check", toggle, h("span", h("b", "Режим невидимки"), h("br"),

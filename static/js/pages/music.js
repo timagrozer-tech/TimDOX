@@ -23,7 +23,7 @@ function head(active, onSearch, q = "") {
 }
 
 function offline() {
-  return h("div.card.empty", icon("music"), h("h3", "Музыкальный каталог не отвечает"),
+  return h("div.card.empty", icon("music"), h("h2", "Музыкальный каталог не отвечает"),
     h("p", "Похоже, сервис временно недоступен. Радио и «Моя музыка» могут работать — попробуйте их или зайдите чуть позже."),
     h("a.btn.primary", { href: "/music?tab=radio" }, "Включить радио"));
 }
@@ -129,7 +129,7 @@ async function myTab(box) {
   const d = await api.get("/api/music/likes");
   setLiked(d.items.map((t) => t.key));
   if (!d.items.length) {
-    box.replaceChildren(h("div.card.empty.mu-empty", h("span.mu-empty-ic", icon("heart")), h("h3", "Здесь будет ваша музыка"),
+    box.replaceChildren(h("div.card.empty.mu-empty", h("span.mu-empty-ic", icon("heart")), h("h2", "Здесь будет ваша музыка"),
       h("p", "Нажимайте ♥ у треков и радиостанций — они соберутся здесь, а «Волна Yarko» начнёт подстраиваться под ваш вкус."),
       h("a.btn.primary", { href: "/music" }, "Найти музыку")));
     return;
@@ -163,7 +163,7 @@ async function searchView(box, q) {
   box.replaceChildren(h("div.spinner"));
   const d = await api.get("/api/music/search", { q });
   if (!d.tracks.length && !d.stations.length) {
-    box.replaceChildren(h("div.card.empty", icon("search"), h("h3", "Ничего не нашлось"), h("p", "Попробуйте другое слово или имя исполнителя — ищем среди полных треков и радиостанций.")));
+    box.replaceChildren(h("div.card.empty", icon("search"), h("h2", "Ничего не нашлось"), h("p", "Попробуйте другое слово или имя исполнителя — ищем среди полных треков и радиостанций.")));
     return;
   }
   box.replaceChildren(
@@ -184,7 +184,7 @@ export async function musicPage({ query }) {
       else if (tab === "russian") await russianTab(box);
       else await homeTab(box);
     } catch (e) {
-      box.replaceChildren(e.status === 503 ? offline() : h("div.card.empty", h("h3", "Не удалось загрузить музыку"), h("p", e.message)));
+      box.replaceChildren(e.status === 503 ? offline() : h("div.card.empty", h("h2", "Не удалось загрузить музыку"), h("p", e.message)));
     }
   };
   const onSearch = (value) => {

@@ -151,7 +151,7 @@ onRender(async (m, query, sameUrl, backKey) => {
     const shell = ensureShell(root);
     setActive(path);
     setTitle("Страница не найдена");
-    shell.main.replaceChildren(h("div.card.empty", h("h3", "Страница не найдена"), h("p", "Возможно, ссылка устарела."), h("a.btn.primary", { href: "/" }, "На главную")));
+    shell.main.replaceChildren(h("div.card.empty", h("h2", "Страница не найдена"), h("p", "Возможно, ссылка устарела."), h("a.btn.primary", { href: "/" }, "На главную")));
     return;
   }
   if (!m.opts.public && !state.me) {
@@ -189,7 +189,7 @@ onRender(async (m, query, sameUrl, backKey) => {
   } catch (e) {
     if (myGen !== renderGen) return;
     console.error(e);
-    container.replaceChildren(h("div.card.empty", h("h3", e.status === 404 ? "Не найдено" : "Не удалось загрузить страницу"), h("p", e.message),
+    container.replaceChildren(h("div.card.empty", h("h2", e.status === 404 ? "Не найдено" : "Не удалось загрузить страницу"), h("p", e.message),
       h("a.btn.primary", { href: "/" }, "На главную")));
   }
   shown = { url: location.pathname + location.search, path, node };

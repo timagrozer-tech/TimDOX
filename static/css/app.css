@@ -169,7 +169,7 @@ p { margin: 0; }
 .divider { height: 1px; background: var(--border); margin: 12px 0; border: 0; }
 .empty { padding: 40px 20px; text-align: center; color: var(--text-3); display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .empty .icon { width: 40px; height: 40px; stroke-width: 1.5; color: var(--text-3); opacity: .8; }
-.empty h3 { color: var(--text); font-size: 17px; }
+.empty h2, .empty h3 { color: var(--text); font-size: 17px; }
 
 /* ---------- Аватары ---------- */
 .avatar {

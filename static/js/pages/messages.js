@@ -123,7 +123,7 @@ export async function messagesPage({ params }) {
   }
   function drawList() {
     if (!convs.length) {
-      listEl.replaceChildren(h("div.empty", icon("message"), h("h3", "Диалогов пока нет"),
+      listEl.replaceChildren(h("div.empty", icon("message"), h("h2", "Диалогов пока нет"),
         h("p", "Откройте профиль друга и нажмите «Написать»."), h("a.btn.soft.sm", { href: "/friends" }, "К списку друзей")));
       return;
     }
@@ -144,7 +144,7 @@ export async function messagesPage({ params }) {
   async function openChat(id) {
     let conv;
     try { conv = await api.get(`/api/conversations/${id}`); } catch (e) {
-      chatPane.replaceChildren(h("div.chat-empty", h("div.empty", icon("x"), h("h3", "Диалог не найден"), h("p", e.message))));
+      chatPane.replaceChildren(h("div.chat-empty", h("div.empty", icon("x"), h("h2", "Диалог не найден"), h("p", e.message))));
       return;
     }
     setTitle(conv.title);
@@ -375,7 +375,7 @@ export async function messagesPage({ params }) {
     function drawAll(keepBottomOffset = null) {
       const nodes = [dayFloat];
       if (chat.hasMore) nodes.push(h("button.btn.ghost.sm", { type: "button", style: { alignSelf: "center" }, onclick: loadOlder }, "Показать ранние сообщения"));
-      if (!chat.messages.length) nodes.push(h("div.chat-empty", h("div.empty", convAvatar(conv, "lg"), h("h3", conv.title), h("p", "Напишите первое сообщение 👋"))));
+      if (!chat.messages.length) nodes.push(h("div.chat-empty", h("div.empty", convAvatar(conv, "lg"), h("h2", conv.title), h("p", "Напишите первое сообщение 👋"))));
       chat.messages.forEach((m, i) => nodes.push(...msgNode(m, chat.messages[i - 1], chat.messages[i + 1])));
       body.replaceChildren(...nodes);
       if (keepBottomOffset != null) body.scrollTop = body.scrollHeight - keepBottomOffset;
@@ -820,7 +820,7 @@ export async function messagesPage({ params }) {
 
   await loadList();
   if (activeId) openChat(activeId);
-  else chatPane.replaceChildren(h("div.chat-empty", h("div.empty", icon("message"), h("h3", "Выберите диалог"),
+  else chatPane.replaceChildren(h("div.chat-empty", h("div.empty", icon("message"), h("h2", "Выберите диалог"),
     h("p", "Или нажмите «+» над списком, чтобы собрать беседу из друзей."))));
   api.get("/api/counters").then(setCounters).catch(() => {});
   return layout;

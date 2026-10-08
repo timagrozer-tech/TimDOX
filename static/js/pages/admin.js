@@ -60,7 +60,7 @@ function modLog() {
   const load = async () => {
     try {
       const d = await api.get("/api/admin/modlog", before ? { before } : undefined);
-      if (!before && !d.items.length) list.append(h("div.empty", icon("list"), h("h3", "Журнал пуст"), h("p", "Здесь появятся блокировки, удаления, решения по жалобам и выдача галочек.")));
+      if (!before && !d.items.length) list.append(h("div.empty", icon("list"), h("h2", "Журнал пуст"), h("p", "Здесь появятся блокировки, удаления, решения по жалобам и выдача галочек.")));
       list.append(...d.items.map(row));
       before = d.items.at(-1)?.id;
       more.hidden = !d.more;
@@ -87,7 +87,7 @@ export async function adminPage({ query }) {
       if (tab === "reports") {
         const { items } = await api.get("/api/admin/reports");
         content.replaceChildren(...(items.length ? items.map((it) => reportCard(it, () => { draw(); api.get("/api/counters").then(setCounters).catch(() => {}); }))
-          : [h("div.card.empty", icon("check"), h("h3", "Жалоб нет"), h("p", "Всё спокойно. Новые жалобы появятся здесь, а в меню загорится счётчик."))]));
+          : [h("div.card.empty", icon("check"), h("h2", "Жалоб нет"), h("p", "Всё спокойно. Новые жалобы появятся здесь, а в меню загорится счётчик."))]));
       } else if (tab === "log") {
         content.replaceChildren(modLog());
       } else if (tab === "people") {

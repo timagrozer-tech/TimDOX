@@ -27,7 +27,7 @@ export async function profilePage({ params, query }) {
   setTitle(u.name);
 
   if (data.blocked) {
-    return h("div.card.empty", icon("block"), h("h3", u.name), h("p", "Страница недоступна."));
+    return h("div.card.empty", icon("block"), h("h2", u.name), h("p", "Страница недоступна."));
   }
 
   const root = h("div.stack.profile-space");
@@ -318,7 +318,7 @@ export async function profilePage({ params, query }) {
       const list = infiniteList({
         load: (cursor) => api.get(`/api/users/${u.username}/posts`, { cursor }),
         render: (p) => postCard(p),
-        empty: h("div.card.empty", icon("edit"), h("h3", "Записей пока нет"), isMe ? h("p", "Расскажите друзьям, что у вас нового!") : null),
+        empty: h("div.card.empty", icon("edit"), h("h2", "Записей пока нет"), isMe ? h("p", "Расскажите друзьям, что у вас нового!") : null),
         container: card,
       });
       wrap.append(list.el);
@@ -336,7 +336,7 @@ export async function profilePage({ params, query }) {
           const idx = all.length - 1;
           return h("button", { type: "button", "aria-label": m.alt || "Фото", onclick: () => lightbox(all, idx) }, h("img", { src: m.thumb, alt: m.alt || "", loading: "lazy" }));
         },
-        empty: h("div.empty", icon("image"), h("h3", "Фотографий пока нет")),
+        empty: h("div.empty", icon("image"), h("h2", "Фотографий пока нет")),
         container: grid,
       });
       content.replaceChildren(h("div.card", { style: { overflow: "hidden" } }, list.el));
@@ -349,7 +349,7 @@ export async function profilePage({ params, query }) {
         render: (r) => h("a.reel-tile", { href: `/reels/${r.id}?user=${encodeURIComponent(u.username)}`, "aria-label": r.caption || "Клип" },
           r.poster ? h("img", { src: r.poster, alt: "", loading: "lazy" }) : h("span.reel-tile-ph", icon("film")),
           h("span.reel-tile-views", icon("play", "sm"), String(r.views))),
-        empty: h("div.empty", icon("film"), h("h3", "Клипов пока нет"),
+        empty: h("div.empty", icon("film"), h("h2", "Клипов пока нет"),
           isMe ? h("a.btn.primary.sm", { href: "/reels" }, "Снять первый клип") : null),
         container: grid,
       });
@@ -359,7 +359,7 @@ export async function profilePage({ params, query }) {
       content.replaceChildren(box);
       api.get(`/api/users/${u.username}/friends`).then(({ items, hidden }) => {
         if (hidden) return box.replaceChildren(h("div.locked", icon("lock"), h("b", "Список друзей скрыт")));
-        if (!items.length) return box.replaceChildren(h("div.empty", icon("users"), h("h3", "Друзей пока нет")));
+        if (!items.length) return box.replaceChildren(h("div.empty", icon("users"), h("h2", "Друзей пока нет")));
         const filter = h("input.input", { type: "search", placeholder: "Поиск среди друзей", "aria-label": "Поиск среди друзей" });
         const list = h("div.people");
         const draw = () => {

@@ -10,7 +10,7 @@ export async function bookmarksPage() {
   const list = infiniteList({
     load: (cursor) => api.get("/api/bookmarks", { cursor }),
     render: (p) => postCard(p, { onUnbookmark: (el) => el.remove() }),
-    empty: h("div.card.empty", icon("bookmark"), h("h3", "Закладок пока нет"), h("p", "Нажмите на значок закладки под записью, чтобы сохранить её здесь.")),
+    empty: h("div.card.empty", icon("bookmark"), h("h2", "Закладок пока нет"), h("p", "Нажмите на значок закладки под записью, чтобы сохранить её здесь.")),
     container: card,
   });
   return h("div.stack", h("div.page-head", h("h1", "Закладки")), list.el);

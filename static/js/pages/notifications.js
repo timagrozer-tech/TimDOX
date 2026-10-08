@@ -33,7 +33,7 @@ export async function notificationsPage() {
     skeleton: "row",
     load: (cursor) => api.get("/api/notifications", { cursor }),
     render: row,
-    empty: h("div.card.empty", icon("bell"), h("h3", "Уведомлений пока нет"), h("p", "Здесь появятся реакции, комментарии, упоминания и заявки в друзья.")),
+    empty: h("div.card.empty", icon("bell"), h("h2", "Уведомлений пока нет"), h("p", "Здесь появятся реакции, комментарии, упоминания и заявки в друзья.")),
     container: card,
     onLoaded: () => api.post("/api/notifications/read").then(() => setCounters({ notifications: 0 })).catch(() => {}),
   });

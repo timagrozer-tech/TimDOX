@@ -4871,3 +4871,6 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
 /* имя в шапке профиля всегда поверх рамки и свечения аватара (рамки «Легенда» и др. выступают вниз) */
 .profile-name { position: relative; z-index: 3; }
 .profile-name h1 { padding-top: 6px; }
+
+/* подсказки в полях ввода: читаемый контраст в обеих темах (WCAG 1.4.3), стандартный серый в тёмной теме не проходит */
+.input::placeholder, .textarea::placeholder, input::placeholder, textarea::placeholder { color: var(--text-3); opacity: 1; }

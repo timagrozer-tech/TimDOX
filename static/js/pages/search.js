@@ -21,7 +21,7 @@ export async function searchPage({ query }) {
     const url = `/search${q ? `?q=${encodeURIComponent(q)}${type !== "all" ? `&type=${type}` : ""}` : ""}`;
     history.replaceState({}, "", url);
     if (!q) {
-      results.replaceChildren(h("div.card.empty", icon("search"), h("h3", "Найдите друзей и интересные записи"), h("p", "Ищите по имени, логину, городу, месту учёбы или работы.")));
+      results.replaceChildren(h("div.card.empty", icon("search"), h("h2", "Найдите друзей и интересные записи"), h("p", "Ищите по имени, логину, городу, месту учёбы или работы.")));
       return;
     }
     const my = ++gen;
@@ -39,7 +39,7 @@ export async function searchPage({ query }) {
       h("div", data.tags.map((t) => h("a.trend", { href: `/tag/${encodeURIComponent(t.tag)}` }, h("b", `#${t.tag}`), h("small", pl(t.n, ["запись", "записи", "записей"])))))));
     if (data.posts.length) blocks.push(h("section", h("h2.card-title", { style: { padding: "4px 4px 0" } }, icon("edit", "sm"), "Записи"),
       h("div.card.feed", data.posts.map((p) => postCard(p)))));
-    results.replaceChildren(...(blocks.length ? blocks : [h("div.card.empty", icon("search"), h("h3", "Ничего не найдено"), h("p", `По запросу «${q}» ничего нет. Попробуйте изменить запрос.`))]));
+    results.replaceChildren(...(blocks.length ? blocks : [h("div.card.empty", icon("search"), h("h2", "Ничего не найдено"), h("p", `По запросу «${q}» ничего нет. Попробуйте изменить запрос.`))]));
   }
   input.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(run, 300); });
   const form = h("form.search-box", { role: "search", onsubmit: (e) => { e.preventDefault(); clearTimeout(timer); run(); } }, icon("search"), input);
@@ -56,7 +56,7 @@ export async function tagPage({ params }) {
   const list = infiniteList({
     load: (cursor) => api.get(`/api/tags/${encodeURIComponent(tag)}`, { cursor }),
     render: (p) => postCard(p),
-    empty: h("div.card.empty", icon("hash"), h("h3", "Записей с этим тегом нет"), h("p", "Станьте первым — добавьте тег в свою запись.")),
+    empty: h("div.card.empty", icon("hash"), h("h2", "Записей с этим тегом нет"), h("p", "Станьте первым — добавьте тег в свою запись.")),
     container: card,
     onLoaded: (d) => { if (d.total != null) count.textContent = pl(d.total, ["запись", "записи", "записей"]); },
   });
