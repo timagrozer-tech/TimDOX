@@ -3,14 +3,13 @@
  * Yarko — российский «вход» на обычном хостинге (PHP).
  * Посетители открывают ярко.space на российском сервере, а он сам забирает страницы и данные с основного сервера (Render).
  * Так сайт работает без VPN, даже когда зарубежные адреса замедляют.
- * Статика (стили, скрипты, картинки) кешируется здесь же, чтобы открываться быстрее.
+ * Стили, скрипты, картинки и видео сохраняются на хостинге и дальше отдаются веб-сервером напрямую, без PHP.
  * Проверка: https://ярко.space/__edge/health
  */
 declare(strict_types=1);
 
 define('UPSTREAM', getenv('YARKO_UPSTREAM') ?: 'https://krug-social.onrender.com');
 define('EDGE_SECRET', getenv('YARKO_EDGE_SECRET') ?: '__EDGE_SECRET__');   // тот же секрет, что EDGE_SECRET на Render
-const CACHE_DIR = __DIR__ . '/cache';
 const SKIP_REQ = ['host', 'connection', 'content-length', 'accept-encoding', 'expect', 'transfer-encoding', 'te', 'upgrade',
     'keep-alive', 'proxy-connection', 'x-yarko-edge', 'x-edge-client-ip', 'x-forwarded-for', 'x-forwarded-proto',
     'x-forwarded-host', 'x-real-ip', 'cf-connecting-ip', 'true-client-ip'];
@@ -26,11 +25,13 @@ while (ob_get_level() > 0) { @ob_end_clean(); }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $uri = $_SERVER['REQUEST_URI'] ?? '/';
+if (PHP_SAPI === 'cli-server' && is_file(__DIR__ . parse_url($uri, PHP_URL_PATH))) return false;
 if (strpos($uri, '/__edge/health') === 0) { health(); exit; }
 
-$isStatic = in_array($method, ['GET', 'HEAD'], true)
-    && preg_match('#^/static/[^?]+\.(css|js|svg|png|jpe?g|webp|gif|ico|woff2?|json|webmanifest|mp3|wav)(\?|$)#i', $uri);
-if ($isStatic && serve_cached($uri, $method)) exit;
+// стили, скрипты, картинки и загруженные файлы сохраняются на диск хостинга — дальше их отдаёт сам веб-сервер
+$isStatic = $method === 'GET'
+    && preg_match('#^/(static|uploads)/[A-Za-z0-9_./-]+\.(css|js|mjs|svg|png|jpe?g|webp|gif|ico|woff2?|json|webmanifest|mp3|wav|ogg|mp4|webm|mov|m4a|pdf|tgs)(\?|$)#i', $uri)
+    && strpos($uri, '..') === false && empty($_SERVER['HTTP_RANGE']);
 $isStream = strpos($uri, '/api/stream') === 0;
 
 function req_headers(): array {
@@ -127,7 +128,8 @@ if ($ok === false && !$started) {
     $emitHeaders();
 }
 curl_close($ch);
-if ($isStatic && $status === 200 && $cacheBuf !== null && $cacheBuf !== '') save_cache($uri, $respHeaders, $cacheBuf);
+if ($isStatic && $status === 200 && $cacheBuf !== null && $cacheBuf !== '') mirror($uri, $cacheBuf);
+if (strpos($uri, '/api/') === 0) check_version($respHeaders);
 
 function flatten(array $a, string $prefix = ''): array {
     $out = [];
@@ -138,28 +140,37 @@ function flatten(array $a, string $prefix = ''): array {
     return $out;
 }
 
-function cache_path(string $uri): string { return CACHE_DIR . '/' . sha1($uri); }
-
-function serve_cached(string $uri, string $method): bool {
-    $p = cache_path($uri);
-    if (!is_file($p) || !is_file($p . '.h')) return false;
-    // со «?v=» в адресе файл не меняется — храним неделю; остальное — 5 минут (после выкладки обновится само)
-    $ttl = strpos($uri, '?v=') !== false ? 7 * 86400 : 300;
-    if (time() - filemtime($p) > $ttl) return false;
-    foreach (json_decode((string)file_get_contents($p . '.h'), true) ?: [] as $line) header($line, false);
-    header('X-Edge-Cache: HIT');
-    header('Content-Length: ' . filesize($p));
-    if ($method !== 'HEAD') readfile($p);
-    return true;
+/** Сохраняет файл по тому же пути, что в адресе: /static/css/orbit.css → <папка сайта>/static/css/orbit.css */
+function mirror(string $uri, string $body): void {
+    $path = (string)parse_url($uri, PHP_URL_PATH);
+    if (!preg_match('#^/(static|uploads)/#', $path) || strlen($body) > 40 * 1048576) return;
+    $file = __DIR__ . $path;
+    $dir = dirname($file);
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true)) return;
+    $tmp = $file . '.' . getmypid() . '.tmp';
+    if (@file_put_contents($tmp, $body) !== false) @rename($tmp, $file);
 }
 
-function save_cache(string $uri, array $headers, string $body): void {
-    if (!is_dir(CACHE_DIR) && !@mkdir(CACHE_DIR, 0755, true)) return;
-    $keep = array_values(array_filter($headers, fn($h) => preg_match('#^(content-type|cache-control|etag|last-modified):#i', $h)));
-    $p = cache_path($uri);
-    @file_put_contents($p . '.tmp', $body);
-    @rename($p . '.tmp', $p);
-    @file_put_contents($p . '.h', json_encode($keep));
+/** После выкладки новой версии сайта сохранённые стили и скрипты удаляются — подтянутся свежие */
+function check_version(array $headers): void {
+    $ver = '';
+    foreach ($headers as $h) { if (stripos($h, 'x-app-version:') === 0) $ver = trim(substr($h, 14)); }
+    if ($ver === '') return;
+    $mark = __DIR__ . '/cache/version';
+    $old = is_file($mark) ? trim((string)file_get_contents($mark)) : '';
+    if ($old === $ver) return;
+    if (!is_dir(__DIR__ . '/cache')) @mkdir(__DIR__ . '/cache', 0755, true);
+    @file_put_contents($mark, $ver);
+    if ($old === '') return;
+    $static = __DIR__ . '/static';
+    if (is_dir($static)) { $trash = __DIR__ . '/cache/old-' . time(); @rename($static, $trash); rmtree($trash); }
+}
+
+function rmtree(string $dir): void {
+    if (!is_dir($dir)) return;
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
+    foreach ($it as $f) { $f->isDir() ? @rmdir($f->getPathname()) : @unlink($f->getPathname()); }
+    @rmdir($dir);
 }
 
 function health(): void {
@@ -176,5 +187,5 @@ function health(): void {
             microtime(true) - $t, $body === false ? ' — ошибка: ' . curl_error($ch) : '');
         curl_close($ch);
     }
-    echo 'Кеш: ' . (is_dir(CACHE_DIR) ? count(glob(CACHE_DIR . '/*.h') ?: []) . ' файлов' : 'пусто') . "\n";
+    echo 'Сохранено на хостинге: ' . (is_dir(__DIR__ . '/static') ? 'стили и скрипты есть' : 'пока ничего') . ', версия сайта ' . (@file_get_contents(__DIR__ . '/cache/version') ?: '—') . "\n";
 }

@@ -1,19 +1,36 @@
-# Yarko — российский вход: все запросы обрабатывает index.php
+# Yarko — российский вход. Сохранённые файлы (static, uploads) отдаёт веб-сервер, остальное — index.php
 Options -Indexes
 DirectoryIndex index.php
+AddType application/javascript .js .mjs
+AddType text/css .css
+AddType application/manifest+json .webmanifest
+AddType image/webp .webp
+AddType image/svg+xml .svg
+AddType font/woff2 .woff2
+AddType video/webm .webm
+AddType video/mp4 .mp4
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  # всегда HTTPS (кроме проверки сертификата)
   RewriteCond %{HTTPS} !=on
   RewriteCond %{HTTP:X-Forwarded-Proto} !=https
   RewriteCond %{REQUEST_URI} !^/\.well-known/
   RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
-  RewriteRule ^cache/ - [F,L]
+  RewriteRule ^(cache|\.git)(/|$) - [F,L]
+  # уже сохранённый файл — сразу с диска
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^(static|uploads)/ - [L]
   RewriteCond %{REQUEST_URI} !^/\.well-known/
   RewriteCond %{REQUEST_URI} !^/index\.php$
   RewriteRule ^ index.php [L,QSA]
 </IfModule>
-# поток событий нельзя сжимать и буферизовать — иначе сообщения приходят с задержкой
+<IfModule mod_headers.c>
+  <FilesMatch "\.(webp|png|jpe?g|gif|mp4|webm|mp3|woff2?)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+  <FilesMatch "\.(js|mjs|css|svg|json|webmanifest)$">
+    Header set Cache-Control "public, max-age=300"
+  </FilesMatch>
+</IfModule>
 SetEnvIf Request_URI "^/api/stream" no-gzip=1 dont-vary=1
 <IfModule mod_deflate.c>
   AddOutputFilterByType DEFLATE text/html text/css application/javascript text/javascript application/json image/svg+xml application/manifest+json
