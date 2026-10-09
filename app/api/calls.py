@@ -35,12 +35,39 @@ def _turn_rest(uid: int | None) -> dict | None:
             "username": user, "credential": cred}
 
 
+# Бесплатный публичный ретранслятор Open Relay (Metered): 20 ГБ в месяц, порты 80 и 443 по UDP/TCP/TLS —
+# проходит через мобильные сети и строгие фаерволы. Логин — временный, подписанный общедоступным секретом проекта.
+OPENRELAY_HOST = "staticauth.openrelay.metered.ca"
+OPENRELAY_SECRET = "openrelayprojectsecret"
+
+
+def _rest_cred(secret: str, uid: int | None) -> tuple[str, str]:
+    import base64
+    import hashlib
+    import hmac
+    import time
+    user = f"{int(time.time()) + 86400}:{uid or 0}"
+    return user, base64.b64encode(hmac.new(secret.encode(), user.encode(), hashlib.sha1).digest()).decode()
+
+
+def _openrelay(uid: int | None) -> dict | None:
+    if os.environ.get("OPENRELAY", "1") == "0":
+        return None
+    user, cred = _rest_cred(OPENRELAY_SECRET, uid)
+    h = OPENRELAY_HOST
+    return {"urls": [f"turn:{h}:80", f"turn:{h}:80?transport=tcp", f"turn:{h}:443", f"turn:{h}:443?transport=tcp",
+                     f"turns:{h}:443?transport=tcp"], "username": user, "credential": cred}
+
+
 def ice_servers(uid: int | None = None) -> list[dict]:
     # несколько независимых STUN: если один недоступен из сети собеседника, сработает другой
     servers = [{"urls": ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302", "stun:stun.cloudflare.com:3478"]}]
     own = _turn_rest(uid)
     if own:
         servers.insert(0, own)
+    free = _openrelay(uid)
+    if free:
+        servers.append(free)
     turn = os.environ.get("TURN_URLS", "").split()
     if turn:
         servers.append({"urls": turn, "username": os.environ.get("TURN_USERNAME", ""),

@@ -108,9 +108,23 @@ async def _startup():
 
 _run(_startup(), timeout=180)
 
+def _turn_report() -> None:
+    """Раз при запуске: доступны ли ретрансляторы звонков из сети хостинга (результат — в журнал запросов)"""
+    import time as _t
+    _t.sleep(20)
+    try:
+        from app import turncheck
+        from app.api.calls import ice_servers
+        for url, res in turncheck.check_all(ice_servers(0)):
+            _req_queue.append(("SYS", "/__turn-check", 200 if res == "ok" else 500, 0, url[:120], res[:120], os.getpid()))
+    except Exception as e:  # noqa: BLE001
+        _req_queue.append(("SYS", "/__turn-check", 500, 0, "", repr(e)[:120], os.getpid()))
+
+
 def _become_leader() -> None:
     from app import selfupdate
     selfupdate.start()
+    threading.Thread(target=_turn_report, name="turn-check", daemon=True).start()
 
 
 if LEADER:

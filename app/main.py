@@ -391,6 +391,13 @@ def probe_site() -> None:
     base = config.APP_URL.rstrip("/")
     tests = [("GET", "/api/health", None), ("GET", "/api/auth/me", None),
              ("POST", "/api/auth/login", b'{"login":"proverka-diag","password":"x"}')]
+    try:
+        from . import turncheck
+        from .api.calls import ice_servers
+        for url, res in turncheck.check_all(ice_servers(0)):
+            log.warning("ПРОБА TURN %s → %s", url, res)
+    except Exception as e:  # noqa: BLE001
+        log.warning("ПРОБА TURN: %r", e)
     for method, path, body in tests:
         req = urllib.request.Request(base + path, data=body, method=method, headers={
             "User-Agent": "Mozilla/5.0 YarkoProbe", "Content-Type": "application/json", "Origin": base,
