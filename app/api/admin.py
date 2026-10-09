@@ -253,6 +253,14 @@ async def calls_settings(request: Request):
         checks = await run_in_threadpool(turncheck.check_all, servers)
         result["checks"] = [{"url": u, "result": r} for u, r in checks]
         result["servers"] = len(servers)
+        try:  # итог проверки — в журнал запросов (удалённая диагностика; адреса без логина и пароля)
+            import os
+            import sys
+            wsgi = sys.modules.get("app.wsgi")  # есть только на хостинге; импортировать самим нельзя — там запуск
+            for u, r in (checks if wsgi else []):
+                wsgi._req_queue.append(("SYS", "/__turn-admin-check", 200 if r == "ok" else 500, 0, u[:120], r[:120], os.getpid()))
+        except Exception:  # noqa: BLE001
+            pass
     return JSONResponse(result)
 
 
