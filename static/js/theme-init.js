@@ -28,6 +28,7 @@
       root.dataset.bg = look.bg || "orbit";
       root.dataset.palette = look.palette || "qevi";
       root.dataset.shape = look.shape || "soft";
+      if (look.skin) { root.dataset.skin = look.skin; root.dataset.glass = "classic"; }
       if (look.font) {
         var l = document.createElement("link");
         l.id = "look-font"; l.rel = "stylesheet"; l.href = look.font;

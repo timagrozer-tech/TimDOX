@@ -359,12 +359,12 @@ PRIVACY_FIELDS = {
 
 APPEARANCE_ENUMS = {
     "preset": ("orbit", "dawn", "ocean", "forest", "sakura", "midnight", "neon", "graphite", "classic",
-               "sky", "sunset", "cyber", "coffee", "royal", "notebook", "sport", "amber", "minimal", "custom"),
+               "sky", "sunset", "cyber", "coffee", "royal", "notebook", "sport", "amber", "minimal", "qevi", "retro", "custom"),
     "palette": ("violet", "ocean", "mint", "forest", "sakura", "ruby", "lavender", "midnight", "graphite",
-                "sky", "sunset", "amber", "coffee", "cyber", "royal", "custom"),
+                "sky", "sunset", "amber", "coffee", "cyber", "royal", "qevi", "retro", "custom"),
     "bg": ("orbit", "aurora", "stars", "gradient", "pattern", "plain", "image"),
     "font": ("manrope", "inter", "nunito", "rubik", "montserrat", "comfortaa", "serif", "mono", "roboto", "opensans",
-             "ubuntu", "exo", "oswald", "lora", "philosopher", "caveat", "pacifico", "russo", "system"),
+             "ubuntu", "exo", "oswald", "lora", "philosopher", "caveat", "pacifico", "russo", "retro", "system"),
     "shape": ("soft", "medium", "sharp"),
 }
 APPEARANCE_RANGES = {"dim": (0, 85), "blur": (0, 24)}

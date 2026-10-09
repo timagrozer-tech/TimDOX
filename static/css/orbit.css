@@ -4999,3 +4999,75 @@ body.has-player .cookie-bar { bottom: calc(var(--dock-h, 62px) + 96px + env(safe
 .chat-form > .ctx-bar { flex: 1 0 100%; box-sizing: border-box; margin: 0 0 6px; }
 .chat-form > .ctx-bar[hidden] { display: none; }
 .chat-form > .chat-input { flex: 1 1 100%; }
+
+/* ==========================================================================
+   Стиль «Ретро 2010»: как соцсети начала 2010-х — синяя шапка, белые блоки с тонкими рамками,
+   Tahoma/Verdana, квадратные фото, плоские кнопки, никакого стекла, свечения и анимаций.
+   Включается готовой темой «Ретро 2010» (Настройки → Оформление): html[data-skin="retro"].
+   ========================================================================== */
+:root[data-skin="retro"] {
+  --bg: #edeef0; --bg-deep: #edeef0; --surface: #ffffff; --surface-2: #f5f7fa; --surface-3: #eceff3;
+  --text: #000000; --text-2: #4c5a6a; --text-3: #828a99; --border: #dae1e8; --border-strong: #c5d0db;
+  --primary: #45688e; --primary-hover: #3b5b7d; --primary-soft: #e1e7ef; --on-primary: #fff;
+  --accent: #2b587a; --accent-soft: #e1e7ef; --pl: #45688e; --pd: #6d8fb3; --al: #2b587a; --ad: #6d8fb3;
+  --grad: linear-gradient(#6d8fb3, #5b7da3); --grad-accent: linear-gradient(#6d8fb3, #5b7da3); --grad-soft: #e1e7ef;
+  --glow: none; --shadow: none; --shadow-sm: none; --shadow-lg: 0 1px 3px rgb(0 0 0 / .18);
+  --glass: #fff; --glass-strong: #fff; --glass-edge: transparent; --ring-grad: #6d8fb3;
+  --radius: 2px; --radius-sm: 2px; --radius-xs: 2px;
+  --font: Tahoma, Verdana, "DejaVu Sans", Arial, sans-serif; --font-display: Tahoma, Verdana, "DejaVu Sans", Arial, sans-serif;
+  --display-weight: 700; --display-scale: .82;
+  color-scheme: light;
+}
+:root[data-skin="retro"] body { background: var(--bg) !important; font-family: var(--font); font-size: 13px; color: var(--text); }
+:root[data-skin="retro"] #scene, :root[data-skin="retro"] .grain, :root[data-skin="retro"] #scroll-progress { display: none !important; }
+:root[data-skin="retro"] *, :root[data-skin="retro"] *::before, :root[data-skin="retro"] *::after {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important; text-shadow: none !important; }
+:root[data-skin="retro"] a { color: #2b587a; }
+:root[data-skin="retro"] h1, :root[data-skin="retro"] h2, :root[data-skin="retro"] h3 { font-family: var(--font); letter-spacing: 0; color: #45688e; }
+:root[data-skin="retro"] .card, :root[data-skin="retro"] .post, :root[data-skin="retro"] .modal, :root[data-skin="retro"] .menu,
+:root[data-skin="retro"] .widget, :root[data-skin="retro"] .profile-top {
+  background: #fff !important; border: 1px solid var(--border) !important; border-radius: 2px !important; box-shadow: none !important; }
+:root[data-skin="retro"] .card::after, :root[data-skin="retro"] .card::before { display: none !important; }
+/* шапка: сплошная синяя полоса */
+:root[data-skin="retro"] .topbar { background: #597da3 !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; color: #fff; }
+:root[data-skin="retro"] .topbar::before { display: none !important; }
+:root[data-skin="retro"] .topbar .logo, :root[data-skin="retro"] .topbar .lg-group, :root[data-skin="retro"] .topbar .lg-refract {
+  background: transparent !important; border: 0 !important; box-shadow: none !important; color: #fff !important; }
+:root[data-skin="retro"] .topbar .logo * { color: #fff !important; fill: #fff; }
+:root[data-skin="retro"] .topbar button, :root[data-skin="retro"] .topbar a { color: #fff !important; }
+:root[data-skin="retro"] .topbar .icon { fill: #fff; color: #fff; }
+/* нижнее меню и левое меню — плоские, синие ссылки */
+:root[data-skin="retro"] .tabbar { background: #fff !important; border: 0 !important; border-top: 1px solid var(--border) !important; border-radius: 0 !important;
+  left: 0 !important; right: 0 !important; bottom: 0 !important; box-shadow: none !important; }
+:root[data-skin="retro"] .tabbar a { color: #45688e; }
+:root[data-skin="retro"] .tabbar .create { background: #5b7da3 !important; box-shadow: none !important; border-radius: 2px !important; }
+:root[data-skin="retro"] .sidebar { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+:root[data-skin="retro"] .nav a { color: #2b587a; border-radius: 0; font-weight: 400; }
+:root[data-skin="retro"] .nav a:hover, :root[data-skin="retro"] .nav a.active { background: #e1e7ef; color: #2b587a; }
+:root[data-skin="retro"] .lg-pill, :root[data-skin="retro"] .liquid-pill { display: none !important; }
+/* кнопки: плоские синие с лёгким градиентом, как раньше */
+:root[data-skin="retro"] .btn { border-radius: 2px !important; font-weight: 400; letter-spacing: 0; box-shadow: none !important; text-transform: none; }
+:root[data-skin="retro"] .btn.primary, :root[data-skin="retro"] .btn.accent { background: linear-gradient(#6d8fb3, #5b7da3) !important; color: #fff !important; border: 1px solid #4a6d93; }
+:root[data-skin="retro"] .btn.primary:hover { background: linear-gradient(#7799bd, #6386ad) !important; }
+:root[data-skin="retro"] .btn.soft, :root[data-skin="retro"] .btn.ghost { background: #dfe6ed; color: #45688e; border: 1px solid #cdd8e3; }
+:root[data-skin="retro"] .btn::before, :root[data-skin="retro"] .btn::after { display: none !important; }
+:root[data-skin="retro"] .input, :root[data-skin="retro"] .textarea, :root[data-skin="retro"] input, :root[data-skin="retro"] textarea, :root[data-skin="retro"] select {
+  border-radius: 0 !important; border-color: #c0cad5 !important; box-shadow: none !important; background: #fff; }
+/* квадратные фото, без свечения */
+:root[data-skin="retro"] .avatar { border-radius: 2px !important; box-shadow: none !important; }
+:root[data-skin="retro"] .avatar img { border-radius: 2px !important; }
+:root[data-skin="retro"] .story-ring::before { border-radius: 2px !important; background: #6d8fb3 !important; animation: none !important; }
+/* без анимаций, переливов и «пружин» */
+:root[data-skin="retro"] *, :root[data-skin="retro"] *::before, :root[data-skin="retro"] *::after { animation-duration: 0s !important; transition-duration: 0s !important; }
+:root[data-skin="retro"] .rv { opacity: 1 !important; transform: none !important; }
+/* лента: записи разделены линиями, имена синие жирные */
+:root[data-skin="retro"] .post .author, :root[data-skin="retro"] .post b a, :root[data-skin="retro"] .post-head a { color: #2b587a; font-weight: 700; }
+:root[data-skin="retro"] .badge { background: #5b7da3 !important; border-radius: 2px !important; box-shadow: none !important; }
+/* чат: пузыри без градиентов */
+:root[data-skin="retro"] .msg { border-radius: 2px !important; box-shadow: none !important; }
+:root[data-skin="retro"] .msg.mine, :root[data-skin="retro"] .msg.out { background: #e1e7ef !important; color: #000 !important; }
+:root[data-skin="retro"] .chat-input { border-radius: 2px !important; box-shadow: none !important; }
+:root[data-skin="retro"] .mp { border-radius: 2px !important; background: #fff !important; border: 1px solid var(--border) !important; box-shadow: 0 1px 3px rgb(0 0 0 / .15) !important; }
+:root[data-skin="retro"] .topbar .btn, :root[data-skin="retro"] .topbar button { background: transparent !important; border: 0 !important; }
+@media (min-width: 900px) { :root[data-skin="retro"] body { border-top: 42px solid #597da3; } }
+:root[data-skin="retro"] .post time, :root[data-skin="retro"] .post .time, :root[data-skin="retro"] .post-head small a { color: #828a99 !important; font-weight: 400 !important; }

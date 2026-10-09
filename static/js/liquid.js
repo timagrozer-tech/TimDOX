@@ -21,6 +21,7 @@ function applyMode(explicit = false) {
   let mode = glassMode();
   // «меньше прозрачности» в системе — матовое стекло; на слабых устройствах стекло остаётся, но без преломления
   if (root.dataset.transparency === "reduce" && !explicit) mode = "classic";
+  if (root.dataset.skin === "retro") mode = "classic"; // стиль «Ретро 2010» — без стекла
   root.dataset.glass = mode;
   requestAnimationFrame(() => { syncPills(false); refreshRefraction(); });
 }

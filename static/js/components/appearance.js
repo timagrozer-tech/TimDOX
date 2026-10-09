@@ -20,6 +20,7 @@ function loadPreviewFonts() {
 
 const fontStack = (key, display = false) => {
   const f = FONTS[key];
+  if (f.stack) return f.stack;
   if (!f.body) return "system-ui, sans-serif";
   return `"${display ? f.display : f.body}", system-ui, sans-serif`;
 };

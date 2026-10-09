@@ -19,6 +19,7 @@ export const PALETTES = {
   coffee:   { name: "Кофе",       pl: "#7c4a2d", pd: "#d6a77a", al: "#9a3412", ad: "#e7b98c", c: ["#a16207", "#b45309", "#78350f", "#e7c9a9"] },
   cyber:    { name: "Киберпанк",  pl: "#a21caf", pd: "#f0abfc", al: "#0e7490", ad: "#22d3ee", c: ["#d946ef", "#06b6d4", "#facc15", "#f472b6"] },
   royal:    { name: "Королевский", pl: "#4338ca", pd: "#a5b4fc", al: "#a16207", ad: "#fcd34d", c: ["#4f46e5", "#eab308", "#312e81", "#c7d2fe"] },
+  retro:    { name: "Ретро",      pl: "#45688e", pd: "#6d8fb3", al: "#2b587a", ad: "#8fb0d0", c: ["#597da3", "#6d8fb3", "#45688e", "#dae1e8"] },
 };
 
 export const BACKGROUNDS = {
@@ -51,6 +52,7 @@ export const FONTS = {
   caveat:     { name: "Рукопись",    body: "Nunito",         display: "Caveat",           q: "Nunito:wght@400;600;700;800&family=Caveat:wght@600;700", dsize: 1.25 },
   pacifico:   { name: "Кистью",      body: "Rubik",          display: "Pacifico",         q: "Rubik:wght@400;500;600;700&family=Pacifico", dw: 400 },
   russo:      { name: "Русский стиль", body: "Roboto",       display: "Russo One",        q: "Roboto:wght@400;500;700&family=Russo+One", dw: 400 },
+  retro:      { name: "Tahoma",      body: "Tahoma",         display: "Tahoma",           q: null, stack: "Tahoma, Verdana, \"DejaVu Sans\", Arial, sans-serif", dw: 700 },
   system:     { name: "Системный",   body: null,             display: null,               q: null },
 };
 
@@ -77,6 +79,7 @@ export const PRESETS = {
   sport:    { name: "Спорт",    palette: "ruby",     bg: "plain",    font: "oswald",     shape: "sharp",  mode: "dark" },
   amber:    { name: "Янтарь",   palette: "amber",    bg: "aurora",   font: "exo",        shape: "medium", mode: "light" },
   minimal:  { name: "Минимализм", palette: "graphite", bg: "plain",  font: "ubuntu",     shape: "medium", mode: "dark" },
+  retro:    { name: "Ретро 2010", palette: "retro",    bg: "plain",    font: "retro",      shape: "sharp",  mode: "light" },
 };
 
 export const DEFAULT_LOOK = { brand: "qevi", preset: "qevi", palette: "qevi", custom: null, bg: "orbit", dim: 35, blur: 0, font: "manrope", shape: "soft" };
@@ -172,7 +175,9 @@ export function applyLook(look, image = bgImage) {
     "--bg-image": bg === "image" ? `url("${bgImage}")` : "none",
   };
   const f = FONTS[current.font];
-  if (f.body) {
+  if (f.stack) {
+    vars["--font"] = vars["--font-display"] = f.stack;
+  } else if (f.body) {
     vars["--font"] = `"${f.body}", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif`;
     vars["--font-display"] = `"${f.display}", "${f.body}", system-ui, sans-serif`;
   } else {
@@ -185,11 +190,16 @@ export function applyLook(look, image = bgImage) {
   root.dataset.bg = bg;
   root.dataset.shape = current.shape;
   root.dataset.palette = current.palette;
+  // «Ретро 2010» — отдельный стиль всего интерфейса (не только цвета): без стекла и анимаций
+  const skin = current.preset === "retro" ? "retro" : "";
+  if (skin) root.dataset.skin = skin; else delete root.dataset.skin;
+  if (skin) root.dataset.glass = "classic";
+  else { try { root.dataset.glass = localStorage.getItem("krug-glass") || "liquid"; } catch { /* */ } }
   const href = fontHref(current.font);
   setFontLink(href);
   updateThemeColor();
   try {
-    localStorage.setItem("krug-look", JSON.stringify({ vars, bg, shape: current.shape, palette: current.palette, font: href, look: current, image: bgImage }));
+    localStorage.setItem("krug-look", JSON.stringify({ vars, bg, shape: current.shape, palette: current.palette, font: href, look: current, image: bgImage, skin }));
   } catch { /* приватный режим */ }
   return current;
 }
