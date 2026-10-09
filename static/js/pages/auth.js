@@ -178,8 +178,8 @@ export async function registerPage({ query }) {
     h("div.form-error.hidden", { role: "alert" }),
     field({ label: "Имя и фамилия", name: "name", autocomplete: "name", placeholder: "Анна Смирнова", maxlength: 60 }),
     field({ label: "Логин", name: "username", autocomplete: "username", placeholder: "anna_smirnova", prefix: "@", hint: "Латиница, цифры и _, от 3 до 30 символов", maxlength: 30 }),
-    field({ label: "Номер телефона", name: "phone", type: "tel", autocomplete: "tel", inputmode: "tel", placeholder: "+7 912 345-67-89", hint: "По нему вы будете входить в аккаунт" }),
-    field({ label: "Резервная почта (необязательно)", name: "email", type: "email", autocomplete: "email", placeholder: "you@example.com", hint: "Поможет восстановить доступ, если забудете пароль", required: false }),
+    field({ label: "Номер телефона", name: "phone", type: "tel", autocomplete: "tel", inputmode: "tel", placeholder: "+7 912 345-67-89", hint: "По нему удобно входить в аккаунт", required: false }),
+    field({ label: "E-mail", name: "email", type: "email", autocomplete: "email", placeholder: "you@example.com", hint: "Можно указать и телефон, и почту — или что-то одно. Почта поможет восстановить пароль", required: false }),
     field({ label: "Пароль", name: "password", type: "password", autocomplete: "new-password", hint: "Не короче 8 символов, буквы и цифры" }),
     consent,
     // ловушка для ботов: поле невидимо для людей и скринридеров, его заполняют только скрипты
@@ -216,7 +216,7 @@ export async function registerPage({ query }) {
           password: $(form, "password").value, consent: $(form, "consent").checked, terms: $(form, "terms").checked,
           website: $(form, "website").value, t: Math.round(performance.now() - shownAt), ref: ref || undefined,
         });
-        toast($(form, "email").value.trim() ? "Аккаунт создан! На резервную почту пришло письмо для подтверждения." : "Аккаунт создан! Входите по номеру телефона.", { icon: "check", duration: 6000 });
+        toast($(form, "email").value.trim() ? "Аккаунт создан! На почту пришло письмо для подтверждения." : "Аккаунт создан! Входите по номеру телефона.", { icon: "check", duration: 6000 });
         await afterLogin(query.next || "/welcome");
       } catch (err) { showErrors(form, err); }
     });

@@ -155,7 +155,8 @@ async def register(request: Request):
         elif db.value("SELECT 1 FROM users WHERE email=?", (email,)):
             errors["email"] = "Этот e-mail уже зарегистрирован"
     elif not phone:
-        errors.setdefault("phone", "Укажите номер телефона")
+        errors.setdefault("phone", "Укажите номер телефона или e-mail")
+        errors.setdefault("email", "Укажите номер телефона или e-mail")
     if phone and not email:
         email = phones.placeholder_email(phone)
     if err := validate_password(password):

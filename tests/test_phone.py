@@ -45,9 +45,11 @@ class PhoneTest(unittest.TestCase):
         self.assertEqual(Client().post("/api/auth/login", {"email": "9001112233", "password": "wrong-pass"}).status_code, 400)
 
     def test_phone_required_and_backup_email(self):
-        no_phone = self._reg(Client(), username="no_phone", email="np@example.com")
-        self.assertEqual(no_phone.status_code, 422)
-        self.assertIn("phone", no_phone.json()["fields"])
+        # можно и только по почте, но хотя бы что-то одно обязательно
+        self.assertEqual(self._reg(Client(), username="no_phone", email="np@example.com").status_code, 201)
+        nothing = self._reg(Client(), username="no_contacts")
+        self.assertEqual(nothing.status_code, 422)
+        self.assertIn("phone", nothing.json()["fields"])
         c = Client()
         self.assertEqual(self._reg(c, username="with_backup", phone="+79005556677", email="Backup@Example.com").status_code, 201)
         me = c.refresh()["user"]
