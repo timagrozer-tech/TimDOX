@@ -23,6 +23,8 @@ export function h(tag, props, ...children) {
   }
   const [name, ...classes] = tag.split(".");
   const el = document.createElement(name || "div");
+  // картинки — без задержки страницы: грузятся при приближении к экрану и декодируются вне основного потока
+  if (name === "img") { el.decoding = "async"; if (!("loading" in props)) el.loading = "lazy"; }
   if (classes.length) el.className = classes.join(" ");
   for (const [k, v] of Object.entries(props)) {
     if (v == null || v === false) continue;

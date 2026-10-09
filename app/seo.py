@@ -130,10 +130,38 @@ import time as _time
 BUILD = (_os.environ.get("RENDER_GIT_COMMIT") or _os.environ.get("YARKO_COMMIT") or str(int(_time.time())))[:12]
 
 
+_PRELOAD: str | None = None
+
+
+def _module_preloads() -> str:
+    """Все модули, которые app.js тянет статическими import, — сразу списком <link rel=modulepreload>:
+    браузер качает их параллельно, а не «лесенкой» (модуль → его импорты → их импорты…)"""
+    global _PRELOAD
+    if _PRELOAD is None:
+        import posixpath
+        root = config.STATIC_DIR / "js"
+        seen, todo = [], ["app.js"]
+        rx = re.compile(r'^\s*import\s+(?:[^"\';]*?\s+from\s+)?["\'](\.{1,2}/[^"\']+\.js)["\']', re.M)
+        while todo:
+            rel = todo.pop(0)
+            if rel in seen:
+                continue
+            seen.append(rel)
+            try:
+                src = (root / rel).read_text(encoding="utf-8")
+            except OSError:
+                continue
+            for dep in rx.findall(src):
+                todo.append(posixpath.normpath(posixpath.join(posixpath.dirname(rel), dep)))
+        _PRELOAD = "\n  ".join(f'<link rel="modulepreload" href="/static/v/{BUILD}/js/{r}">' for r in seen[1:])
+    return _PRELOAD
+
+
 def render(path: str) -> str:
     import json
     html = _index()
     html = re.sub(r'/static/(js/app\.js|css/app\.css|css/orbit\.css)\?v=[\w.]+', lambda m_: f"/static/v/{BUILD}/{m_.group(1)}", html)
+    html = html.replace("</head>", "  " + _module_preloads() + "\n</head>", 1)
     m = meta_for(path)
     url = f"{config.APP_URL}{path}"
     e = lambda s: escape(s or "", quote=True)  # noqa: E731

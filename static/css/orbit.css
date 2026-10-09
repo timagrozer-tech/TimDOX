@@ -4903,3 +4903,9 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
 .touch .tabbar { background: color-mix(in srgb, var(--surface) 82%, transparent) !important; }
 .touch .lg-group, .touch .logo.lg-refract, .touch .cookie-bar, .touch .toast, .touch .menu, .touch .modal,
 .touch .sheet, .touch .popover, .touch .dropdown { background-color: color-mix(in srgb, var(--surface) 96%, transparent) !important; }
+
+/* Телефоны: бесконечные украшающие анимации перерисовывают экран каждый кадр и сажают батарею — выключаем */
+.touch .story-ring::before, .touch .avatar[data-online="true"]::after, .touch .cst-spark, .touch .badge,
+.touch .tabbar .create, .touch .avatar:not(.xl)[data-frame]::before,
+.touch .aurora .blob, .touch .tour-ring { animation: none !important; }
+.touch .grain, .touch #scroll-progress { display: none !important; }

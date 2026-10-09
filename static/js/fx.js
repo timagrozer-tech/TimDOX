@@ -250,8 +250,15 @@ function prepareReveal(root) {
 }
 
 // ---------------------------------------------------------------- Параллакс обложек и прогресс
+let scrollQueued = false;
+function onScrollQueued() { // не чаще раза за кадр
+  if (scrollQueued) return;
+  scrollQueued = true;
+  requestAnimationFrame(() => { scrollQueued = false; onScroll(); });
+}
 function onScroll() {
   scrollY = window.scrollY;
+  if (LITE) return; // телефон: полоса прогресса и параллакс выключены — не читаем раскладку на каждой прокрутке
   const max = document.documentElement.scrollHeight - innerHeight;
   const bar = document.getElementById("scroll-progress");
   if (bar) bar.style.transform = `scaleX(${max > 0 ? Math.min(1, scrollY / max) : 0})`;
@@ -281,10 +288,10 @@ export function initFx() {
     pointer.tx = Math.max(-1, Math.min(1, e.gamma / 30));
     pointer.ty = Math.max(-1, Math.min(1, (e.beta - 45) / 30));
   }, { passive: true });
-  addEventListener("scroll", onScroll, { passive: true });
+  addEventListener("scroll", onScrollQueued, { passive: true });
   new MutationObserver((muts) => {
     for (const m of muts) for (const n of m.addedNodes) if (n.nodeType === 1) prepareReveal(n);
-    onScroll();
+    onScrollQueued();
   }).observe(document.getElementById("app"), { childList: true, subtree: true });
   requestAnimationFrame(loop);
 }

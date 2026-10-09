@@ -39,7 +39,7 @@ function initSpecular() {
       lx = `${e.clientX}px`; ly = `${e.clientY}px`;
       if (!raf) raf = requestAnimationFrame(flush);
     }, { passive: true });
-  } else {
+  } else if (!lowPower()) { // на телефонах выключено: смена переменной у корня пересчитывает стили всей страницы ~60 раз в секунду
     addEventListener("deviceorientation", (e) => {
       if (e.gamma == null || reduceMotion()) return;
       const x = Math.max(0, Math.min(100, 50 + e.gamma * 1.6));

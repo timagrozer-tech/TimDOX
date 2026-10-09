@@ -1,3 +1,6 @@
+/* Основные шрифты — со своего сервера (Google Fonts из России открываются медленно или не открываются) */
+@font-face { font-family: "Manrope"; src: url("/static/fonts/Manrope.woff") format("woff"); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: "Unbounded"; src: url("/static/fonts/Unbounded.woff") format("woff"); font-weight: 500 700; font-display: swap; }
 /* ==========================================================================
    Круг — стили. Mobile-first, светлая и тёмная темы, контраст WCAG AA.
    ========================================================================== */

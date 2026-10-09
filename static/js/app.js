@@ -50,35 +50,40 @@ import { initLiquid } from "./liquid.js";
 
 import * as authPages from "./pages/auth.js";
 import { feedPage } from "./pages/feed.js";
-import { profilePage } from "./pages/profile.js";
-import { postPage } from "./pages/post.js";
-import { friendsPage } from "./pages/friends.js";
-import { messagesPage } from "./pages/messages.js";
-import { notificationsPage } from "./pages/notifications.js";
-import { searchPage, tagPage } from "./pages/search.js";
-import { bookmarksPage } from "./pages/bookmarks.js";
-import { settingsPage } from "./pages/settings.js";
-import { collectionPage, showReveal } from "./pages/collection.js";
-import { callTestPage } from "./pages/calltest.js";
-import { reelsPage } from "./pages/reels.js";
-import { stickersPage } from "./pages/stickers.js";
-import { previewOf } from "./pages/messages.js";
-import { legalPage } from "./pages/legal.js";
-import { communitiesPage, communityPage } from "./pages/communities.js";
-import { eventsPage, eventPage } from "./pages/events.js";
-import { guestsPage } from "./pages/guests.js";
-import { adminPage } from "./pages/admin.js";
-import { worldPage } from "./pages/world.js";
-import { statsPage } from "./pages/stats.js";
-import { invitePage } from "./pages/invite.js";
-import { walletPage, initCheckin } from "./pages/wallet.js";
-import { shopPage } from "./pages/shop.js";
-import { marketPage } from "./pages/market.js";
-import { welcomePage } from "./pages/welcome.js";
 import { queueTour, stopTour } from "./tour.js";
-import { initCalls } from "./call/call.js";
-import { musicPage, genrePage, playlistPage } from "./pages/music.js";
-import { initPlayer } from "./music/player.js";
+
+// Страницы грузятся только при первом заходе в раздел: на старте браузер скачивает и разбирает
+// в несколько раз меньше кода (лента открывается быстрее, особенно на телефоне)
+const lazy = (load, name) => (...args) => load().then((m) => m[name](...args));
+const P = {
+  profile: () => import("./pages/profile.js"), post: () => import("./pages/post.js"), friends: () => import("./pages/friends.js"),
+  messages: () => import("./pages/messages.js"), notifications: () => import("./pages/notifications.js"),
+  search: () => import("./pages/search.js"), bookmarks: () => import("./pages/bookmarks.js"), settings: () => import("./pages/settings.js"),
+  collection: () => import("./pages/collection.js"), calltest: () => import("./pages/calltest.js"), reels: () => import("./pages/reels.js"),
+  stickers: () => import("./pages/stickers.js"), legal: () => import("./pages/legal.js"), communities: () => import("./pages/communities.js"),
+  events: () => import("./pages/events.js"), guests: () => import("./pages/guests.js"), admin: () => import("./pages/admin.js"),
+  world: () => import("./pages/world.js"), stats: () => import("./pages/stats.js"), invite: () => import("./pages/invite.js"),
+  wallet: () => import("./pages/wallet.js"), shop: () => import("./pages/shop.js"), market: () => import("./pages/market.js"),
+  welcome: () => import("./pages/welcome.js"), music: () => import("./pages/music.js"),
+};
+const legalPage = (kind) => (...args) => P.legal().then((m) => m.legalPage(kind)(...args));
+const profilePage = lazy(P.profile, "profilePage"), postPage = lazy(P.post, "postPage"), friendsPage = lazy(P.friends, "friendsPage");
+const messagesPage = lazy(P.messages, "messagesPage"), notificationsPage = lazy(P.notifications, "notificationsPage");
+const searchPage = lazy(P.search, "searchPage"), tagPage = lazy(P.search, "tagPage"), bookmarksPage = lazy(P.bookmarks, "bookmarksPage");
+const settingsPage = lazy(P.settings, "settingsPage"), collectionPage = lazy(P.collection, "collectionPage");
+const callTestPage = lazy(P.calltest, "callTestPage"), reelsPage = lazy(P.reels, "reelsPage"), stickersPage = lazy(P.stickers, "stickersPage");
+const communitiesPage = lazy(P.communities, "communitiesPage"), communityPage = lazy(P.communities, "communityPage");
+const eventsPage = lazy(P.events, "eventsPage"), eventPage = lazy(P.events, "eventPage"), guestsPage = lazy(P.guests, "guestsPage");
+const adminPage = lazy(P.admin, "adminPage"), worldPage = lazy(P.world, "worldPage"), statsPage = lazy(P.stats, "statsPage");
+const invitePage = lazy(P.invite, "invitePage"), walletPage = lazy(P.wallet, "walletPage"), shopPage = lazy(P.shop, "shopPage");
+const marketPage = lazy(P.market, "marketPage"), welcomePage = lazy(P.welcome, "welcomePage");
+const musicPage = lazy(P.music, "musicPage"), genrePage = lazy(P.music, "genrePage"), playlistPage = lazy(P.music, "playlistPage");
+const showReveal = (...a) => P.collection().then((m) => m.showReveal(...a));
+// звонки должны слушать события с самого начала — модуль грузится сразу, но параллельно, не задерживая первый показ
+const callsReady = import("./call/call.js").then((m) => m.initCalls()).catch((e) => console.error(e));
+// самые частые разделы подгружаем заранее, когда браузер свободен, — переход будет мгновенным
+const idle = window.requestIdleCallback || ((f) => setTimeout(f, 1500));
+setTimeout(() => idle(() => { for (const k of ["messages", "profile", "notifications", "reels", "post"]) P[k]().catch(() => {}); }), 4000);
 
 // public: доступна без входа; guestOnly: только для гостей
 route("/login", authPages.loginPage, { public: true, guestOnly: true });
@@ -210,7 +215,7 @@ on("notification", (n) => {
 on("message", ({ message, sender }) => {
   if (!state.me || sender.id === state.me.id) return;
   if (location.pathname === `/messages/${message.conversation_id}`) return;
-  toast(previewOf(message), { title: sender.name, avatar: avatar(sender, "sm", { presence: false }), href: `/messages/${message.conversation_id}` });
+  P.messages().then(({ previewOf }) => toast(previewOf(message), { title: sender.name, avatar: avatar(sender, "sm", { presence: false }), href: `/messages/${message.conversation_id}` }));
 });
 on("logged-out", () => {
   state.me = null;
@@ -222,7 +227,6 @@ on("logged-out", () => {
 restoreLook();
 initMotion();
 initLiquid();
-initCalls();
 initFx();
 initAvatarFallback();
 initPwa();
@@ -272,9 +276,10 @@ async function upgradeAvatarStickers() {
   try { await telegramLogin(); } catch { /* вход из Telegram — необязателен */ }
   if (state.me) {
     applyUserLook();
+    await callsReady;
     connectStream();
-    initPlayer();
-    initCheckin();
+    import("./music/player.js").then((m) => m.initPlayer()).catch(() => {});
+    P.wallet().then((m) => m.initCheckin()).catch(() => {});
   }
   start();
   try { initTelegramApp(); } catch { /* вне Telegram или старый клиент */ }
