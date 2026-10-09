@@ -107,6 +107,9 @@ def _send_smtp(to: str, subject: str, text: str, html: str) -> None:
 
 async def send(to: str, subject: str, text: str, link: str | None = None, code: str | None = None) -> bool:
     """Отправляет письмо. Возвращает True, если письмо ушло (или принято сервисом)."""
+    from . import phones
+    if phones.is_placeholder(to):  # аккаунт без почты (только телефон) — писать некуда
+        return False
     html = _render_html(text, link, code)
     full_text = text + (f"\n\nКод: {code}" if code else "") + (f"\n\n{link}" if link else "")
     if not configured():

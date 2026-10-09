@@ -9,7 +9,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from .. import config, db, email_codes, mailer, qr, referrals, social, twofa
+from .. import phones, config, db, email_codes, mailer, qr, referrals, social, twofa
 from ..realtime import POLLING
 from ..security import (DISPOSABLE_DOMAINS, LIMITS, USERNAME_RE, hash_password, new_token, rate_limiter, token_hash,
                         validate_password, verify_password)
@@ -34,7 +34,8 @@ def me_payload(request: Request) -> dict:
         return {"user": None}
     return {
         "user": {
-            "id": u["id"], "email": u["email"], "username": u["username"], "name": u["name"],
+            "id": u["id"], "email": phones.public_email(u["email"]), "username": u["username"], "name": u["name"],
+            "phone": db.value("SELECT phone FROM users WHERE id=?", (u["id"],)) or "",
             "avatar": u["avatar"], "theme": u["theme"], "appearance": parse_appearance(u["appearance"]), "background": u["background"], "default_visibility": u["default_visibility"], "email_verified": bool(u["email_verified_at"]),
             "is_admin": bool(u["is_admin"]),
         },
@@ -133,17 +134,30 @@ async def register(request: Request):
         if not rate_limiter.check(f"{bucket}:{ip}", n_, w_):
             raise ApiError(429, "С этой сети недавно создали слишком много аккаунтов. Попробуйте позже.")
     email = str(data.get("email", "")).strip().lower()
-    if email.rsplit("@", 1)[-1] in DISPOSABLE_DOMAINS:
+    if email and email.rsplit("@", 1)[-1] in DISPOSABLE_DOMAINS:
         return JSONResponse({"error": "Проверьте поля формы",
                              "fields": {"email": "Одноразовые почтовые ящики не подходят — укажите свою почту"}}, status_code=422)
     password = str(data.get("password", ""))
     name = re.sub(r"\s+", " ", str(data.get("name", ""))).strip()
     username = str(data.get("username", "")).strip().lstrip("@")
     errors = {}
-    if not EMAIL_RE.match(email) or len(email) > 254:
-        errors["email"] = "Введите корректный e-mail"
-    elif db.value("SELECT 1 FROM users WHERE email=?", (email,)):
-        errors["email"] = "Этот e-mail уже зарегистрирован"
+    # главное — номер телефона; почта — резервная (для восстановления доступа), её можно не указывать
+    phone_raw = str(data.get("phone", "")).strip()
+    phone = phones.normalize(phone_raw)
+    if phone_raw or config.REQUIRE_PHONE:
+        if not phone:
+            errors["phone"] = "Введите номер телефона, например +7 912 345-67-89"
+        elif db.value("SELECT 1 FROM users WHERE phone=?", (phone,)):
+            errors["phone"] = "Этот номер уже зарегистрирован — войдите или восстановите пароль"
+    if email:
+        if not EMAIL_RE.match(email) or len(email) > 254 or phones.is_placeholder(email):
+            errors["email"] = "Введите корректный e-mail"
+        elif db.value("SELECT 1 FROM users WHERE email=?", (email,)):
+            errors["email"] = "Этот e-mail уже зарегистрирован"
+    elif not phone:
+        errors.setdefault("phone", "Укажите номер телефона")
+    if phone and not email:
+        email = phones.placeholder_email(phone)
     if err := validate_password(password):
         errors["password"] = err
     if not 2 <= len(name) <= 60:
@@ -160,8 +174,8 @@ async def register(request: Request):
         return JSONResponse({"error": "Проверьте поля формы", "fields": errors}, status_code=422)
 
     with db.tx() as c:
-        cur = c.execute("INSERT INTO users (email, password_hash, consent_at) VALUES (?,?,?)",
-                        (email, hash_password(password), db.now()))
+        cur = c.execute("INSERT INTO users (email, password_hash, consent_at, phone) VALUES (?,?,?,?)",
+                        (email, hash_password(password), db.now(), phone))
         uid = cur.lastrowid
         c.execute("INSERT INTO profiles (user_id, username, name) VALUES (?,?,?)", (uid, username, name))
     from .. import consents
@@ -194,13 +208,14 @@ async def login(request: Request):
     n, window = LIMITS["login_account"]
     if not rate_limiter.check(acct_key, n, window):
         raise ApiError(429, "Слишком много неудачных попыток входа. Попробуйте через 15 минут или восстановите пароль.")
+    as_phone = phones.normalize(login_) if not re.search(r"[A-Za-z@_]", login_) else None
     row = db.one("""SELECT u.id, u.password_hash, u.is_banned FROM users u JOIN profiles p ON p.user_id=u.id
-                    WHERE u.email=? OR p.username=?""", (login_.lower(), login_))
+                    WHERE u.email=? OR p.username=? OR (? <> '' AND u.phone=?)""", (login_.lower(), login_, as_phone or "", as_phone or ""))
     if not row or not verify_password(password, row["password_hash"]):
         rate_limiter.hit(acct_key, n, window)
         if row:
             log_login(request, row["id"], False, "password", "bad_password")
-        raise ApiError(400, "Неверный e-mail или пароль")
+        raise ApiError(400, "Неверный телефон, e-mail или пароль")
     if row["is_banned"]:
         log_login(request, row["id"], False, "password", "banned")
         raise ApiError(403, "Аккаунт заблокирован администрацией")
@@ -297,7 +312,10 @@ async def forgot(request: Request):
     limit(request, "auth")
     data = await body(request)
     email = str(data.get("email", "")).strip().lower()
-    row = db.one("SELECT id FROM users WHERE email=?", (email,))
+    as_phone = phones.normalize(email) if "@" not in email else None
+    row = db.one("SELECT id, email FROM users WHERE phone=?", (as_phone,)) if as_phone else db.one("SELECT id, email FROM users WHERE email=?", (email,))
+    if row:
+        email = row["email"]  # по номеру — письмо уходит на резервную почту (если она указана)
     n, window = LIMITS["mail_address"]
     if row and rate_limiter.hit(f"mail_address:{email}", n, window):
         await _send_token_email(row["id"], email, "reset")

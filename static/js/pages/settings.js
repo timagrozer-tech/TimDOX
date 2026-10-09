@@ -430,12 +430,19 @@ export async function settingsPage({ query = {} } = {}) {
   const emailBox = h("div.email-box");
   function paintEmail() {
     const rows = [
+      // номер телефона — для входа
       h("div.setting-row.email-row",
-        h("div.label-block", h("b.email-addr", s.email),
-          h(`small.email-state${s.email_verified ? ".ok" : ".warn"}`, s.email_verified ? "✓ Подтверждена" : "Не подтверждена")),
-        h("button.btn.soft.sm", { type: "button", onclick: changeEmail }, icon("edit", "sm"), "Изменить")),
+        h("div.label-block", h("b.email-addr", s.phone || "Номер не указан"),
+          h(`small.email-state${s.phone ? ".ok" : ".warn"}`, s.phone ? "Телефон для входа" : "Добавьте номер — по нему удобно входить")),
+        h("button.btn.soft.sm", { type: "button", onclick: changePhone }, icon("edit", "sm"), s.phone ? "Изменить" : "Добавить")),
+      // почта — резервная, для восстановления доступа
+      h("div.setting-row.email-row",
+        h("div.label-block", h("b.email-addr", s.email || "Резервная почта не указана"),
+          h(`small.email-state${s.email && s.email_verified ? ".ok" : ".warn"}`,
+            !s.email ? "Укажите почту — без неё не получится восстановить пароль" : s.email_verified ? "✓ Резервная почта подтверждена" : "Резервная почта не подтверждена")),
+        h("button.btn.soft.sm", { type: "button", onclick: changeEmail }, icon("edit", "sm"), s.email ? "Изменить" : "Добавить")),
     ];
-    if (!s.email_verified) {
+    if (s.email && !s.email_verified) {
       rows.push(h("div.code-block", s.mail_enabled
         ? verifyFlow({ onDone: () => { s.email_verified = true; paintEmail(); } })
         : h("small.muted", "Отправка писем пока не настроена на сервере — подтвердить почту можно будет позже.")));
@@ -460,6 +467,32 @@ export async function settingsPage({ query = {} } = {}) {
         } }, "Отменить смену")));
     }
     emailBox.replaceChildren(...rows);
+  }
+  function changePhone() {
+    const phone = h("input.input", { type: "tel", inputmode: "tel", autocomplete: "tel", placeholder: "+7 912 345-67-89", required: true, value: s.phone || "" });
+    const pw = h("input.input", { type: "password", autocomplete: "current-password", required: true });
+    const errT = h("div.field-error"), errP = h("div.field-error");
+    const go = h("button.btn.primary", { type: "button" }, "Сохранить");
+    const m = modal({
+      title: s.phone ? "Новый номер" : "Номер телефона", narrow: true, sheet: false,
+      body: h("div.stack",
+        h("div.field", h("label", "Номер телефона"), phone, errT),
+        h("div.field", h("label", "Текущий пароль"), pw, errP)),
+      footer: [h("button.btn.ghost", { type: "button", onclick: () => m.close() }, "Отмена"), go],
+    });
+    setTimeout(() => phone.focus(), 60);
+    go.addEventListener("click", async () => {
+      go.disabled = true;
+      try {
+        const r = await api.post("/api/me/phone", { phone: phone.value, password: pw.value });
+        s.phone = r.phone; if (state.me) state.me.phone = r.phone;
+        m.close(); toast("Номер сохранён — входите по нему", { icon: "check" }); paintEmail();
+      } catch (err) {
+        errT.textContent = err.fields?.phone || ""; errP.textContent = err.fields?.password || "";
+        if (!err.fields) toastError(err);
+      }
+      go.disabled = false;
+    });
   }
   function changeEmail() {
     const email = h("input.input", { type: "email", autocomplete: "email", placeholder: "new@mail.ru", required: true });
@@ -528,7 +561,7 @@ export async function settingsPage({ query = {} } = {}) {
       section("Круги", "Списки друзей, для которых можно публиковать отдельно — например, только для близких.", circlesBox)]],
     ["security", "Защита", "shield", () => [
       section("Двухфакторная защита", "Помимо пароля при входе нужен код из приложения на вашем телефоне.", twoFactorBox()),
-      section("Почта для входа", null, emailBox),
+      section("Телефон и резервная почта", null, emailBox),
       section("Пароль", null, h("details.set-more", h("summary", icon("lock", "sm"), "Сменить пароль", icon("down", "sm")), pwForm)),
       section("Где выполнен вход", "Если видите незнакомое устройство — завершите сеанс и смените пароль.", sessionsBox()),
       section("Журнал входов", "Все входы и неудачные попытки за 90 дней. Мы показываем сеть, а не точный адрес.", loginsBox())]],

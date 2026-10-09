@@ -38,9 +38,9 @@ function authLayout(...content) {
   return h("div.auth", brand(), h("div.auth-form-wrap", h("div.auth-mobile-hero", { "aria-hidden": "true" }, orbitScene()), h("div.card.auth-card", ...content)));
 }
 
-function field({ label, name, type = "text", autocomplete, placeholder, prefix, hint, required = true, maxlength }) {
+function field({ label, name, type = "text", autocomplete, placeholder, prefix, hint, required = true, maxlength, inputmode }) {
   const id = `f-${name}`;
-  const input = h("input.input", { id, name, type, autocomplete, placeholder, required, maxlength, "aria-describedby": `${id}-err` });
+  const input = h("input.input", { id, name, type, autocomplete, placeholder, required, maxlength, inputmode, "aria-describedby": `${id}-err` });
   let control = input;
   if (prefix) control = h("div.input-prefix", h("span", prefix), input);
   if (type === "password") {
@@ -89,7 +89,7 @@ export async function loginPage({ query }) {
     h("h1", adding ? "Ещё один аккаунт" : "С возвращением!"),
     h("p.sub", adding ? `Вы останетесь в @${state.me.username} — переключаться можно в один тап.` : "Войдите, чтобы увидеть новости друзей."),
     h("div.form-error.hidden", { role: "alert" }),
-    field({ label: "E-mail или логин", name: "email", autocomplete: "username", placeholder: "you@example.com" }),
+    field({ label: "Телефон, e-mail или логин", name: "email", autocomplete: "username", placeholder: "+7 912 345-67-89" }),
     field({ label: "Пароль", name: "password", type: "password", autocomplete: "current-password" }),
     h("div.row", h("div.spacer"), h("a", { href: "/forgot", style: { fontSize: "14px" } }, "Забыли пароль?")),
     submit,
@@ -178,7 +178,8 @@ export async function registerPage({ query }) {
     h("div.form-error.hidden", { role: "alert" }),
     field({ label: "Имя и фамилия", name: "name", autocomplete: "name", placeholder: "Анна Смирнова", maxlength: 60 }),
     field({ label: "Логин", name: "username", autocomplete: "username", placeholder: "anna_smirnova", prefix: "@", hint: "Латиница, цифры и _, от 3 до 30 символов", maxlength: 30 }),
-    field({ label: "E-mail", name: "email", type: "email", autocomplete: "email", placeholder: "you@example.com" }),
+    field({ label: "Номер телефона", name: "phone", type: "tel", autocomplete: "tel", inputmode: "tel", placeholder: "+7 912 345-67-89", hint: "По нему вы будете входить в аккаунт" }),
+    field({ label: "Резервная почта (необязательно)", name: "email", type: "email", autocomplete: "email", placeholder: "you@example.com", hint: "Поможет восстановить доступ, если забудете пароль", required: false }),
     field({ label: "Пароль", name: "password", type: "password", autocomplete: "new-password", hint: "Не короче 8 символов, буквы и цифры" }),
     consent,
     // ловушка для ботов: поле невидимо для людей и скринридеров, его заполняют только скрипты
@@ -211,11 +212,11 @@ export async function registerPage({ query }) {
     busy(submit, async () => {
       try {
         await api.post("/api/auth/register", {
-          name: $(form, "name").value, username: $(form, "username").value, email: $(form, "email").value,
+          name: $(form, "name").value, username: $(form, "username").value, email: $(form, "email").value, phone: $(form, "phone").value,
           password: $(form, "password").value, consent: $(form, "consent").checked, terms: $(form, "terms").checked,
           website: $(form, "website").value, t: Math.round(performance.now() - shownAt), ref: ref || undefined,
         });
-        toast("Аккаунт создан! Мы отправили письмо для подтверждения e-mail.", { icon: "mail", duration: 6000 });
+        toast($(form, "email").value.trim() ? "Аккаунт создан! На резервную почту пришло письмо для подтверждения." : "Аккаунт создан! Входите по номеру телефона.", { icon: "check", duration: 6000 });
         await afterLogin(query.next || "/welcome");
       } catch (err) { showErrors(form, err); }
     });
@@ -230,9 +231,9 @@ export async function forgotPage() {
   const form = h("form.auth-form", { novalidate: true },
     logo(),
     h("h1", "Забыли пароль?"),
-    h("p.sub", "Укажите e-mail — мы пришлём ссылку для сброса пароля."),
+    h("p.sub", "Укажите номер телефона или e-mail — ссылка для сброса придёт на резервную почту аккаунта."),
     h("div.form-error.hidden", { role: "alert" }),
-    field({ label: "E-mail", name: "email", type: "email", autocomplete: "email" }),
+    field({ label: "Телефон или e-mail", name: "email", autocomplete: "username", placeholder: "+7 912 345-67-89" }),
     submit,
     h("p.auth-switch", h("a", { href: "/login" }, "Вернуться ко входу")));
   form.addEventListener("submit", (e) => {
@@ -241,7 +242,7 @@ export async function forgotPage() {
       try {
         await api.post("/api/auth/forgot", { email: $(form, "email").value });
         form.replaceChildren(logo(), h("h1", "Проверьте почту"),
-          h("p.sub", "Если такой адрес зарегистрирован, письмо со ссылкой уже в пути. Ссылка действует 2 часа."),
+          h("p.sub", "Если такой аккаунт есть и у него указана почта, письмо со ссылкой уже в пути. Ссылка действует 2 часа. Почты нет? Напишите в поддержку."),
           h("a.btn.primary.lg.block", { href: "/login" }, "Ко входу"));
       } catch (err) { showErrors(form, err); }
     });

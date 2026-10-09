@@ -48,6 +48,7 @@ COOKIE_SECURE = _bool("COOKIE_SECURE", APP_URL.startswith("https://"))
 
 # Если включено — без подтверждения e-mail нельзя публиковать и писать сообщения.
 REQUIRE_EMAIL_CONFIRM = _bool("REQUIRE_EMAIL_CONFIRM", False)
+REQUIRE_PHONE = _bool("REQUIRE_PHONE", True)   # регистрация по номеру телефона (почта — резервная)
 
 SMTP_HOST = os.environ.get("SMTP_HOST", "")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))

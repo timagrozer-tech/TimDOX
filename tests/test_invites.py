@@ -1,7 +1,7 @@
 """Реферальная экосистема: ссылки, переходы, засчёт приглашений, галочки 3/10/50/100, рейтинг, дерево."""
 import unittest
 
-from test_api import Client
+from test_api import Client, test_phone
 from app import db, referrals
 from app.security import rate_limiter
 
@@ -25,7 +25,8 @@ class InvitesTest(unittest.TestCase):
 
     def _invitee(self, name: str, code: str, via_cookie=False, net=None) -> tuple[Client, int]:
         c = Client()
-        data = {"email": f"{name}@example.com", "password": "secret123", "name": "Новичок Тест", "username": name, "consent": True}
+        data = {"email": f"{name}@example.com", "password": "secret123", "name": "Новичок Тест", "username": name, "consent": True,
+                "phone": test_phone(name)}
         if via_cookie:
             r = c.c.get(f"/i/{code}", follow_redirects=False)
             self.assertEqual(r.status_code, 302)

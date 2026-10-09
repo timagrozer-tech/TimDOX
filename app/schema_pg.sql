@@ -1059,3 +1059,8 @@ CREATE TABLE IF NOT EXISTS req_log (
 -- Клипы: кто видит и можно ли комментировать
 ALTER TABLE reels ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'public';
 ALTER TABLE reels ADD COLUMN IF NOT EXISTS comments_off INTEGER NOT NULL DEFAULT 0;
+
+-- Вход по номеру телефона (почта — резервная)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified_at TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone) WHERE phone IS NOT NULL;

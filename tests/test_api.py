@@ -30,6 +30,12 @@ def png_bytes(color=(200, 50, 50), size=(800, 600)) -> bytes:
     return buf.getvalue()
 
 
+def test_phone(seed: str) -> str:
+    """Уникальный тестовый номер для логина (регистрация теперь по телефону)"""
+    import zlib
+    return "+79" + str(zlib.crc32(seed.encode()) % 10 ** 9).zfill(9)
+
+
 class Client:
     def __init__(self):
         self.c = TestClient(app, base_url="http://testserver")
@@ -58,8 +64,9 @@ class Client:
     def delete(self, url, json=None):
         return self.c.request("DELETE", url, json=json, headers=self._h())
 
-    def register(self, username, name, email=None, city=""):
+    def register(self, username, name, email=None, city="", phone=None):
         r = self.post("/api/auth/register", {"email": email or f"{username}@example.com", "password": "secret123",
+                                             "phone": phone or test_phone(username),
                                              "name": name, "username": username, "consent": True})
         assert r.status_code == 201, r.text
         self.refresh()
@@ -184,7 +191,7 @@ class ApiTest(unittest.TestCase):
         c = Client().register("gleb", "Глеб")
         r = c.post("/api/auth/register", {"email": "bad", "password": "123", "name": "x", "username": "!", "consent": False})
         self.assertEqual(r.status_code, 422)
-        self.assertEqual(set(r.json()["fields"]), {"email", "password", "name", "username", "consent"})
+        self.assertEqual(set(r.json()["fields"]), {"phone", "email", "password", "name", "username", "consent"})
         anon = Client()
         anon.post("/api/auth/forgot", {"email": "gleb@example.com"})
         outbox = (config.DATA_DIR / "outbox.log").read_text(encoding="utf-8")

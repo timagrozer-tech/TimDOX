@@ -113,7 +113,8 @@ class AntibotTest(unittest.TestCase):
 
     def _reg(self, **extra):
         data = {"email": f"bot{time.time_ns()}@example.com", "password": "secret123", "name": "Бот Ботов",
-                "username": f"b{time.time_ns() % 10**12}", "consent": True, **extra}
+                "username": f"b{time.time_ns() % 10**12}", "consent": True,
+                "phone": "+79" + str(time.time_ns() % 10 ** 9).zfill(9), **extra}
         return Client().post("/api/auth/register", data)
 
     def test_honeypot_and_speed(self):

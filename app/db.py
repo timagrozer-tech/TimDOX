@@ -67,6 +67,8 @@ def _connect_sqlite(path) -> sqlite3.Connection:
 
 # Новые столбцы для SQLite-баз, созданных до Этапа 2: (таблица, столбец, определение)
 MIGRATIONS = [
+    ("users", "phone", "TEXT"),
+    ("users", "phone_verified_at", "TEXT"),
     ("songs", "album_id", "INTEGER REFERENCES albums(id) ON DELETE SET NULL"),
     ("songs", "track_no", "INTEGER NOT NULL DEFAULT 0"),
     ("reels", "visibility", "TEXT NOT NULL DEFAULT 'public'"),
@@ -130,6 +132,7 @@ MIGRATIONS = [
     ("tg_links", "webapp_login", "INTEGER NOT NULL DEFAULT 1"),
 ]
 POST_MIGRATION_SQL = """
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone) WHERE phone IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_posts_community ON posts(community_id, id DESC);
 CREATE INDEX IF NOT EXISTS idx_profiles_school ON profiles(school_year);
 CREATE INDEX IF NOT EXISTS idx_notif_post ON notifications(post_id);

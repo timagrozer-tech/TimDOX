@@ -410,8 +410,10 @@ def parse_appearance(value):
 async def settings_get(request: Request):
     u = request.state.user
     p = db.one("SELECT * FROM profiles WHERE user_id=?", (u["id"],))
-    p["email"] = u["email"]
-    p["email_verified"] = bool(u["email_verified_at"])
+    from .. import phones
+    p["email"] = phones.public_email(u["email"])
+    p["email_verified"] = bool(u["email_verified_at"]) and bool(p["email"])
+    p["phone"] = db.value("SELECT phone FROM users WHERE id=?", (u["id"],)) or ""
     p["show_birth_date"] = bool(p["show_birth_date"])
     p["invisible"] = bool(p["invisible"])
     p["appearance"] = parse_appearance(p["appearance"])
@@ -479,6 +481,30 @@ async def email_change(request: Request):
     if not sent:
         raise ApiError(503, "Не удалось отправить письмо. Попробуйте позже.")
     return JSONResponse({"pending": new})
+
+
+@auth()
+async def phone_change(request: Request):
+    """Номер телефона для входа: добавить или сменить (нужен пароль)"""
+    from .. import phones
+    limit(request, "auth", "phone")
+    u = request.state.user
+    data = await body(request)
+    new = phones.normalize(data.get("phone"))
+    errors = {}
+    if not new:
+        errors["phone"] = "Введите номер, например +7 912 345-67-89"
+    elif db.value("SELECT 1 FROM users WHERE phone=? AND id!=?", (new, u["id"])):
+        errors["phone"] = "Этот номер уже привязан к другому аккаунту"
+    if not verify_password(str(data.get("password", "")), db.value("SELECT password_hash FROM users WHERE id=?", (u["id"],))):
+        errors["password"] = "Неверный пароль"
+    if errors:
+        return JSONResponse({"error": "Проверьте поля формы", "fields": errors}, status_code=422)
+    db.run("UPDATE users SET phone=?, phone_verified_at=NULL WHERE id=?", (new, u["id"]))
+    # у аккаунта без почты технический адрес строится из номера — обновляем и его
+    if phones.is_placeholder(u["email"]):
+        db.run("UPDATE users SET email=? WHERE id=?", (phones.placeholder_email(new), u["id"]))
+    return JSONResponse({"phone": new})
 
 
 @auth()
@@ -813,6 +839,7 @@ routes = [
     Route("/api/me/settings", settings_update, methods=["PATCH"]),
     Route("/api/me/status", set_status, methods=["PATCH", "DELETE"]),
     Route("/api/me/email", email_change, methods=["POST"]),
+    Route("/api/me/phone", phone_change, methods=["POST"]),
     Route("/api/me/email/confirm", email_confirm, methods=["POST"]),
     Route("/api/me/avatar3d", avatar3d_set, methods=["PUT", "DELETE"]),
     Route("/api/me/{kind}", upload_image, methods=["POST", "DELETE"]),
