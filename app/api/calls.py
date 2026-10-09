@@ -238,7 +238,24 @@ async def diag(request: Request):
     return ok()
 
 
+@auth()
+async def perf(request: Request):
+    """Сводка плавности с телефона (кадры в секунду, долгие задачи и чей в них код) — для разбора «сайт тормозит»"""
+    limit(request, "call_diag")
+    v = request.state.user["id"]
+    data = await body(request)
+    import sys
+    wsgi = sys.modules.get("app.wsgi")
+    ok_chars = _DIAG_OK | set("ABCDEFGHIJKLMNOPQRSTUVWXYZ()[]#@")
+    for i, part in enumerate((data.get("parts") or [])[:4]):
+        s = "".join(ch for ch in str(part)[:300] if ch in ok_chars)
+        if wsgi is not None and s:
+            wsgi._req_queue.append(("SYS", "/__perf", 200, i, f"u{v}", s, os.getpid()))
+    return ok()
+
+
 routes = [
+    Route("/api/perf", perf, methods=["POST"]),
     Route("/api/calls/{id}/diag", diag, methods=["POST"]),
     Route("/api/calls", start, methods=["POST"]),
     Route("/api/calls/history", history, methods=["GET"]),

@@ -284,6 +284,7 @@ async function upgradeAvatarStickers() {
   start();
   try { initTelegramApp(); } catch { /* вне Telegram или старый клиент */ }
   if (state.me) setTimeout(upgradeAvatarStickers, 7000);
+  if (state.me) setTimeout(() => import("./perfbeacon.js").then((m) => m.startPerfBeacon()).catch(() => {}), 2000);
   setTimeout(() => import("./components/consent.js").then((m) => m.cookieNotice()).catch(() => {}), 1500);
 })();
 
