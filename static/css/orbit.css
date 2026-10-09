@@ -4931,3 +4931,5 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
 /* полоса о cookie не перекрывает мини-плеер (на телефоне из-за неё нельзя было закрыть песню) */
 body.has-player .cookie-bar { bottom: calc(var(--dock-h, 62px) + 96px + env(safe-area-inset-bottom)); }
 @media (min-width: 900px) { body.has-player .cookie-bar { bottom: 100px; } }
+.av3d-tap { position: absolute; z-index: 2; right: 6%; bottom: 6%; padding: 3px 8px; border-radius: 999px; font: 800 12px/1.2 var(--font-display, inherit);
+  color: #fff; background: var(--primary); box-shadow: 0 2px 10px rgb(0 0 0 / .35); pointer-events: none; }
