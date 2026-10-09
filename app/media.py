@@ -169,7 +169,8 @@ def _put(rel: str, data: bytes, ctype: str) -> None:
     elif config.MEDIA_STORAGE == "db":
         from . import db
         # RETURNING path — иначе PostgreSQL вернул бы обратно весь файл
-        db.run("INSERT INTO media_files (path, content_type, data) VALUES (?, ?, ?) RETURNING path", (rel, ctype, data))
+        db.run("INSERT INTO media_files (path, content_type, data) VALUES (?, ?, ?)" + (" RETURNING path" if db.IS_PG else ""),
+               (rel, ctype, data))
     else:
         target = config.UPLOAD_DIR / rel
         target.parent.mkdir(parents=True, exist_ok=True)
