@@ -119,6 +119,8 @@ def complete(system: str, user: str, max_tokens: int = 1500, want_json: bool = F
                 except ValueError:
                     wait = 20
                 _pause[p["name"]] = time.time() + min(max(wait, 5), 300)
+            elif e.code in (401, 403):  # ключ не подходит или страна хостинга заблокирована — не стучимся полчаса
+                _pause[p["name"]] = time.time() + 1800
             _diag(p["name"], f"{e.code} {body!r}")
             continue
         except (urllib.error.URLError, TimeoutError, KeyError, ValueError, OSError) as e:

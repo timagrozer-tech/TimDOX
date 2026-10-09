@@ -37,7 +37,7 @@ def _need_ai(uid: int | None = None) -> None:
 def _ask(system: str, user: str, max_tokens: int, want_json: bool = False) -> str:
     out = llm.complete(system, user, max_tokens=max_tokens, want_json=want_json)
     if not out:
-        raise ApiError(503, "ИИ сейчас занят — попробуйте через минуту", "ai_busy")
+        raise ApiError(503, "ИИ сейчас недоступен — попробуйте позже", "ai_busy")
     return out.strip()
 
 
