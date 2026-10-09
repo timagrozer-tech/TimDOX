@@ -4,7 +4,6 @@
 Копия пишется во временный файл, число строк сверяется, и только потом файл переименовывается в рабочий.
 """
 import os
-import sqlite3
 import time
 from pathlib import Path
 
@@ -124,6 +123,7 @@ def backup(target: Path, keep: int = 3) -> Path | None:
     out = folder / f"yarko-{time.strftime('%Y%m%d')}.db"
     if out.exists():
         return out
+    from .db import sqlite3
     src = sqlite3.connect(str(target))
     dst = sqlite3.connect(str(out) + ".tmp")
     try:

@@ -6,6 +6,14 @@
 import os
 import re
 import sqlite3
+
+# На хостингах встречается старая системная SQLite (без GENERATED-столбцов, RETURNING, UPSERT) —
+# тогда берём современную из пакета pysqlite3-binary (requirements.txt)
+if sqlite3.sqlite_version_info < (3, 35, 0):
+    try:
+        import pysqlite3.dbapi2 as sqlite3  # type: ignore  # noqa: F811
+    except ImportError:
+        pass
 import threading
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone

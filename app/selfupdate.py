@@ -92,6 +92,14 @@ def install(home: Path, sha: str) -> Path:
                            capture_output=True, text=True, timeout=900)
         if r.returncode:
             raise RuntimeError("pip: " + (r.stderr or r.stdout)[-800:])
+    # современная SQLite для локальной базы (docs/adr/0001), если системная старая; не получилось — не страшно
+    chk = subprocess.run([py, "-c", "import sqlite3,sys; sys.exit(0 if sqlite3.sqlite_version_info >= (3, 35, 0) else 1)"],
+                         capture_output=True, timeout=60)
+    if chk.returncode:
+        chk = subprocess.run([py, "-c", "import pysqlite3"], capture_output=True, timeout=60)
+        if chk.returncode:
+            subprocess.run([py, "-m", "pip", "install", "-q", "--disable-pip-version-check", "pysqlite3-binary"],
+                           capture_output=True, text=True, timeout=600)
     # новая версия должна хотя бы импортироваться — иначе остаёмся на старой
     env = {**os.environ, "KRUG_BACKGROUND": "0", "PYTHONDONTWRITEBYTECODE": "1"}
     r = subprocess.run([py, "-c", "import app.main"], cwd=tmp, capture_output=True, text=True, timeout=180, env=env)

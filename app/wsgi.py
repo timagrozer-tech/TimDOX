@@ -50,6 +50,10 @@ def _local_db() -> None:
     if not target.exists():
         if not urls:
             return
+        from app.db import sqlite3 as _sq
+        if _sq.sqlite_version_info < (3, 35, 0):  # слишком старая SQLite и нет pysqlite3 — остаёмся на PostgreSQL
+            _req_queue.append(("SYS", "/__db-local-skip-old-sqlite", 500, 0, "", _sq.sqlite_version, os.getpid()))
+            return
         import time as _t
         t0 = _t.time()
         try:
