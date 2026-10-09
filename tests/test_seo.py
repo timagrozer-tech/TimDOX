@@ -66,3 +66,17 @@ class SeoFilesTest(unittest.TestCase):
         home = c.get("/").text
         self.assertIn('"@type": "WebSite"', home)
         self.assertNotIn('content="noindex"', home)
+
+
+class VersionedStaticTest(unittest.TestCase):
+    def test_versioned_static(self):
+        import re
+        from test_api import Client
+        c = Client()
+        html = c.get("/").text
+        url = re.search(r'/static/v/[\w.]+/js/app\.js', html).group(0)
+        r = c.get(url)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.headers.get_list("cache-control"), ["public, max-age=31536000, immutable"])
+        self.assertNotIn("DATABASE_URL", c.get("/static/v/x/..%2F..%2Fapp%2Fconfig.py").text)
+        self.assertEqual(c.get("/static/v/x/js/nope.js").status_code, 404)

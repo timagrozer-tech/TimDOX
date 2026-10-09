@@ -123,9 +123,17 @@ def _jsonld(path: str, m: dict, url: str) -> list[dict]:
     return []
 
 
+# Версия сборки: скрипты и стили отдаются по адресу /static/v/<версия>/… и кэшируются браузером навсегда —
+# повторные визиты не делают ни одного запроса за ~150 модулями, а после выкладки адрес меняется сам
+import os as _os
+import time as _time
+BUILD = (_os.environ.get("RENDER_GIT_COMMIT") or _os.environ.get("YARKO_COMMIT") or str(int(_time.time())))[:12]
+
+
 def render(path: str) -> str:
     import json
     html = _index()
+    html = re.sub(r'/static/(js/app\.js|css/app\.css|css/orbit\.css)\?v=[\w.]+', lambda m_: f"/static/v/{BUILD}/{m_.group(1)}", html)
     m = meta_for(path)
     url = f"{config.APP_URL}{path}"
     e = lambda s: escape(s or "", quote=True)  # noqa: E731

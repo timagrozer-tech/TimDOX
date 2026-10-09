@@ -124,7 +124,7 @@ class SecurityMiddleware:
                 if path.startswith("/api/"):
                     headers.append((b"cache-control", b"no-store"))
                     headers.append((b"x-app-version", APP_VERSION))
-                elif path.startswith("/static/") and path.endswith((".js", ".css")):
+                elif path.startswith("/static/") and not path.startswith("/static/v/") and path.endswith((".js", ".css")):
                     # модули подгружаются без ?v= — пусть браузер всегда сверяется с сервером (ETag), иначе после обновления
                     # на телефоне может остаться старый интерфейс
                     headers.append((b"cache-control", b"no-cache"))
@@ -233,6 +233,17 @@ async def spa(request: Request):
     if request.url.path.startswith("/api/"):
         return JSONResponse({"error": "Не найдено"}, status_code=404)
     return HTMLResponse(seo.render(request.url.path), headers={"Cache-Control": "no-cache"})
+
+
+async def versioned_static(request: Request):
+    """Скрипты и стили конкретной версии сайта: адрес меняется с каждой выкладкой, поэтому кэш — навсегда"""
+    rel = request.path_params["path"]
+    p = (config.STATIC_DIR / rel).resolve()
+    if ".." in rel or config.STATIC_DIR.resolve() not in p.parents or not p.is_file():
+        return Response(status_code=404)
+    ctype = {".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json",
+             ".svg": "image/svg+xml", ".woff2": "font/woff2", ".png": "image/png", ".webp": "image/webp"}.get(p.suffix)
+    return FileResponse(p, media_type=ctype, headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 async def uploads(request: Request):
@@ -500,6 +511,7 @@ routes = [
     Route("/manifest.webmanifest", manifest),
     *wallet_api.routes, *city_api.routes, *shop_routes.routes, *market_routes.routes, *invites.routes, *accounts.routes, *calls.routes, *admin.routes, *world_api.routes, *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
     *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *stats.routes, *music_api.routes, *collection_routes.routes, *reels.routes, *stickers.routes, *tgbot.routes, *webpush.routes, *assist.routes, *chatplus.routes, *consents.routes, *migrate.routes,
+    Route("/static/v/{ver}/{path:path}", versioned_static, methods=["GET", "HEAD"]),
     Mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static"),
     Route("/uploads/{path:path}", uploads, methods=["GET", "HEAD"]),
     Route("/{path:path}", spa, methods=["GET"]),
