@@ -280,6 +280,12 @@ def application(environ, start_response):
         err = first.get("error") if isinstance(first, dict) else None
         if err:
             print(f"Yarko: ошибка запроса {scope['method']} {path}: {err!r}", file=sys.stderr)
+            if len(_req_queue) < 2000:  # причина — в журнал запросов (удалённая диагностика)
+                import traceback
+                tb = "".join(traceback.format_exception_only(type(err), err)).strip()
+                where = traceback.extract_tb(err.__traceback__)[-1:] if err.__traceback__ else []
+                loc = f" @{where[0].filename.rsplit('/', 2)[-1]}:{where[0].lineno}" if where else ""
+                _req_queue.append(("SYS", "/__error " + path[:150], 500, 0, "", (tb + loc)[:300], os.getpid()))
         finish()
         start_response("500 Internal Server Error", [("Content-Type", "text/plain; charset=utf-8")])
         return [b"Internal Server Error"]

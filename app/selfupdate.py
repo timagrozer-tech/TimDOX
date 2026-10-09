@@ -118,6 +118,22 @@ def sync_static(site: Path, release: Path) -> None:
     shutil.rmtree(new, ignore_errors=True)
     shutil.copytree(release / "static", new)
     cur = site / "static"
+    # скрипты и стили по версионным адресам /static/v/<версия>/… — готовыми файлами, чтобы их отдавал веб-сервер,
+    # а не Python (быстрее и без сбоев под нагрузкой); прошлую версию оставляем для ещё открытых вкладок
+    try:
+        sha = (release / ".commit").read_text().strip()[:12]
+        if sha:
+            vdir = new / "v" / sha
+            vdir.mkdir(parents=True, exist_ok=True)
+            for sub in ("js", "css", "vendor"):
+                if (release / "static" / sub).is_dir():
+                    shutil.copytree(release / "static" / sub, vdir / sub, dirs_exist_ok=True)
+            prev = sorted((d for d in (cur / "v").iterdir() if d.is_dir() and d.name != sha),
+                          key=lambda d: d.stat().st_mtime, reverse=True)[:1] if (cur / "v").is_dir() else []
+            for d in prev:
+                shutil.copytree(d, new / "v" / d.name, dirs_exist_ok=True)
+    except OSError:
+        pass  # не страшно: эти адреса обслужит само приложение
     if cur.is_symlink():
         cur.unlink()
     if cur.exists():
