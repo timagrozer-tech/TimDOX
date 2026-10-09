@@ -130,11 +130,15 @@ export function stickerNode(s, { interactive = true, onNavigate } = {}) {
 }
 
 /** Рисует историю целиком: фон/фото, текст, стикеры */
+export const isVideo = (st) => st.kind === "video" || /\.(mp4|webm|mov)(\?|$)/i.test(st.media || "");
+
 export function renderStory(stage, st, opts = {}) {
   const style = st.style || { ...defaultStyle(!!st.media), y: st.media ? .82 : .45, size: st.media ? 20 : 28, mode: st.media ? "glass" : "plain" };
   stage.style.background = st.media ? "#000" : (BACKGROUNDS[st.background] || BACKGROUNDS.blue);
   stage.replaceChildren(
-    st.media ? h("img.st-photo", { src: st.media, alt: st.text || "История" }) : null,
+    st.media ? (isVideo(st)
+      ? h("video.st-photo.st-video", { src: st.media, poster: st.thumb || undefined, playsinline: true, preload: "auto", "aria-label": st.text || "Видео-история" })
+      : h("img.st-photo", { src: st.media, alt: st.text || "История" })) : null,
     st.text ? textNode(st.text, style) : null,
     ...(style.stickers || []).map((s) => stickerNode(s, opts)));
 }

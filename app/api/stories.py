@@ -76,6 +76,7 @@ def clean_style(raw: str | None, has_photo: bool) -> dict:
             if tag:
                 style["stickers"].append({"type": "tag", "tag": tag, **pos})
     return style
+STORY_VIDEO_SECONDS = 10
 STORY_HOURS = 24
 
 
@@ -92,7 +93,8 @@ def _story_view(s: dict, seen: set[int]) -> dict:
         style = json.loads(s["style"]) if s.get("style") else None
     except ValueError:
         style = None
-    return {"id": s["id"], "media": s["media"], "text": s["text"], "background": s["background"], "style": style,
+    kind = "video" if (s["media"] or "").rsplit(".", 1)[-1].lower() in ("mp4", "webm", "mov") else ("photo" if s["media"] else None)
+    return {"id": s["id"], "media": s["media"], "kind": kind, "thumb": s.get("thumb"), "text": s["text"], "background": s["background"], "style": style,
             "visibility": s["visibility"], "created_at": s["created_at"], "expires_at": s["expires_at"],
             "seen": s["id"] in seen}
 
@@ -139,7 +141,7 @@ async def stories_feed(request: Request):
 async def create_story(request: Request):
     limit(request, "write")
     v = request.state.user["id"]
-    form = await request.form(max_files=1, max_fields=12, max_part_size=16 * 1024)
+    form = await request.form(max_files=2, max_fields=14, max_part_size=16 * 1024)
     try:
         text = censor(clean_text(form.get("text"), 300))
         background = form.get("background") or "blue"
@@ -149,8 +151,24 @@ async def create_story(request: Request):
         if visibility not in ("public", "friends"):
             raise ApiError(400, "Неизвестная настройка видимости")
         photo = form.get("photo")
+        video = form.get("video")
         saved = None
-        if getattr(photo, "filename", None):
+        if getattr(video, "filename", None):
+            # короткое видео в истории: до 10 секунд (клиент сам обрезает и сжимает длинные)
+            limit(request, "upload")
+            try:
+                dur = float(form.get("duration") or 0)
+            except ValueError:
+                dur = 0
+            if dur > STORY_VIDEO_SECONDS + 0.6:
+                raise ApiError(400, f"Видео в истории — не длиннее {STORY_VIDEO_SECONDS} секунд")
+            vid = await media.save_media(video, "video")
+            thumb = None
+            pf = form.get("poster")
+            if getattr(pf, "filename", None):
+                thumb = (await media.save_upload(pf, "story"))["thumb"]
+            saved = {"path": vid["path"], "thumb": thumb}
+        elif getattr(photo, "filename", None):
             limit(request, "upload")
             saved = await media.save_upload(photo, "story")
         style = clean_style(form.get("style"), bool(saved))

@@ -35,6 +35,7 @@ def reel_views(rows: list[dict], v: int) -> list[dict]:
         "width": r["width"], "height": r["height"], "views": r["views"], "created_at": r["created_at"],
         "author": authors.get(r["author_id"]), "likes": likes.get(r["id"], 0), "liked": r["id"] in mine,
         "comments": comments.get(r["id"], 0), "mine": r["author_id"] == v,
+        "visibility": r.get("visibility") or "public", "comments_off": bool(r.get("comments_off")),
         "following": r["author_id"] in following or r["author_id"] in friends,
     } for r in rows]
 
@@ -43,8 +44,9 @@ def _reel(reel_id: int, v: int) -> dict:
     r = db.one("SELECT * FROM reels WHERE id=?", (reel_id,))
     if not r or social.blocked_between(v, r["author_id"]):
         raise ApiError(404, "Клип не найден")
-    if r["author_id"] != v and not social.are_friends(v, r["author_id"]) and \
-            db.value("SELECT profile_visibility FROM profiles WHERE user_id=?", (r["author_id"],)) != "public":
+    if r["author_id"] != v and not social.are_friends(v, r["author_id"]) and (
+            (r.get("visibility") or "public") == "friends"
+            or db.value("SELECT profile_visibility FROM profiles WHERE user_id=?", (r["author_id"],)) != "public"):
         raise ApiError(404, "Клип доступен только друзьям автора")
     return r
 
@@ -55,7 +57,8 @@ async def list_reels(request: Request):
     cursor = int_param(request, "cursor")
     username = request.query_params.get("user")
     where, params = ["NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id=? AND b.blocked_id=r.author_id) OR (b.blocker_id=r.author_id AND b.blocked_id=?))",
-                     """(r.author_id=? OR EXISTS (SELECT 1 FROM profiles pr WHERE pr.user_id=r.author_id AND pr.profile_visibility='public')
+                     """(r.author_id=? OR EXISTS (SELECT 1 FROM profiles pr WHERE pr.user_id=r.author_id AND pr.profile_visibility='public'
+                                                   AND coalesce(r.visibility, 'public')='public')
                         OR EXISTS (SELECT 1 FROM friendships f WHERE f.status='accepted' AND f.user_low=least(?, r.author_id) AND f.user_high=greatest(?, r.author_id)))"""], [v, v, v, v, v]
     if username:
         uid = db.value("SELECT user_id FROM profiles WHERE username=?", (username,))
@@ -96,6 +99,10 @@ async def create_reel(request: Request):
         if duration > config.REEL_MAX_SECONDS + 1:
             raise ApiError(400, f"Клип должен быть не длиннее {config.REEL_MAX_SECONDS} секунд")
         caption = censor(clean_text(str(form.get("caption") or ""), 2200))
+        visibility = str(form.get("visibility") or "public")
+        if visibility not in ("public", "friends"):
+            raise ApiError(400, "Неизвестная настройка видимости")
+        comments_off = 1 if str(form.get("comments_off") or "") in ("1", "true", "on") else 0
         saved = await media.save_media(f, "video")
         saved_files.append(saved["path"])
         poster = None
@@ -111,8 +118,8 @@ async def create_reel(request: Request):
         raise
     finally:
         await form.close()
-    cur = db.run("INSERT INTO reels (author_id, video, poster, caption, duration, width, height) VALUES (?,?,?,?,?,?,?)",
-                 (v, saved["path"], poster, caption, duration, w, hgt))
+    cur = db.run("""INSERT INTO reels (author_id, video, poster, caption, duration, width, height, visibility, comments_off)
+                    VALUES (?,?,?,?,?,?,?,?,?)""", (v, saved["path"], poster, caption, duration, w, hgt, visibility, comments_off))
     return JSONResponse(reel_views([db.one("SELECT * FROM reels WHERE id=?", (cur.lastrowid,))], v)[0], status_code=201)
 
 
@@ -168,6 +175,8 @@ async def comments(request: Request):
     r = _reel(path_int(request), v)
     if request.method == "POST":
         limit(request, "write")
+        if r.get("comments_off") and r["author_id"] != v:
+            raise ApiError(403, "Автор отключил комментарии к этому клипу")
         data = await body(request)
         text = censor(clean_text(data.get("text"), 1000))
         if not text:

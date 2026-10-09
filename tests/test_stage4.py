@@ -126,6 +126,30 @@ class Stage4Test(unittest.TestCase):
         self.assertEqual(self.zoya.delete(f"/api/reels/{reel['id']}").status_code, 200)
         self.assertIsNone(db.value("SELECT 1 FROM reels WHERE id=?", (reel["id"],)))
 
+    def test_reel_options_and_story_video(self):
+        rate_limiter.reset()
+        r = self.zoya.post("/api/reels", data={"caption": "Для своих", "duration": "8", "visibility": "friends", "comments_off": "1"},
+                           files=[("video", ("r.mp4", FAKE_MP4, "video/mp4"))])
+        self.assertEqual(r.status_code, 201, r.text)
+        reel = r.json()
+        self.assertEqual((reel["visibility"], reel["comments_off"]), ("friends", True))
+        stranger = Client().register("reel_stranger5", "Чужой Клипов")
+        self.assertNotIn(reel["id"], [x["id"] for x in stranger.get("/api/reels").json()["items"]], "клип «для друзей» не виден чужим")
+        self.assertEqual(stranger.get(f"/api/reels/{reel['id']}").status_code, 404)
+        self.assertIn(reel["id"], [x["id"] for x in self.ivan.get("/api/reels").json()["items"]])
+        self.assertEqual(self.ivan.post(f"/api/reels/{reel['id']}/comments", {"text": "Можно?"}).status_code, 403)
+        self.assertEqual(self.zoya.post(f"/api/reels/{reel['id']}/comments", {"text": "Себе можно"}).status_code, 201)
+        self.assertEqual(self.zoya.delete(f"/api/reels/{reel['id']}").status_code, 200)
+        bad = self.zoya.post("/api/reels", data={"duration": "5", "visibility": "secret"}, files=[("video", ("r.mp4", FAKE_MP4, "video/mp4"))])
+        self.assertEqual(bad.status_code, 400)
+        # истории: короткое видео до 10 секунд
+        s = self.zoya.post("/api/stories", data={"duration": "9.5", "visibility": "friends"},
+                           files=[("video", ("s.mp4", FAKE_MP4, "video/mp4")), ("poster", ("p.png", png_bytes(), "image/png"))])
+        self.assertEqual(s.status_code, 201, s.text)
+        self.assertEqual(s.json()["kind"], "video")
+        long = self.zoya.post("/api/stories", data={"duration": "25"}, files=[("video", ("s.mp4", FAKE_MP4, "video/mp4"))])
+        self.assertEqual(long.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

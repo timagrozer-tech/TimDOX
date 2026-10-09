@@ -4874,3 +4874,21 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
 
 /* подсказки в полях ввода: читаемый контраст в обеих темах (WCAG 1.4.3), стандартный серый в тёмной теме не проходит */
 .input::placeholder, .textarea::placeholder, input::placeholder, textarea::placeholder { color: var(--text-3); opacity: 1; }
+
+/* «Новый клип»: обрезка, обложка, настройки */
+.ru-form { display: grid; gap: 14px; }
+.ru-field { display: grid; gap: 6px; }
+.ru-field > small:first-child, .ru-trim > small:first-child { font-weight: 700; color: var(--text-2); }
+.ru-trim { display: grid; gap: 6px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); }
+.ru-range { width: 100%; accent-color: var(--primary); min-height: 28px; }
+.ru-trim-label { color: var(--text-2); font-variant-numeric: tabular-nums; }
+.ru-trim-label.bad { color: var(--accent); font-weight: 700; }
+.ru-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ru-cover { display: flex; gap: 10px; align-items: center; }
+.ru-cover-thumb { width: 44px; aspect-ratio: 9 / 16; border-radius: 8px; overflow: hidden; background: #000; flex: none; }
+.ru-cover-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ru-cover .ru-field { flex: 1; min-width: 0; }
+.ru-status { display: block; }
+.rl-comments-off { text-align: center; width: 100%; margin: 0; }
+.ru-chips .chip.on { background: var(--primary); border-color: transparent; color: #fff; }
+.st-video { object-fit: cover; }

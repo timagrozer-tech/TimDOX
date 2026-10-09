@@ -999,3 +999,7 @@ CREATE TABLE IF NOT EXISTS req_log (
     pid        INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT krug_now()
 );
+
+-- Клипы: кто видит и можно ли комментировать
+ALTER TABLE reels ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'public';
+ALTER TABLE reels ADD COLUMN IF NOT EXISTS comments_off INTEGER NOT NULL DEFAULT 0;

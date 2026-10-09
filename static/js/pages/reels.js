@@ -4,6 +4,7 @@ import { h, icon, avatar, vmark, pl, richText, timeAgo } from "../dom.js";
 import { setTitle, toast, toastError, modal, showMenu, confirmDialog, busy } from "../ui.js";
 import { setCleanup, navigate } from "../router.js";
 import { videoMeta, fmtDur } from "../components/mediakit.js";
+import { transcode, canTranscode, frameAt } from "../components/vtranscode.js";
 import { burst } from "../fx.js";
 import { report } from "../components/post.js";
 
@@ -380,7 +381,9 @@ async function openComments(r, counter) {
   const input = h("input.input", { placeholder: "Добавьте комментарий…", maxlength: 1000, "aria-label": "Комментарий" });
   const send = h("button.btn.primary.icon-only", { type: "submit", "aria-label": "Отправить" }, icon("send"));
   const form = h("form.rl-comment-form", input, send);
-  modal({ title: "Комментарии", body: h("div.stack", list), footer: [form] });
+  const locked = r.comments_off && !r.mine;
+  modal({ title: "Комментарии", body: h("div.stack", list),
+    footer: [locked ? h("p.muted.rl-comments-off", "Автор отключил комментарии к этому клипу") : form] });
   const row = (c) => {
     const el = h("div.rl-comment", avatar(c.author, "sm", { presence: false }),
       h("div.grow", h("div", h("a", { href: `/u/${c.author.username}` }, h("b", c.author.name)), h("small.muted", ` · ${timeAgo(c.created_at)}`)),
@@ -418,51 +421,141 @@ async function openComments(r, counter) {
   });
 }
 
-/** Загрузка клипа: выбор видео, предпросмотр, подпись, прогресс */
+/** Загрузка клипа: обрезка, обложка, подпись, кто видит, комментарии, без звука; большие ролики сжимаются в браузере */
 export function openUpload(onDone) {
-  const input = h("input", { type: "file", accept: "video/mp4,video/webm,video/quicktime", hidden: true });
+  const input = h("input", { type: "file", accept: "video/*", hidden: true });
   document.body.append(input);
   input.addEventListener("change", async () => {
     const file = input.files[0];
     input.remove();
     if (!file) return;
-    if (file.size > MAX_MB * 1024 * 1024) return toast(`Видео больше ${MAX_MB} МБ — выберите покороче`, { error: true });
     const meta = await videoMeta(file);
-    if (meta.duration > MAX_SECONDS + 1) return toast(`Клип должен быть не длиннее ${MAX_SECONDS} секунд (у вас ${fmtDur(meta.duration)})`, { error: true });
+    const total = Number.isFinite(meta.duration) && meta.duration > 0 ? meta.duration : 0;
+    if (!total) return toast("Не получилось прочитать видео — попробуйте другой файл", { error: true });
+    const canCut = canTranscode();
+    if (!canCut && file.size > MAX_MB * 1024 * 1024) return toast(`Видео больше ${MAX_MB} МБ, а этот браузер не умеет его сжать — выберите покороче`, { error: true });
+    if (!canCut && total > MAX_SECONDS + 1) return toast(`Клип должен быть не длиннее ${MAX_SECONDS} секунд (у вас ${fmtDur(total)})`, { error: true });
+
     const url = URL.createObjectURL(file);
-    const caption = h("textarea.textarea", { rows: 3, maxlength: 2200, placeholder: "Подпись, #теги, @упоминания" });
+    let start = 0, end = Math.min(total, MAX_SECONDS), cover = Math.min(1, total / 3);
+    let visibility = "public", comments = true, mute = false, job = null, upload = null;
+
+    const preview = h("video", { src: url, muted: true, playsinline: true, autoplay: true, loop: false, "aria-label": "Предпросмотр клипа" });
+    preview.addEventListener("timeupdate", () => { if (preview.currentTime >= end - .05 || preview.currentTime < start - .2) preview.currentTime = start; });
+    preview.addEventListener("ended", () => { preview.currentTime = start; preview.play().catch(() => {}); });
+    const coverImg = h("img.ru-cover-img", { alt: "Обложка" });
+    const caption = h("textarea.textarea", { rows: 3, maxlength: 2200, placeholder: "Подпись, #теги, @упоминания", "aria-label": "Подпись к клипу" });
     const bar = h("div.bar", h("i", { style: { width: "0%" } }));
-    const status = h("small.muted", `${fmtDur(meta.duration)} · ${(file.size / 1048576).toFixed(1)} МБ`);
+    const status = h("small.muted.ru-status");
     const publish = h("button.btn.primary", { type: "button" }, "Опубликовать");
-    let upload = null;
+
+    // ---- обрезка: начало и конец
+    const step = total > 60 ? .5 : .1;
+    const sIn = h("input.ru-range", { type: "range", min: 0, max: total, step, value: start, "aria-label": "Начало клипа" });
+    const eIn = h("input.ru-range", { type: "range", min: 0, max: total, step, value: end, "aria-label": "Конец клипа" });
+    const trimLabel = h("small.ru-trim-label");
+    const paintTrim = () => {
+      trimLabel.textContent = `${fmtDur(start)} – ${fmtDur(end)} · ${fmtDur(end - start)}${end - start > MAX_SECONDS + .5 ? ` — больше ${MAX_SECONDS} с` : ""}`;
+      trimLabel.classList.toggle("bad", end - start > MAX_SECONDS + .5);
+      paintStatus();
+    };
+    sIn.addEventListener("input", () => {
+      start = Math.min(+sIn.value, end - 1); sIn.value = start;
+      if (end - start > MAX_SECONDS) { end = start + MAX_SECONDS; eIn.value = end; }
+      preview.currentTime = start; paintTrim();
+    });
+    eIn.addEventListener("input", () => {
+      end = Math.max(+eIn.value, start + 1); eIn.value = end;
+      if (end - start > MAX_SECONDS) { start = end - MAX_SECONDS; sIn.value = start; }
+      preview.currentTime = Math.max(start, end - 2); paintTrim();
+    });
+
+    // ---- обложка: любой кадр
+    const cIn = h("input.ru-range", { type: "range", min: 0, max: total, step: .1, value: cover, "aria-label": "Кадр для обложки" });
+    let coverBlob = meta.poster || null, coverTimer = null;
+    const paintCover = () => { if (coverBlob) { if (coverImg.src) URL.revokeObjectURL(coverImg.src); coverImg.src = URL.createObjectURL(coverBlob); } };
+    paintCover();
+    cIn.addEventListener("input", () => {
+      cover = +cIn.value;
+      clearTimeout(coverTimer);
+      coverTimer = setTimeout(async () => { const b = await frameAt(file, cover); if (b) { coverBlob = b; paintCover(); } }, 180);
+    });
+
+    // ---- настройки публикации
+    const chip = (label, on, onClick) => h(`button.chip${on ? ".on" : ""}`, { type: "button", "aria-pressed": String(on), onclick: onClick }, label);
+    const visRow = h("div.ru-chips");
+    const optRow = h("div.ru-chips");
+    const paintOpts = () => {
+      visRow.replaceChildren(
+        chip("🌍 Все", visibility === "public", () => { visibility = "public"; paintOpts(); }),
+        chip("👥 Друзья", visibility === "friends", () => { visibility = "friends"; paintOpts(); }));
+      optRow.replaceChildren(
+        chip(comments ? "💬 Комментарии включены" : "🚫 Без комментариев", comments, () => { comments = !comments; paintOpts(); }),
+        canCut ? chip(mute ? "🔇 Без звука" : "🔊 Со звуком", !mute, () => { mute = !mute; preview.muted = true; paintOpts(); paintStatus(); }) : null);
+    };
+    const needsCut = () => mute || start > .05 || end < total - .05 || file.size > MAX_MB * 1024 * 1024 * .85;
+    function paintStatus() {
+      const cut = needsCut();
+      status.textContent = `${fmtDur(end - start)} · ${(file.size / 1048576).toFixed(1)} МБ` +
+        (cut ? " · перед загрузкой видео обработается на телефоне" : "");
+    }
+    paintOpts(); paintTrim();
+
     const m = modal({
       title: "Новый клип",
-      body: h("div.reel-upload-form",
-        h("div.ru-preview", h("video", { src: url, autoplay: true, muted: true, loop: true, playsinline: true })),
-        h("div.stack.grow", caption, status, bar)),
-      footer: [h("button.btn.ghost", { type: "button", onclick: () => { upload?.abort(); m.close(); } }, "Отмена"), publish],
-      onClose: () => { upload?.abort(); URL.revokeObjectURL(url); },
+      body: h("div.ru-form",
+        h("div.reel-upload-form",
+          h("div.ru-preview", preview),
+          h("div.stack.grow", caption, h("div.ru-cover", h("span.ru-cover-thumb", coverImg), h("label.ru-field", h("small", "Обложка — перетащите ползунок"), cIn)))),
+        canCut ? h("div.ru-trim", h("small", "Обрезка"), h("label.ru-field", h("small.muted", "Начало"), sIn), h("label.ru-field", h("small.muted", "Конец"), eIn), trimLabel) : null,
+        h("div.ru-field", h("small", "Кто видит"), visRow),
+        h("div.ru-field", h("small", "Настройки"), optRow),
+        status, bar),
+      footer: [h("button.btn.ghost", { type: "button", onclick: () => { job?.abort(); upload?.abort(); m.close(); } }, "Отмена"), publish],
+      onClose: () => { job?.abort(); upload?.abort(); URL.revokeObjectURL(url); if (coverImg.src) URL.revokeObjectURL(coverImg.src); },
     });
+
     publish.addEventListener("click", async () => {
+      if (end - start > MAX_SECONDS + .5) return toast(`Сократите клип до ${MAX_SECONDS} секунд`, { error: true });
       publish.disabled = true;
-      const fd = new FormData();
-      fd.append("caption", caption.value);
-      if (meta.duration) fd.append("duration", String(meta.duration));
-      if (meta.width) { fd.append("width", String(meta.width)); fd.append("height", String(meta.height)); }
-      if (meta.poster) fd.append("poster", meta.poster, "poster.jpg");
-      fd.append("video", file, file.name);
-      upload = api.upload("/api/reels", fd, (p) => {
-        bar.firstChild.style.width = `${Math.round(p * 100)}%`;
-        status.textContent = p < 1 ? `Загружаем… ${Math.round(p * 100)}%` : "Обрабатываем…";
-      });
+      let video = file, duration = end - start, width = meta.width, height = meta.height;
       try {
+        if (needsCut()) {
+          const ctl = new AbortController();
+          job = ctl;
+          status.textContent = "Обрабатываем видео… 0%";
+          const out = await transcode(file, {
+            start, end, mute, maxSide: 1280, videoBps: 2_000_000, signal: ctl.signal,
+            onProgress: (p) => { bar.firstChild.style.width = `${Math.round(p * 100)}%`; status.textContent = `Обрабатываем видео… ${Math.round(p * 100)}%`; },
+          });
+          job = null;
+          video = new File([out.blob], "clip.webm", { type: "video/webm" });
+          duration = out.duration; width = out.width; height = out.height;
+          if (video.size > MAX_MB * 1024 * 1024) throw new Error(`Даже после сжатия видео больше ${MAX_MB} МБ — обрежьте его короче`);
+        }
+        const poster = coverBlob || await frameAt(file, cover);
+        const fd = new FormData();
+        fd.append("caption", caption.value);
+        fd.append("duration", String(duration));
+        fd.append("visibility", visibility);
+        fd.append("comments_off", comments ? "0" : "1");
+        if (width) { fd.append("width", String(width)); fd.append("height", String(height)); }
+        if (poster) fd.append("poster", poster, "poster.jpg");
+        fd.append("video", video, video.name || "clip.mp4");
+        bar.firstChild.style.width = "0%";
+        upload = api.upload("/api/reels", fd, (p) => {
+          bar.firstChild.style.width = `${Math.round(p * 100)}%`;
+          status.textContent = p < 1 ? `Загружаем… ${Math.round(p * 100)}%` : "Сохраняем…";
+        });
         const r = await upload.promise;
         upload = null;
         m.close();
         toast("Клип опубликован 🎬", { icon: "check" });
         onDone?.(r);
       } catch (err) {
+        job = null; upload = null;
         publish.disabled = false;
+        paintStatus();
         if (err.code !== "aborted") toastError(err);
       }
     });

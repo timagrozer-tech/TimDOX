@@ -458,6 +458,8 @@ CREATE TABLE IF NOT EXISTS reels (
     width      INTEGER,
     height     INTEGER,
     views      INTEGER NOT NULL DEFAULT 0,
+    visibility TEXT NOT NULL DEFAULT 'public',
+    comments_off INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_reels_author ON reels(author_id, id DESC);

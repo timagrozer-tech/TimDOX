@@ -5,9 +5,12 @@ import { modal, toast, toastError, busy, confirmDialog, promptDialog, trackOverl
 import { navigate } from "../router.js";
 import { report } from "./post.js";
 import { BACKGROUNDS, FONTS, MODES, COLORS, loadStoryFonts, defaultStyle, applyTextStyle, textNode, stickerNode, place, renderStory } from "./storykit.js";
+import { videoMeta } from "./mediakit.js";
+import { transcode, canTranscode, frameAt } from "./vtranscode.js";
 
 export { BACKGROUNDS };
-const DURATION = 5000;
+const PHOTO_MS = 5000;
+const VIDEO_MAX_S = 10;
 
 /** Полоса историй над лентой */
 export function storiesBar() {
@@ -49,7 +52,7 @@ export function storiesBar() {
 
 /** Просмотр историй: прогресс-бары, автоматическое листание, ответ в личку */
 export function openViewer(groups, gi, onChange) {
-  let g = gi, s = 0, timer = null, started = 0, elapsed = 0, paused = false, waiting = false;
+  let g = gi, s = 0, timer = null, started = 0, elapsed = 0, paused = false, waiting = false, DURATION = PHOTO_MS, vid = null;
   const first = groups[g].stories.findIndex((x) => !x.seen);
   if (first > 0 && !groups[g].is_me) s = first;
 
@@ -86,9 +89,26 @@ export function openViewer(groups, gi, onChange) {
         : h("button.sv-round", { type: "button", "aria-label": "Пожаловаться на историю", title: "Пожаловаться", onclick: () => { pause(); report("story", st.id); } }, icon("flag", "sm")),
       h("button.sv-round", { type: "button", "aria-label": "Закрыть", title: "Закрыть", onclick: close }, icon("x", "sm")));
     renderStory(stage, st, { onNavigate: close });
-    const photo = stage.querySelector(".st-photo");
-    waiting = !!(photo && !photo.complete);
-    if (waiting) {
+    DURATION = PHOTO_MS;
+    vid = stage.querySelector("video.st-video");
+    const photo = stage.querySelector("img.st-photo");
+    waiting = !!(photo && !photo.complete) || !!vid;
+    if (vid) {
+      // видео-история: длится столько, сколько само видео (до 10 с); пауза истории — пауза видео
+      clearTimeout(timer);
+      const ready = () => {
+        if (!waiting || current() !== st) return;
+        waiting = false;
+        DURATION = Math.max(1000, Math.min(VIDEO_MAX_S, Number.isFinite(vid.duration) ? vid.duration : VIDEO_MAX_S) * 1000);
+        vid.currentTime = 0;
+        vid.play().catch(() => { vid.muted = true; vid.play().catch(() => {}); });
+        start();
+      };
+      vid.addEventListener("loadedmetadata", ready, { once: true });
+      vid.addEventListener("error", () => { if (waiting) { waiting = false; start(); } }, { once: true });
+      if (vid.readyState >= 1) ready();
+      setTimeout(() => { if (waiting && current() === st) { waiting = false; start(); } }, 8000);
+    } else if (waiting) {
       clearTimeout(timer);
       const go0 = () => { if (waiting && current() === st) { waiting = false; start(); } };
       photo.addEventListener("load", go0, { once: true });
@@ -143,6 +163,7 @@ export function openViewer(groups, gi, onChange) {
     if (paused) return;
     paused = true;
     clearTimeout(timer);
+    vid?.pause();
     elapsed += Date.now() - started;
     const bar = bars.children[s]?.firstChild;
     if (bar) { bar.style.transition = "none"; bar.style.width = `${(elapsed / DURATION) * 100}%`; }
@@ -151,6 +172,7 @@ export function openViewer(groups, gi, onChange) {
     if (!paused) return;
     paused = false;
     started = Date.now();
+    vid?.play().catch(() => {});
     animate();
     timer = setTimeout(() => go(1), DURATION - elapsed);
   }
@@ -224,12 +246,13 @@ export function createStory(onDone) {
   loadStoryFonts();
   const style = defaultStyle(false);
   let text = "", bg = "blue", file = null, url = null, tab = "text", visibility = "friends";
+  let vmeta = null, vstart = 0; // видео: сведения и начало 10-секундного фрагмента
 
   const stage = h("div.se-stage");
   const trash = h("div.se-trash", { "aria-hidden": "true" }, icon("trash"));
   const panelBody = h("div.se-panel-body");
   const tabs = h("div.se-tabs", { role: "tablist" });
-  const fileInput = h("input", { type: "file", accept: "image/jpeg,image/png,image/webp,image/gif", hidden: true });
+  const fileInput = h("input", { type: "file", accept: "image/jpeg,image/png,image/webp,image/gif,video/*", hidden: true });
   const visBtn = h("button.se-pill", { type: "button", onclick: () => { visibility = visibility === "friends" ? "public" : "friends"; paintVis(); } });
   const paintVis = () => visBtn.replaceChildren(icon(visibility === "friends" ? "users" : "globe", "sm"), visibility === "friends" ? "Друзья" : "Все");
   paintVis();
@@ -278,7 +301,14 @@ export function createStory(onDone) {
   function paintStage() {
     stage.style.background = file ? "#000" : BACKGROUNDS[bg];
     const nodes = [];
-    if (file) nodes.push(h("img.st-photo", { src: url, alt: "" }));
+    if (file && vmeta) {
+      const v = h("video.st-photo", { src: url, muted: true, autoplay: true, playsinline: true, "aria-label": "Видео истории" });
+      const len = Math.min(VIDEO_MAX_S, vmeta.duration);
+      v.addEventListener("loadedmetadata", () => { v.currentTime = vstart; }, { once: true });
+      v.addEventListener("timeupdate", () => { if (v.currentTime >= vstart + len - .05 || v.currentTime < vstart - .3) v.currentTime = vstart; });
+      v.addEventListener("ended", () => { v.currentTime = vstart; v.play().catch(() => {}); });
+      nodes.push(v);
+    } else if (file) nodes.push(h("img.st-photo", { src: url, alt: "" }));
     const t = text ? textNode(text, style) : h("div.st-text.st-placeholder", "Нажмите, чтобы написать");
     if (!text) { applyTextStyle(t, { ...style, mode: "plain" }); place(t, style); }
     draggable(t, style, { onTap: editText, onDelete: () => { text = ""; paintStage(); } });
@@ -341,10 +371,13 @@ export function createStory(onDone) {
   function bgPanel() {
     return [
       h("div.se-row.se-row-inline",
-        h("button.se-chip.on", { type: "button", onclick: () => fileInput.click() }, icon("image", "sm"), file ? "Другое фото" : "Фото из галереи"),
-        file ? h("button.se-chip", { type: "button", onclick: () => { URL.revokeObjectURL(url); file = null; url = null; paintStage(); drawPanel(); } }, icon("x", "sm"), "Убрать фото") : null),
+        h("button.se-chip.on", { type: "button", onclick: () => fileInput.click() }, icon("image", "sm"), file ? "Другое фото или видео" : "Фото или видео"),
+        file ? h("button.se-chip", { type: "button", onclick: () => { URL.revokeObjectURL(url); file = null; url = null; vmeta = null; paintStage(); drawPanel(); } }, icon("x", "sm"), vmeta ? "Убрать видео" : "Убрать фото") : null),
+      vmeta && vmeta.duration > VIDEO_MAX_S + .3 ? h("label.se-size.se-vstart", `Фрагмент: ${Math.floor(vstart)}–${Math.floor(vstart + VIDEO_MAX_S)} с`,
+        h("input", { type: "range", min: 0, max: Math.max(0, vmeta.duration - VIDEO_MAX_S), step: .5, value: vstart, "aria-label": "Начало фрагмента",
+          oninput: (e) => { vstart = +e.target.value; e.target.parentNode.firstChild.textContent = `Фрагмент: ${Math.floor(vstart)}–${Math.floor(vstart + VIDEO_MAX_S)} с`; const v = stage.querySelector("video"); if (v) v.currentTime = vstart; } })) : null,
       h("div.se-bg-grid", Object.entries(BACKGROUNDS).map(([k, v]) => h(`button.se-bg${!file && bg === k ? ".on" : ""}`, { type: "button", "aria-label": `Фон ${k}`,
-        style: { background: v }, onclick: () => { bg = k; if (file) { URL.revokeObjectURL(url); file = null; url = null; } paintStage(); drawPanel(); } }))),
+        style: { background: v }, onclick: () => { bg = k; if (file) { URL.revokeObjectURL(url); file = null; url = null; vmeta = null; } paintStage(); drawPanel(); } }))),
     ];
   }
 
@@ -412,13 +445,26 @@ export function createStory(onDone) {
     panelBody.replaceChildren(...(tab === "text" ? textPanel() : tab === "bg" ? bgPanel() : stickersPanel()));
   }
 
-  fileInput.addEventListener("change", () => {
+  fileInput.addEventListener("change", async () => {
     const f = fileInput.files[0];
     fileInput.value = "";
     if (!f) return;
+    if (f.type.startsWith("video/")) {
+      const m = await videoMeta(f);
+      if (!Number.isFinite(m.duration) || !m.duration) return toast("Не получилось прочитать видео", { error: true });
+      if (!canTranscode() && (m.duration > VIDEO_MAX_S + .3 || f.size > 15 * 1024 * 1024)) {
+        return toast(`Видео в истории — до ${VIDEO_MAX_S} секунд и 15 МБ`, { error: true });
+      }
+      if (url) URL.revokeObjectURL(url);
+      file = f; url = URL.createObjectURL(f); vmeta = m; vstart = 0;
+      if (!text) style.y = .8;
+      tab = "bg";
+      paintStage(); drawPanel();
+      return;
+    }
     if (f.size > 10 * 1024 * 1024) return toast("Файл больше 10 МБ", { error: true });
     if (url) URL.revokeObjectURL(url);
-    file = f; url = URL.createObjectURL(f);
+    file = f; url = URL.createObjectURL(f); vmeta = null;
     if (!text) style.y = .8;
     paintStage(); drawPanel();
   });
@@ -446,7 +492,22 @@ export function createStory(onDone) {
     stage.querySelector(".se-editing .se-done")?.click();
     if (!file && !text && !style.stickers.length) return toast("Добавьте текст, фото или стикер", { error: true });
     const fd = new FormData();
-    if (file) fd.append("photo", file);
+    if (file && vmeta) {
+      // видео: фрагмент до 10 секунд; длинное или тяжёлое — обрезаем и сжимаем прямо в браузере
+      let video = file, duration = Math.min(VIDEO_MAX_S, vmeta.duration);
+      if (canTranscode() && (vmeta.duration > VIDEO_MAX_S + .3 || vstart > 0 || file.size > 12 * 1024 * 1024)) {
+        const label = publish.firstChild;
+        const out = await transcode(file, { start: vstart, end: vstart + VIDEO_MAX_S, maxSide: 1280, videoBps: 2_500_000,
+          onProgress: (p) => { label.textContent = `Обработка ${Math.round(p * 100)}%`; } });
+        label.textContent = "Поделиться";
+        video = new File([out.blob], "story.webm", { type: "video/webm" });
+        duration = out.duration;
+      }
+      const poster = await frameAt(file, vstart + Math.min(.5, duration / 2));
+      fd.append("video", video, video.name || "story.mp4");
+      fd.append("duration", String(duration));
+      if (poster) fd.append("poster", poster, "poster.jpg");
+    } else if (file) fd.append("photo", file);
     fd.append("text", text);
     fd.append("background", bg);
     fd.append("visibility", visibility);
