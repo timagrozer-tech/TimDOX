@@ -4892,3 +4892,14 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
 .rl-comments-off { text-align: center; width: 100%; margin: 0; }
 .ru-chips .chip.on { background: var(--primary); border-color: transparent; color: #fff; }
 .st-video { object-fit: cover; }
+
+/* ==========================================================================
+   Телефоны: размытие того, что под элементом (backdrop-filter), — самая дорогая операция для видеочипа:
+   при прокрутке каждый кадр размывается заново, и страница идёт рывками. Оставляем его только на верхней
+   и нижней панелях (лёгкое), остальным стеклянным поверхностям — плотный фон.
+   ========================================================================== */
+.touch *, .touch *::before, .touch *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+.touch .topbar::before, .touch .tabbar { -webkit-backdrop-filter: blur(10px) !important; backdrop-filter: blur(10px) !important; }
+.touch .tabbar { background: color-mix(in srgb, var(--surface) 82%, transparent) !important; }
+.touch .lg-group, .touch .logo.lg-refract, .touch .cookie-bar, .touch .toast, .touch .menu, .touch .modal,
+.touch .sheet, .touch .popover, .touch .dropdown { background-color: color-mix(in srgb, var(--surface) 96%, transparent) !important; }

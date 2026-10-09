@@ -29,8 +29,15 @@ export const SPRINGS = {
 
 const supportsLinear = (() => { try { return CSS.supports("transition-timing-function", "linear(0, 1)"); } catch { return false; } })();
 
+/** Сенсорный экран без мыши; «krug-perf=full» в localStorage — вернуть полные эффекты */
+export function touchDevice() {
+  try { if (localStorage.getItem("krug-perf") === "full") return false; } catch { /* */ }
+  return matchMedia("(pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches;
+}
+
 /** Слабое устройство: мало памяти/ядер, экономия трафика или пользователь просит меньше прозрачности */
 export function lowPower() {
+  if (touchDevice()) return true; // телефоны и планшеты: размытие и преломление фона сильно тормозят прокрутку
   const mem = navigator.deviceMemory || 8;
   const cores = navigator.hardwareConcurrency || 8;
   const save = navigator.connection?.saveData;
@@ -46,6 +53,7 @@ export function initMotion() {
     }
   }
   if (lowPower()) { root.dataset.perf = "low"; root.classList.add("lite"); }
+  if (touchDevice()) root.classList.add("touch");
   if (matchMedia("(prefers-reduced-transparency: reduce)").matches) root.dataset.transparency = "reduce";
   // шапка уплотняется при прокрутке: стекло становится менее прозрачным, когда под ним контент
   let scrolled = false;
