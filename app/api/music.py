@@ -75,6 +75,12 @@ def _friends_listen(v: int, limit_n: int = 12) -> list[dict]:
     return out
 
 
+def _new_songs(v: int, n: int = 12) -> list[dict]:
+    from . import songs
+    w, params = songs._not_blocked(v)
+    return songs.views(db.all(f"SELECT s.* FROM songs s WHERE {w} ORDER BY s.id DESC LIMIT ?", (*params, n)), v)
+
+
 @auth()
 async def home(request: Request):
     v = request.state.user["id"]
@@ -88,7 +94,7 @@ async def home(request: Request):
         "ru": {"tracks": ru, "radio": stations},
         "trending": trending, "underground": fresh, "playlists": lists,
         "genres": [{"id": g, "slug": s, "name": n, "emoji": e} for g, s, n, e in music.GENRES],
-        "krug_top": _krug_top(), "friends": _friends_listen(v),
+        "krug_top": _krug_top(), "friends": _friends_listen(v), "songs": _new_songs(v),
         "liked": _liked_keys(v),
         "online": bool(trending or fresh or lists or ru),
     })
@@ -117,7 +123,12 @@ async def search(request: Request):
         return JSONResponse({"tracks": [], "stations": []})
     tracks, stations = await asyncio.gather(_call(music.search, q, 40, default=[]),
                                             _call(music.radio, "", 6, q, default=[]))
-    return JSONResponse({"tracks": tracks, "stations": stations})
+    from . import songs
+    v = request.state.user["id"]
+    w, params = songs._not_blocked(v)
+    own = songs.views(db.all(f"SELECT s.* FROM songs s WHERE {w} AND s.search LIKE ? ORDER BY s.plays + s.likes * 5 DESC LIMIT 20",
+                             (*params, f"%{q.lower()}%")), v)
+    return JSONResponse({"tracks": tracks, "stations": stations, "songs": own})
 
 
 @auth()
@@ -165,17 +176,26 @@ async def like(request: Request):
     v = request.state.user["id"]
     key = str((await body(request)).get("key") or request.query_params.get("key") or "")[:100]
     if request.method == "DELETE":
+        gone = db.value("SELECT 1 FROM music_likes WHERE user_id=? AND track_key=?", (v, key))
         db.run("DELETE FROM music_likes WHERE user_id=? AND track_key=?", (v, key))
+        if gone and key.startswith("yk:"):
+            db.run("UPDATE songs SET likes=CASE WHEN likes>0 THEN likes-1 ELSE 0 END WHERE id=?", (int(key[3:]) if key[3:].isdigit() else 0,))
         return ok()
     if db.value("SELECT 1 FROM music_likes WHERE user_id=? AND track_key=?", (v, key)):
         return ok()
     if db.value("SELECT count(*) FROM music_likes WHERE user_id=?", (v,)) >= MAX_LIKES:
         raise ApiError(400, "В «Моей музыке» уже 2000 треков — уберите лишние")
-    track = music.public(await run_in_threadpool(music.resolve, key))
+    if key.startswith("yk:"):
+        from . import songs
+        track = music.public(songs.resolve(key))
+    else:
+        track = music.public(await run_in_threadpool(music.resolve, key))
     if not track:
         raise ApiError(404, "Трек недоступен")
     db.run("INSERT OR IGNORE INTO music_likes (user_id, track_key, data) VALUES (?,?,?)",
            (v, track["key"], json.dumps(track, ensure_ascii=False)))
+    if key.startswith("yk:"):
+        db.run("UPDATE songs SET likes=likes+1 WHERE id=?", (int(track["id"]),))
     return ok({"ok": True, "track": track})
 
 

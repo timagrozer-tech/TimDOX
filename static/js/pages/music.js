@@ -4,9 +4,10 @@ import { h, icon, pl } from "../dom.js";
 import { setTitle, toastError } from "../ui.js";
 import { navigate, setCleanup } from "../router.js";
 import { trackList, trackCard, shelf, playlistCard, genreTile, stationTile } from "../music/kit.js";
+import { songsTab, songCard, songRow } from "../music/songs.js";
 import { playQueue, subscribe, current, isPlaying, toggle, setLiked, setShuffle, artUrl } from "../music/player.js";
 
-const TABS = [["home", "Главная", "music"], ["russian", "На русском", "mic"], ["my", "Моя музыка", "heart"], ["radio", "Радио", "radio"]];
+const TABS = [["home", "Главная", "music"], ["songs", "Песни", "upload"], ["russian", "На русском", "mic"], ["my", "Моя музыка", "heart"], ["radio", "Радио", "radio"]];
 
 function head(active, onSearch, q = "") {
   const input = h("input.mu-search-input", { type: "search", placeholder: "Треки, исполнители, радиостанции", value: q, "aria-label": "Поиск музыки", autocomplete: "off", enterkeyhint: "search" });
@@ -98,6 +99,8 @@ async function homeTab(box) {
       h("div.mu-shelf-head", h("div", h("h2", "На русском"), h("p", "Полные треки русскоязычных исполнителей")),
         h("a.btn.soft.sm", { href: "/music?tab=russian" }, "Все")),
       h("div.card.mu-card", trackList(ruTracks.slice(0, 8), "На русском"))) : null,
+    d.songs?.length ? shelf("Песни Yarko", d.songs.map((t) => songCard(t, d.songs)),
+      { sub: "Новые песни от людей Yarko — публикуйте и свои", more: h("a.btn.soft.sm", { href: "/music?tab=songs" }, "Все") }) : null,
     d.friends.length ? shelf("Друзья слушают", d.friends.map((t) => trackCard(t, d.friends, "Друзья слушают")), { sub: "Что недавно отметили сердечком ваши друзья и подписки" }) : null,
     d.krug_top.length ? h("section.mu-shelf", h("div.mu-shelf-head", h("div", h("h2", "Любят в Yarko"), h("p", "Больше всего сердечек за месяц"))),
       h("div.card.mu-card", trackList(d.krug_top, "Любят в Yarko"))) : null,
@@ -162,11 +165,14 @@ async function radioTab(box, tag = "") {
 async function searchView(box, q) {
   box.replaceChildren(h("div.spinner"));
   const d = await api.get("/api/music/search", { q });
-  if (!d.tracks.length && !d.stations.length) {
+  const own = d.songs || [];
+  if (!d.tracks.length && !d.stations.length && !own.length) {
     box.replaceChildren(h("div.card.empty", icon("search"), h("h2", "Ничего не нашлось"), h("p", "Попробуйте другое слово или имя исполнителя — ищем среди полных треков и радиостанций.")));
     return;
   }
   box.replaceChildren(
+    own.length ? h("section.mu-shelf", h("div.mu-shelf-head", h("div", h("h2", "Песни Yarko"))),
+      h("div.card.mu-card.tr-list", own.map((t) => songRow(t, own, `Поиск: ${q}`)))) : null,
     d.tracks.length ? h("section.mu-shelf", h("div.mu-shelf-head", h("div", h("h2", "Треки"))), h("div.card.mu-card", trackList(d.tracks, `Поиск: ${q}`))) : null,
     d.stations.length ? h("section.mu-shelf", h("div.mu-shelf-head", h("div", h("h2", "Радиостанции"))), h("div.sr-grid", d.stations.map((s) => stationTile(s, d.stations)))) : null);
 }
@@ -180,6 +186,7 @@ export async function musicPage({ query }) {
     try {
       if (q.length >= 2) await searchView(box, q);
       else if (tab === "my") await myTab(box);
+      else if (tab === "songs") await songsTab(box);
       else if (tab === "radio") await radioTab(box);
       else if (tab === "russian") await russianTab(box);
       else await homeTab(box);

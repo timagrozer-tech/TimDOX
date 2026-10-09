@@ -2432,7 +2432,7 @@ body.fp-open .mp, body.reels-mode .mp { display: none; }
 @media (max-width: 719px) {
   .mp { left: 12px; right: 12px; width: auto; transform: none; bottom: calc(var(--dock-h, 62px) + 20px + env(safe-area-inset-bottom)); padding: 6px 6px 6px 6px; border-radius: 20px; animation-name: mp-in-m; }
   @keyframes mp-in-m { from { transform: translateY(30px); opacity: 0; } }
-  .mp-prev, .mp-close { display: none; }
+  .mp-prev, .mp-like-slot { display: none; }
   .mp-art { width: 44px; height: 44px; }
   body.in-chat .mp { display: none; }
   body.has-player .main { padding-bottom: 150px; }
@@ -4909,3 +4909,25 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
 .touch .tabbar .create, .touch .avatar:not(.xl)[data-frame]::before,
 .touch .aurora .blob, .touch .tour-ring { animation: none !important; }
 .touch .grain, .touch #scroll-progress { display: none !important; }
+
+/* ==========================================================================
+   Музыка → «Песни»: песни людей Yarko и окно публикации
+   ========================================================================== */
+.song-genres { margin-top: -4px; }
+.song-genres button { font-size: 13px; }
+.mu-more { display: flex; margin: 4px auto 0; }
+.mu-body.loading .tr-list { opacity: .55; transition: opacity .2s; }
+.song-form { display: grid; gap: 12px; }
+.song-pick { display: grid; gap: 6px; padding: 12px; border-radius: 16px; border: 1px dashed var(--border-strong); background: var(--surface-2); }
+.song-pick .btn { justify-self: start; }
+.song-file-name { font-weight: 600; font-size: 14px; word-break: break-word; }
+.song-main { display: flex; gap: 12px; align-items: flex-start; }
+.song-main .grow { flex: 1; min-width: 0; display: grid; gap: 8px; }
+.song-cover { flex: none; display: grid; justify-items: center; gap: 4px; width: 104px; padding: 0; border: 0; background: none; color: var(--text-2); cursor: pointer; }
+.song-cover-prev { width: 104px; height: 104px; border-radius: 16px; overflow: hidden; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--border); }
+.song-cover-prev img { width: 100%; height: 100%; object-fit: cover; }
+.song-lyrics { white-space: pre-wrap; font: inherit; line-height: 1.6; margin: 0; max-height: 60vh; overflow: auto; }
+@media (max-width: 480px) { .song-cover, .song-cover-prev { width: 84px; } .song-cover-prev { height: 84px; } }
+/* полоса о cookie не перекрывает мини-плеер (на телефоне из-за неё нельзя было закрыть песню) */
+body.has-player .cookie-bar { bottom: calc(var(--dock-h, 62px) + 96px + env(safe-area-inset-bottom)); }
+@media (min-width: 900px) { body.has-player .cookie-bar { bottom: 100px; } }

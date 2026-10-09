@@ -81,6 +81,8 @@ MEDIA_STORAGE = os.environ.get("MEDIA_STORAGE", "disk").lower()
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "10"))
 MAX_VIDEO_MB = int(os.environ.get("MAX_VIDEO_MB", "30"))
 MAX_AUDIO_MB = int(os.environ.get("MAX_AUDIO_MB", "15"))
+MAX_SONG_MB = int(os.environ.get("MAX_SONG_MB", "25"))         # свои песни в «Музыке»
+SONGS_PER_DAY = int(os.environ.get("SONGS_PER_DAY", "10"))
 MAX_FILE_MB = int(os.environ.get("MAX_FILE_MB", "25"))  # любые файлы в сообщениях
 REEL_MAX_SECONDS = int(os.environ.get("REEL_MAX_SECONDS", "90"))
 

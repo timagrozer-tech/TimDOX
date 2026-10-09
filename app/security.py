@@ -102,6 +102,7 @@ LIMITS = {
     "new_dialogs": (int(os.environ.get("NEW_DIALOGS_NEW_ACCOUNT", "20")), 86400),  # новые переписки у аккаунтов младше суток
     "call_signal": (900, 60),
     "call_diag": (30, 60),
+    "song_play": (40, 60),
     "sticker_preview": (90, 60),  # живые превью Remix/Lab и поиск наборов Telegram
     "ai_assist": (30, 600),
     "nudge": (12, 60),            # «тук-тук» и другие касания в чате       # ИИ в чатах: варианты ответа, пересказ, «улучшить текст»

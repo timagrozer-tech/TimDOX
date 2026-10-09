@@ -610,6 +610,27 @@ CREATE TABLE IF NOT EXISTS music_likes (
 CREATE INDEX IF NOT EXISTS idx_music_likes_key ON music_likes(track_key, created_at);
 CREATE INDEX IF NOT EXISTS idx_music_likes_time ON music_likes(created_at);
 
+-- Песни, которые публикуют сами пользователи (раздел «Музыка» → «Песни»). Общедоступны всем, кто вошёл.
+CREATE TABLE IF NOT EXISTS songs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    author_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title      TEXT NOT NULL,
+    artist     TEXT NOT NULL DEFAULT '',
+    genre      TEXT NOT NULL DEFAULT '',
+    lyrics     TEXT NOT NULL DEFAULT '',
+    audio      TEXT NOT NULL,
+    cover      TEXT,
+    duration   REAL NOT NULL DEFAULT 0,
+    size       INTEGER NOT NULL DEFAULT 0,
+    plays      INTEGER NOT NULL DEFAULT 0,
+    likes      INTEGER NOT NULL DEFAULT 0,
+    search     TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_songs_author ON songs(author_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_songs_genre ON songs(genre, id DESC);
+CREATE INDEX IF NOT EXISTS idx_songs_rank ON songs(plays, likes);
+
 -- Дневные квоты загрузок (сутки по UTC)
 CREATE TABLE IF NOT EXISTS upload_usage (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

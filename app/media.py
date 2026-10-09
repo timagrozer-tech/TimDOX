@@ -288,9 +288,9 @@ VIDEO_EXT = {"mp4", "webm", "mov"}
 AUDIO_EXT = {"mp3", "m4a", "ogg", "wav", "flac"}
 
 
-async def save_media(upload, kind: str) -> dict:
+async def save_media(upload, kind: str, limit_mb: int | None = None) -> dict:
     """Сохраняет видео или аудио как есть (без перекодирования). kind: video | audio."""
-    limit_mb = config.MAX_VIDEO_MB if kind == "video" else config.MAX_AUDIO_MB
+    limit_mb = limit_mb or (config.MAX_VIDEO_MB if kind == "video" else config.MAX_AUDIO_MB)
     data = await upload.read(limit_mb * 1024 * 1024 + 1)
     if len(data) > limit_mb * 1024 * 1024:
         raise ApiError(413, f"Файл больше {limit_mb} МБ")

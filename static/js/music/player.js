@@ -200,7 +200,13 @@ function onError() {
   next();
 }
 
-audio.addEventListener("playing", () => { errors = 0; buffering = false; notify(); });
+let countedKey = "";
+audio.addEventListener("playing", () => {
+  errors = 0; buffering = false; notify();
+  const t = current();
+  // песни людей Yarko: счётчик прослушиваний (раз за включение трека)
+  if (t?.source === "yarko" && countedKey !== t.key) { countedKey = t.key; api.post(`/api/music/songs/${t.id}/play`).catch(() => {}); }
+});
 audio.addEventListener("pause", notify);
 audio.addEventListener("waiting", () => { buffering = true; paintUi(); });
 audio.addEventListener("canplay", () => { buffering = false; paintUi(); });
@@ -286,7 +292,7 @@ function buildMini() {
       h("button.mp-btn.mp-play", { type: "button", "aria-label": "Играть", onclick: () => toggle() }, icon("play")),
       h("button.mp-btn.mp-next", { type: "button", "aria-label": "Следующий", onclick: () => next() }, icon("skipForward")),
       h("button.mp-btn.mp-close", { type: "button", "aria-label": "Закрыть плеер", title: "Закрыть", onclick: () => stop() }, icon("x"))));
-  // жесты: вверх — открыть большой плеер, влево/вправо — следующий/предыдущий трек
+  // жесты: вверх — открыть большой плеер, вниз — скрыть, влево/вправо — следующий/предыдущий трек
   let x0 = null, y0 = null;
   el.addEventListener("touchstart", (e) => { if (e.target.closest(".mp-ctrls")) { x0 = null; return; } x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
   el.addEventListener("touchmove", (e) => {
@@ -299,6 +305,7 @@ function buildMini() {
     const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
     el.querySelector(".mp-open").style.transform = "";
     if (dy < -40 && Math.abs(dy) > Math.abs(dx)) openFull();
+    else if (dy > 45 && Math.abs(dy) > Math.abs(dx)) { stop(); toast("Плеер закрыт", { icon: "x" }); } // смахнуть вниз — скрыть
     else if (Math.abs(dx) > 70 && !current()?.live) { if (dx < 0) next(); else prev(); }
     x0 = null;
   });
@@ -596,6 +603,7 @@ export function trackMenu(anchor, t, { inPlayer = false } = {}) {
     !inPlayer && !t.live ? { label: "Играть следующим", icon: "queueAdd", onClick: () => playNext(t) } : null,
     { label: liked ? "Убрать из «Моей музыки»" : "В «Мою музыку»", icon: "heart", onClick: () => toggleLike(t) },
     { label: "Поделиться в ленте", icon: "share", onClick: () => shareTrack(t) },
+    t.author ? { label: `Автор: ${t.author.name}`, icon: "user", onClick: () => { closeFull(); navigate(`/u/${t.author.username}`); } } : null,
     t.permalink ? { label: t.source === "audius" ? "Открыть на Audius" : "Сайт станции", icon: "external", onClick: () => openUrl(t.permalink) } : null,
     inPlayer ? "-" : null,
     inPlayer ? { label: sleepAt ? `Таймер сна · ${Math.max(1, Math.round((sleepAt - Date.now()) / 60000))} мин` : "Таймер сна", icon: "moon", onClick: () => setTimeout(() => sleepMenu(anchor), 50) } : null,
