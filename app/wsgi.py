@@ -104,9 +104,27 @@ async def _startup():
 
 _run(_startup(), timeout=180)
 
-if LEADER:
+def _become_leader() -> None:
     from app import selfupdate
     selfupdate.start()
+
+
+if LEADER:
+    _become_leader()
+else:
+    def _wait_leadership():
+        # прежний ведущий процесс мог завершиться (перезапуск, простой): тогда фоновые задачи и самообновление
+        # берёт на себя этот процесс — иначе после перезапуска их могло не остаться ни у кого
+        import time as _t
+        while True:
+            _t.sleep(30)
+            if _leader():
+                os.environ["KRUG_BACKGROUND"] = "1"
+                from app import main as _main
+                asyncio.run_coroutine_threadsafe(_main.start_background(), _loop)
+                _become_leader()
+                return
+    threading.Thread(target=_wait_leadership, name="leader-wait", daemon=True).start()
 
 _DONE = object()
 

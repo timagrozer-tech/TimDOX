@@ -453,40 +453,42 @@ def warm_edge() -> None:
             log.warning("Поддержка сервера без сна: российский вход не ответил (%s раз подряд)", fails)
 
 
+async def start_background() -> None:
+    """Фоновые задачи сервера. На хостинге с несколькими процессами их запускает только «ведущий» процесс
+    (app/wsgi.py): при старте или позже, когда прежний ведущий завершился."""
+    if _BG["tasks"]:
+        return
+    loops = os.environ.get("KRUG_UPDATES_LOOP", "1") != "0"
+    from .starter_stickers import ensure_starter_pack
+    await asyncio.to_thread(ensure_starter_pack)
+    task = asyncio.create_task(housekeeping())
+    world_task = asyncio.create_task(world_engine.loop()) if world_engine.ENABLED else None
+    asyncio.get_running_loop().run_in_executor(None, tgbot.setup)
+    # отдельный фоновый поток (daemon): бесконечный цикл «не засыпать» не должен задерживать остановку сервера
+    import threading
+    threading.Thread(target=warm_edge, name="warm-edge", daemon=True).start()
+    if config.ON_RENDER:
+        threading.Thread(target=probe_site, name="probe-site", daemon=True).start()
+    updates_task = asyncio.create_task(updates_loop()) if loops else None
+    from . import stickers2
+    tag_task = asyncio.create_task(stickers2.tagging_loop()) if loops else None
+    _BG["loop"], _BG["tasks"] = asyncio.get_running_loop(), [task, world_task, updates_task, tag_task]
+
+
 @asynccontextmanager
 async def lifespan(app):
     db.connect()
     load_extra_banned(config.DATA_DIR / "banned_words.txt")
     # На обычном хостинге (Passenger) запросы обслуживают несколько процессов — фоновые задачи запускает только один
     # из них (KRUG_BACKGROUND=1, его выбирает app/wsgi.py), иначе уборка и публикации выполнялись бы по нескольку раз.
-    background = os.environ.get("KRUG_BACKGROUND", "1") != "0"
-    loops = background and os.environ.get("KRUG_UPDATES_LOOP", "1") != "0"
-    task = world_task = updates_task = tag_task = None
-    if background:
-        from .starter_stickers import ensure_starter_pack
-        await asyncio.to_thread(ensure_starter_pack)
-        task = asyncio.create_task(housekeeping())
-        world_task = asyncio.create_task(world_engine.loop()) if world_engine.ENABLED else None
-        asyncio.get_running_loop().run_in_executor(None, tgbot.setup)
-        # отдельный фоновый поток (daemon): бесконечный цикл «не засыпать» не должен задерживать остановку сервера
-        import threading
-        threading.Thread(target=warm_edge, name="warm-edge", daemon=True).start()
-        if config.ON_RENDER:
-            threading.Thread(target=probe_site, name="probe-site", daemon=True).start()
-    updates_task = asyncio.create_task(updates_loop()) if loops else None
-    from . import stickers2
-    tag_task = asyncio.create_task(stickers2.tagging_loop()) if loops else None
-    _BG["loop"], _BG["tasks"] = asyncio.get_running_loop(), [task, world_task, updates_task, tag_task]
+    if os.environ.get("KRUG_BACKGROUND", "1") != "0":
+        await start_background()
     log.info("«%s» запущен: %s", config.APP_NAME, config.APP_URL)
     yield
-    if task:
-        task.cancel()
-    if tag_task:
-        tag_task.cancel()
-    if updates_task:
-        updates_task.cancel()
-    if world_task:
-        world_task.cancel()
+    for t in _BG["tasks"]:
+        if t:
+            t.cancel()
+    _BG["tasks"] = []
 
 
 routes = [
