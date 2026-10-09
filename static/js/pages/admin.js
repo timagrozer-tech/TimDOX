@@ -184,7 +184,7 @@ function callsSettings(d) {
     h("div.card.card-pad.stack",
       h("h3", "Cloudflare TURN — 1000 ГБ в месяц бесплатно"),
       h("ol.muted", { style: { paddingLeft: "18px", margin: 0 } },
-        h("li", "Зарегистрируйтесь на dash.cloudflare.com (бесплатно, карта не нужна)."),
+        h("li", "Зарегистрируйтесь на dash.cloudflare.com (бесплатно)."),
         h("li", "Меню слева: Realtime → TURN Server → «Create»."),
         h("li", "Скопируйте «Turn Token ID» и «API Token» и вставьте сюда. В чат их отправлять не нужно.")),
       keyId, token, clearCf),
