@@ -82,7 +82,9 @@ export const PRESETS = {
   retro:    { name: "Ретро 2010", palette: "retro",    bg: "plain",    font: "retro",      shape: "sharp",  mode: "light" },
 };
 
-export const DEFAULT_LOOK = { brand: "qevi", preset: "qevi", palette: "qevi", custom: null, bg: "orbit", dim: 35, blur: 0, font: "manrope", shape: "soft" };
+// Основное оформление сайта — «Ретро 2010» (так решил владелец); остальные темы — по желанию в настройках
+export const DEFAULT_LOOK = { brand: "qevi", preset: "retro", palette: "retro", custom: null, bg: "plain", dim: 35, blur: 0, font: "retro", shape: "sharp" };
+export const RETRO_DEFAULT_VERSION = "1";
 
 // ---------------------------------------------------------------- цвет
 const hex2rgb = (h) => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
@@ -193,7 +195,7 @@ export function applyLook(look, image = bgImage) {
   // «Ретро 2010» — отдельный стиль всего интерфейса (не только цвета): без стекла и анимаций
   const skin = current.preset === "retro" ? "retro" : "";
   if (skin) root.dataset.skin = skin; else delete root.dataset.skin;
-  if (skin) root.dataset.glass = "classic";
+  if (skin) { root.dataset.glass = "classic"; root.dataset.theme = "light"; }
   else { try { root.dataset.glass = localStorage.getItem("krug-glass") || "liquid"; } catch { /* */ } }
   const href = fontHref(current.font);
   setFontLink(href);

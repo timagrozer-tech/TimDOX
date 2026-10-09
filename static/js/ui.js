@@ -330,7 +330,8 @@ export function applyTheme(theme) {
   try { localStorage.setItem("krug-theme", theme); } catch { /* приватный режим */ }
   let dark = theme === "dark" || (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
   if (theme === "system") { try { const tg = sessionStorage.getItem("krug:tgDark"); if (tg) dark = tg === "1"; } catch { /* нет */ } }
-  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  // стиль «Ретро 2010» бывает только светлым
+  document.documentElement.dataset.theme = dark && document.documentElement.dataset.skin !== "retro" ? "dark" : "light";
   updateThemeColor();
 }
 // тема «как в системе» переключается вместе с телефоном/компьютером

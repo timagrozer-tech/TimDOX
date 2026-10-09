@@ -31,7 +31,17 @@ const NAV = [
   { href: "/settings", icon: "settings", label: "Настройки", more: true, match: (p) => p.startsWith("/settings") },
   { href: "/admin", icon: "shield", label: "Модерация", badge: "reports", admin: true, more: true, match: (p) => p.startsWith("/admin") },
 ];
-const navItems = () => NAV.filter((n) => !n.admin || state.me?.is_admin);
+// стиль «Ретро 2010»: меню по-старому — «Моя Страница», «Мои Друзья»… и в привычном порядке
+const RETRO = { "Моя страница": "Моя Страница", "Друзья": "Мои Друзья", "Клипы": "Мои Видеозаписи", "Музыка": "Мои Аудиозаписи",
+  "Сообщения": "Мои Сообщения", "Сообщества": "Мои Группы", "Уведомления": "Мои Ответы", "Лента": "Мои Новости", "Закладки": "Мои Закладки", "Настройки": "Мои Настройки" };
+const RETRO_ORDER = ["Моя страница", "Друзья", "Клипы", "Музыка", "Сообщения", "Сообщества", "Уведомления", "Лента"];
+const isRetro = () => document.documentElement.dataset.skin === "retro";
+const navItems = () => {
+  const list = NAV.filter((n) => !n.admin || state.me?.is_admin);
+  if (!isRetro()) return list;
+  const rank = (n) => (RETRO_ORDER.includes(n.label) ? RETRO_ORDER.indexOf(n.label) : 50);
+  return [...list].sort((a, b) => rank(a) - rank(b));
+};
 
 const hrefOf = (item) => (typeof item.href === "function" ? item.href() : item.href);
 
@@ -41,8 +51,9 @@ function badge(key) {
 }
 
 function navLink(item) {
-  return h(`a${item.cls ? "." + item.cls : ""}`, { href: hrefOf(item), dataset: { nav: item.label }, title: item.label },
-    icon(item.icon), h("span", item.label), item.badge ? badge(item.badge) : null);
+  const label = isRetro() ? RETRO[item.label] || item.label : item.label;
+  return h(`a${item.cls ? "." + item.cls : ""}`, { href: hrefOf(item), dataset: { nav: item.label }, title: label },
+    icon(item.icon), h("span", label), item.badge ? badge(item.badge) : null);
 }
 
 function sidebar() {

@@ -5025,7 +5025,7 @@ body.has-player .cookie-bar { bottom: calc(var(--dock-h, 62px) + 96px + env(safe
 :root[data-skin="retro"] a { color: #2b587a; }
 :root[data-skin="retro"] h1, :root[data-skin="retro"] h2, :root[data-skin="retro"] h3 { font-family: var(--font); letter-spacing: 0; color: #45688e; }
 :root[data-skin="retro"] .card, :root[data-skin="retro"] .post, :root[data-skin="retro"] .modal, :root[data-skin="retro"] .menu,
-:root[data-skin="retro"] .widget, :root[data-skin="retro"] .profile-top {
+:root[data-skin="retro"] .widget {
   background: #fff !important; border: 1px solid var(--border) !important; border-radius: 2px !important; box-shadow: none !important; }
 :root[data-skin="retro"] .card::after, :root[data-skin="retro"] .card::before { display: none !important; }
 /* шапка: сплошная синяя полоса */
@@ -5071,3 +5071,106 @@ body.has-player .cookie-bar { bottom: calc(var(--dock-h, 62px) + 96px + env(safe
 :root[data-skin="retro"] .topbar .btn, :root[data-skin="retro"] .topbar button { background: transparent !important; border: 0 !important; }
 @media (min-width: 900px) { :root[data-skin="retro"] body { border-top: 42px solid #597da3; } }
 :root[data-skin="retro"] .post time, :root[data-skin="retro"] .post .time, :root[data-skin="retro"] .post-head small a { color: #828a99 !important; font-weight: 400 !important; }
+
+/* ---------- «Ретро 2010»: ближе к оригиналу ---------- */
+:root[data-skin="retro"] { --bg: #ffffff; --bg-deep: #ffffff; }
+:root[data-skin="retro"] body { font-size: 12.5px; line-height: 1.45; }
+:root[data-skin="retro"] .card, :root[data-skin="retro"] .post { border-color: #dae1e8 !important; }
+:root[data-skin="retro"] .post + .post { margin-top: -1px; }
+/* заголовки блоков — серо-голубая полоса, как у старых разделов */
+:root[data-skin="retro"] .widget h3, :root[data-skin="retro"] .widget-head, :root[data-skin="retro"] .card > h2:first-child,
+:root[data-skin="retro"] .mu-shelf-head h2, :root[data-skin="retro"] .section-head h2 {
+  font-size: 12.5px !important; font-weight: 700; color: #45688e !important; }
+:root[data-skin="retro"] .widget h3, :root[data-skin="retro"] .widget-head { background: #f0f2f5; margin: -12px -12px 8px; padding: 6px 12px; border-bottom: 1px solid #dae1e8; }
+:root[data-skin="retro"] h1 { font-size: 18px !important; }
+:root[data-skin="retro"] .tabs a, :root[data-skin="retro"] .tabs button, :root[data-skin="retro"] [role="tab"] { font-weight: 400; color: #2b587a; border-radius: 0 !important; }
+:root[data-skin="retro"] [role="tab"][aria-selected="true"], :root[data-skin="retro"] .tabs .active { color: #000; font-weight: 700; box-shadow: inset 0 -2px 0 #5e81a8 !important; background: transparent !important; }
+/* профиль: без широкой обложки, фото квадратом */
+:root[data-skin="retro"] .profile-card .cover { display: none !important; }
+:root[data-skin="retro"] .profile-card .profile-top { margin-top: 14px !important; }
+:root[data-skin="retro"] .profile-card .avatar.xl { width: 200px !important; height: 200px !important; border: 0 !important; border-radius: 0 !important; }
+:root[data-skin="retro"] .profile-card .avatar.xl img { border-radius: 0 !important; }
+:root[data-skin="retro"] .profile-counts > * { background: transparent !important; border: 0 !important; border-radius: 0 !important; }
+:root[data-skin="retro"] .profile-counts b { color: #45688e; }
+:root[data-skin="retro"] .profile-info span, :root[data-skin="retro"] .profile-meta { color: #4c5a6a; }
+:root[data-skin="retro"] .profile-name h1 { color: #000 !important; }
+@media (max-width: 899px) {
+  :root[data-skin="retro"] .profile-card .avatar.xl { width: 160px !important; height: 160px !important; }
+  :root[data-skin="retro"] .tabbar { height: calc(52px + env(safe-area-inset-bottom)) !important; }
+  :root[data-skin="retro"] .topbar { height: 46px !important; }
+  :root[data-skin="retro"] body { font-size: 14px; }
+}
+/* компьютер: узкая страница по центру, синяя шапка с названием, меню текстом без значков */
+@media (min-width: 900px) {
+  :root[data-skin="retro"] body { border-top: 0 !important; padding-top: 42px; }
+  :root[data-skin="retro"] body::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 42px; z-index: 30;
+    background: linear-gradient(#6385ab, #597da3); border-bottom: 1px solid #4a6d93; }
+  :root[data-skin="retro"] body::after { content: "yarko"; position: absolute; top: 0; z-index: 31; left: max(16px, calc(50% - 500px));
+    color: #fff; font: 700 22px/42px Tahoma, Verdana, sans-serif; letter-spacing: -1px; pointer-events: none; }
+  :root[data-skin="retro"] .layout { grid-template-columns: 150px minmax(0, 620px) 240px; gap: 18px; max-width: 1040px; padding-top: 14px; }
+  :root[data-skin="retro"] body.wide .layout { grid-template-columns: 150px minmax(0, 860px); }
+  :root[data-skin="retro"] .sidebar { top: 0; padding: 0 !important; }
+  :root[data-skin="retro"] .sidebar > .logo, :root[data-skin="retro"] .sidebar-wallet, :root[data-skin="retro"] .install-side { display: none !important; }
+  :root[data-skin="retro"] .nav { gap: 0 !important; }
+  :root[data-skin="retro"] .nav a, :root[data-skin="retro"] .nav-more summary { padding: 4px 6px !important; min-height: 0 !important; font-size: 12.5px; gap: 6px; }
+  :root[data-skin="retro"] .nav a .icon, :root[data-skin="retro"] .nav-more summary > .icon:first-child { display: none !important; }
+  :root[data-skin="retro"] .nav .badge { background: none !important; color: #2b587a !important; font-weight: 700; padding: 0; min-width: 0; }
+  :root[data-skin="retro"] .nav .badge:not(:empty)::before { content: "+"; }
+  :root[data-skin="retro"] .create-btn { width: 100%; justify-content: center; }
+  /* профиль как раньше: фото слева, сведения справа */
+  :root[data-skin="retro"] .profile-card .profile-main { display: grid !important; grid-template-columns: 200px minmax(0, 1fr); column-gap: 20px; align-items: start; text-align: left !important; padding-top: 14px; }
+  :root[data-skin="retro"] .profile-card .profile-top { grid-column: 1; grid-row: 1 / span 12; display: flex !important; flex-direction: column; align-items: stretch; margin-top: 0 !important; gap: 8px; }
+  :root[data-skin="retro"] .profile-card .profile-main > *:not(.profile-top) { grid-column: 2; justify-content: flex-start; text-align: left; }
+  :root[data-skin="retro"] .profile-card .profile-top .btn { width: 100%; justify-content: center; }
+  :root[data-skin="retro"] .profile-card .profile-name h1 { font-size: 17px !important; border-bottom: 1px solid #dae1e8; padding-bottom: 6px; }
+  :root[data-skin="retro"] .profile-card .profile-info { display: grid; gap: 4px; justify-content: start; }
+}
+/* вход и регистрация: синяя шапка, без космической сцены, форма в строгом блоке */
+:root[data-skin="retro"] .orbit-scene, :root[data-skin="retro"] .auth-mobile-hero, :root[data-skin="retro"] .auth-brand .floater { display: none !important; }
+:root[data-skin="retro"] .auth { background: #fff; padding-top: 46px; }
+:root[data-skin="retro"] .auth::before { content: "yarko"; position: absolute; left: 0; right: 0; top: 0; height: 46px; z-index: 5; padding-left: max(16px, calc(50% - 500px));
+  background: linear-gradient(#6385ab, #597da3); border-bottom: 1px solid #4a6d93; color: #fff; font: 700 22px/46px Tahoma, Verdana, sans-serif; letter-spacing: -1px; }
+:root[data-skin="retro"] .auth-brand h2 { color: #45688e !important; font-size: 22px !important; }
+:root[data-skin="retro"] .auth-brand .grad-text { background: none !important; -webkit-text-fill-color: #2b587a !important; color: #2b587a !important; }
+:root[data-skin="retro"] .auth-brand .logo { display: none; }
+:root[data-skin="retro"] .auth-card { border: 1px solid #c5d0db !important; background: #f7f8fa !important; border-radius: 0 !important; }
+:root[data-skin="retro"] .auth-card h1, :root[data-skin="retro"] .auth-card h2 { color: #45688e; font-size: 18px !important; }
+@media (min-width: 900px) {
+  :root[data-skin="retro"] body::before { position: fixed; }
+  :root[data-skin="retro"] body::after { position: fixed; }
+  :root[data-skin="retro"] .sidebar { top: 56px !important; }
+  :root[data-skin="retro"] .layout { padding-top: 56px !important; }
+  :root[data-skin="retro"] body { padding-top: 0 !important; }
+}
+:root[data-skin="retro"] body:has(.auth)::before, :root[data-skin="retro"] body:has(.auth)::after { display: none !important; }
+:root[data-skin="retro"] .auth { padding-top: 46px !important; }
+
+/* ---------- «Ретро 2010»: исправления по скриншотам ---------- */
+/* углы: всё прямоугольное (кружки-точки «в сети», спиннеры и т.п. — псевдоэлементы, их не трогаем) */
+:root[data-skin="retro"] body *:not(.spinner):not(.ptr-spin):not(.mu-eq i):not(.aw-emoji):not(input[type="radio"]) { border-radius: 2px !important; }
+/* рамки аватаров (купленные украшения) — тоже квадратные, без вращения */
+:root[data-skin="retro"] .avatar[data-frame]::before, :root[data-skin="retro"] .avatar[data-frame]::after,
+:root[data-skin="retro"] .avatar-slot.has-frame::before, :root[data-skin="retro"] .avatar-slot.has-frame::after { border-radius: 3px !important; }
+:root[data-skin="retro"] .avatar:not(.xl)[data-frame]::before { inset: -3px !important; }
+/* анимации выключены целиком (обнулённая длительность оставляла переливы «застывшими» на полпути) */
+:root[data-skin="retro"] *, :root[data-skin="retro"] *::before, :root[data-skin="retro"] *::after { animation: none !important; transition: none !important; }
+/* имена с эффектами (золото, радуга…) — читаемым цветом */
+:root[data-skin="retro"] .pname[data-namefx] { background: none !important; -webkit-text-fill-color: currentColor !important; color: #2b587a !important; filter: none !important; }
+:root[data-skin="retro"] .profile-name h1 .pname { color: #000 !important; }
+/* плитки, переключатели, «пилюли» — плоские светло-серые */
+:root[data-skin="retro"] .seg, :root[data-skin="retro"] .tabs, :root[data-skin="retro"] .pill-tabs { background: transparent !important; box-shadow: none !important; }
+:root[data-skin="retro"] .tabbar a.active, :root[data-skin="retro"] .tabbar a[aria-current="page"] { background: transparent !important; color: #000 !important; font-weight: 700; }
+:root[data-skin="retro"] .tabbar a.active::before, :root[data-skin="retro"] .tabbar a[aria-current="page"]::before { display: none !important; }
+:root[data-skin="retro"] .reacted, :root[data-skin="retro"] .act.on, :root[data-skin="retro"] .post-actions .on { background: #e1e7ef !important; }
+:root[data-skin="retro"] .scroll-top, :root[data-skin="retro"] .to-top { background: #5b7da3 !important; color: #fff !important; box-shadow: none !important; }
+/* компьютер: синяя шапка закреплена сверху, меню и колонки — под ней */
+@media (min-width: 900px) {
+  :root[data-skin="retro"] body { border-top: 0 !important; }
+  :root[data-skin="retro"] body::before { content: ""; position: fixed; left: 0; right: 0; top: 0; height: 42px; z-index: 30;
+    background: linear-gradient(#6385ab, #597da3); border-bottom: 1px solid #4a6d93; }
+  :root[data-skin="retro"] body::after { content: "yarko"; position: fixed; top: 0; z-index: 31; left: max(16px, calc(50% - 500px));
+    color: #fff; font: 700 22px/42px Tahoma, Verdana, sans-serif; letter-spacing: -1px; pointer-events: none; }
+  :root[data-skin="retro"] .layout { padding-top: 56px !important; }
+  :root[data-skin="retro"] .sidebar { top: 56px !important; }
+}
+:root[data-skin="retro"] body:has(.auth)::before, :root[data-skin="retro"] body:has(.auth)::after { display: none !important; }
