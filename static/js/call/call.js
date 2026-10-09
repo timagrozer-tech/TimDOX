@@ -54,13 +54,40 @@ async function getMedia(video) {
 
 const sig = (to, type, data) => api.post(`/api/calls/${cur.id}/signal`, { to, type, data }).catch(() => {});
 
+// ---------------------------------------------------------------- диагностика соединения (без адресов — только типы путей)
+async function diag(peer, tag) {
+  if (!cur || (peer.diags = (peer.diags || 0) + 1) > 10) return;
+  const id = cur.id, ice = cur.ice || [];
+  try {
+    const st = await peer.pc.getStats();
+    const cnt = (m, k) => { m[k] = (m[k] || 0) + 1; };
+    const loc = {}, rem = {}; let pair = "-";
+    st.forEach((r) => {
+      if (r.type === "local-candidate") cnt(loc, `${r.candidateType}/${r.relayProtocol || r.protocol}`);
+      if (r.type === "remote-candidate") cnt(rem, `${r.candidateType}/${r.protocol}`);
+    });
+    st.forEach((r) => {
+      if (r.type === "candidate-pair" && (r.nominated || r.state === "succeeded")) {
+        const l = st.get(r.localCandidateId), rr = st.get(r.remoteCandidateId);
+        pair = `${l?.candidateType}>${rr?.candidateType} ${r.state}`;
+      }
+    });
+    const fmtm = (m) => Object.entries(m).map(([k, n]) => `${k}=${n}`).join(",") || "none";
+    const nIce = ice.map((x) => [].concat(x.urls).length).reduce((a, b) => a + b, 0);
+    const s = `${tag} ice=${peer.pc.iceConnectionState} gather=${peer.pc.iceGatheringState} sig=${peer.pc.signalingState} srv=${nIce} ` +
+      `loc:${fmtm(loc)} rem:${fmtm(rem)} pair:${pair} t=${Math.round((Date.now() - peer.born) / 1000)}`;
+    api.post(`/api/calls/${id}/diag`, { s }).catch(() => {});
+  } catch { /* старые браузеры */ }
+}
+
 // ---------------------------------------------------------------- участники (P2P)
 function addPeer(uid, card) {
   if (!cur || cur.peers.has(uid)) return cur?.peers.get(uid);
   const pc = new RTCPeerConnection({ iceServers: cur.ice, bundlePolicy: "max-bundle", iceCandidatePoolSize: 2 });
   const peer = { uid, card: card || { id: uid, name: "Участник" }, pc, polite: state.me.id < uid, makingOffer: false, ignoreOffer: false,
-    stream: new MediaStream(), iceQueue: [], iceTimer: 0, state: { mic: true, cam: true } };
+    stream: new MediaStream(), iceQueue: [], iceTimer: 0, state: { mic: true, cam: true }, born: Date.now() };
   cur.peers.set(uid, peer);
+  peer.diagTimers = [setTimeout(() => diag(peer, "t8"), 8000), setTimeout(() => diag(peer, "t20"), 20000)];
   for (const t of cur.local.getTracks()) pc.addTrack(t, cur.local);
   if (!cur.local.getVideoTracks().length) pc.addTransceiver("video", { direction: "recvonly" }); // чтобы собеседник мог включить камеру
   pc.ontrack = (e) => {
@@ -82,6 +109,7 @@ function addPeer(uid, card) {
     } catch (e) { console.warn(e); } finally { peer.makingOffer = false; }
   };
   pc.oniceconnectionstatechange = () => {
+    if (["connected", "failed", "disconnected"].includes(pc.iceConnectionState)) diag(peer, pc.iceConnectionState);
     if (pc.iceConnectionState === "failed") {
       peer.fails = (peer.fails || 0) + 1;
       if (peer.fails === 1) {
@@ -205,7 +233,11 @@ function cleanup(message) {
   clearTimeout(cur.ringTimeout);
   clearInterval(cur.timer); clearInterval(cur.qualityTimer); clearInterval(cur.levelTimer);
   try { cur.recorder?.stop(); } catch { /* уже остановлена */ }
-  for (const p of cur.peers.values()) p.pc.close();
+  for (const p of cur.peers.values()) {
+    p.diagTimers?.forEach(clearTimeout);
+    if (!cur.connectedAt) diag(p, "hangup").finally(() => p.pc.close()); // сводка до закрытия
+    else p.pc.close();
+  }
   cur.local.getTracks().forEach((t) => t.stop());
   cur.screen?.getTracks().forEach((t) => t.stop());
   cur.ui?.remove();

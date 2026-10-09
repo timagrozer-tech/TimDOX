@@ -219,7 +219,27 @@ async def history(request: Request):
     return JSONResponse({"items": out})
 
 
+_DIAG_OK = set("abcdefghijklmnopqrstuvwxyz0123456789 :/=,._-+>|")
+
+
+@auth()
+async def diag(request: Request):
+    """Сводка соединения от браузера: типы найденных путей (host/srflx/relay, udp/tcp) и состояние ICE — без адресов.
+    Пишется в журнал запросов на хостинге, чтобы разбирать «звонок не соединяется» удалённо."""
+    limit(request, "call_diag")
+    v = request.state.user["id"]
+    c = _call(request.path_params["id"], v)
+    data = await body(request)
+    s = "".join(ch for ch in str(data.get("s") or "").lower()[:300] if ch in _DIAG_OK)
+    import sys
+    wsgi = sys.modules.get("app.wsgi")
+    if wsgi is not None and s:
+        wsgi._req_queue.append(("SYS", "/__call-diag", 200, 0, f"{c['id'][:6]}:{v}", s[:300], os.getpid()))
+    return ok()
+
+
 routes = [
+    Route("/api/calls/{id}/diag", diag, methods=["POST"]),
     Route("/api/calls", start, methods=["POST"]),
     Route("/api/calls/history", history, methods=["GET"]),
     Route("/api/calls/ice", ice, methods=["GET"]),
