@@ -4899,8 +4899,8 @@ html.av3d-lock, html.av3d-lock body { overflow: hidden; overscroll-behavior: non
    и нижней панелях (лёгкое), остальным стеклянным поверхностям — плотный фон.
    ========================================================================== */
 .touch *, .touch *::before, .touch *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
-.touch .topbar::before, .touch .tabbar { -webkit-backdrop-filter: blur(10px) !important; backdrop-filter: blur(10px) !important; }
-.touch .tabbar { background: color-mix(in srgb, var(--surface) 82%, transparent) !important; }
+.touch .tabbar { background: color-mix(in srgb, var(--surface) 95%, transparent) !important; }
+.touch .topbar::before { background: linear-gradient(var(--bg), color-mix(in srgb, var(--bg) 85%, transparent) 70%, transparent) !important; }
 .touch .lg-group, .touch .logo.lg-refract, .touch .cookie-bar, .touch .toast, .touch .menu, .touch .modal,
 .touch .sheet, .touch .popover, .touch .dropdown { background-color: color-mix(in srgb, var(--surface) 96%, transparent) !important; }
 
