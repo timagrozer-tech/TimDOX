@@ -35,7 +35,7 @@ def save(cfg: dict) -> None:
         db.run("UPDATE app_secrets SET value=? WHERE name='turn_config'", (value,))
     else:
         db.run("INSERT INTO app_secrets (name, value) VALUES ('turn_config', ?)", (value,))
-    _cf_cache.update(at=0.0, servers=None)
+    _cf_cache.update(at=0.0, servers=None, fail_key=None, fail_at=0.0)
 
 
 def public_view(cfg: dict) -> dict:
@@ -52,6 +52,8 @@ def _cloudflare(cf: dict) -> list[dict]:
         return []
     if _cf_cache["servers"] is not None and _cf_cache["key"] == key and time.time() - _cf_cache["at"] < 6 * 3600:
         return _cf_cache["servers"]
+    if _cf_cache.get("fail_key") == key and time.time() - _cf_cache.get("fail_at", 0) < 600:
+        return []  # недавно не получилось — не тормозим каждый звонок повторной попыткой
     req = urllib.request.Request(CF_API.format(key=key), data=json.dumps({"ttl": 86400}).encode(), method="POST",
                                  headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=10) as r:
@@ -71,6 +73,7 @@ def servers(cfg: dict | None = None) -> list[dict]:
         out += _cloudflare(cfg.get("cloudflare") or {})
     except Exception as e:  # noqa: BLE001 — ключ неверный или API недоступно: звонки пойдут через остальное
         log.warning("Cloudflare TURN: %s", e)
+        _cf_cache.update(fail_key=(cfg.get("cloudflare") or {}).get("key_id", ""), fail_at=time.time())
     custom = cfg.get("custom") or {}
     if custom.get("urls"):
         out.append({"urls": custom["urls"], "username": custom.get("username", ""), "credential": custom.get("credential", "")})
