@@ -4994,3 +4994,8 @@ body.has-player .cookie-bar { bottom: calc(var(--dock-h, 62px) + 96px + env(safe
   .song-hero .mu-mine-btns .btn, .ap-hero .mu-mine-btns .btn { padding-inline: 12px; font-size: 13.5px; }
 }
 .ap-hero .mu-mine-btns { margin-left: 0; }
+/* ответ/правка в чате: полоска над полем ввода во всю ширину, а не сбоку (иначе поле сжималось до пары букв) */
+.chat-form { flex-wrap: wrap; }
+.chat-form > .ctx-bar { flex: 1 0 100%; box-sizing: border-box; margin: 0 0 6px; }
+.chat-form > .ctx-bar[hidden] { display: none; }
+.chat-form > .chat-input { flex: 1 1 100%; }
