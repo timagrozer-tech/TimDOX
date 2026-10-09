@@ -1,6 +1,7 @@
 """Обработка изображений: проверка, удаление EXIF (геометки), сжатие, превью."""
 import io
 import os
+from pathlib import Path
 import urllib.request
 import secrets
 from collections import OrderedDict
@@ -130,12 +131,17 @@ def cached_copy(rel: str):
     if target.is_file():
         return target
     url = public_url(rel)
-    if not url:
-        return None
-    try:
-        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Yarko"}), timeout=120) as r:
-            data = r.read(200 * 1048576 + 1)
-    except Exception:  # noqa: BLE001 — нет файла или хранилище недоступно: браузер пойдёт по прямой ссылке
+    if url:
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Yarko"}), timeout=120) as r:
+                data = r.read(200 * 1048576 + 1)
+        except Exception:  # noqa: BLE001 — нет файла или хранилище недоступно: браузер пойдёт по прямой ссылке
+            return None
+    elif config.MEDIA_STORAGE == "db":
+        data = read_file(rel)  # файл в базе: один раз достаём и кладём на диск — дальше его отдаёт веб-сервер
+        if not data:
+            return None
+    else:
         return None
     if len(data) > 200 * 1048576:
         return None
@@ -351,6 +357,12 @@ def delete_files(*urls: str | None) -> None:
         rels += [rel] if not rel.endswith(".webp") or rel.endswith("_t.webp") else [rel, rel[:-5] + "_t.webp"]
     if not rels:
         return
+    if config.MEDIA_PROXY:  # копии на диске хостинга (их отдаёт веб-сервер) удаляются вместе с оригиналом
+        base = Path(config.MEDIA_CACHE_DIR).resolve()
+        for r in rels:
+            p = (base / r).resolve()
+            if base in p.parents:
+                p.unlink(missing_ok=True)
     if config.MEDIA_STORAGE == "supabase":
         import json
         try:

@@ -205,3 +205,21 @@ class MusicProxyTest(unittest.TestCase):
             with self.assertRaises(music.Unavailable, msg=u):
                 self._art(u)
         self.assertEqual(self.a.get("/api/music/art", params={"u": "https://127.0.0.1/x.png"}).status_code, 404)
+
+
+class MediaCacheTest(unittest.TestCase):
+    """Хостинг: файлы из базы кладутся на диск (их отдаёт веб-сервер) и удаляются вместе с оригиналом"""
+
+    def test_db_media_cached_and_deleted(self):
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        from app import config, db, media
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(config, "MEDIA_STORAGE", "db"), \
+                mock.patch.object(config, "MEDIA_PROXY", True), mock.patch.object(config, "MEDIA_CACHE_DIR", Path(d)):
+            db.run("INSERT INTO media_files (path, content_type, data) VALUES (?,?,?)", ("2026/10/cachetest.webp", "image/webp", b"RIFFxx"))
+            p = media.cached_copy("2026/10/cachetest.webp")
+            self.assertTrue(p and p.read_bytes() == b"RIFFxx")
+            media.delete_files("/uploads/2026/10/cachetest.webp")
+            self.assertFalse(p.exists())
+            self.assertIsNone(media.cached_copy("../etc/passwd"))

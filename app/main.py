@@ -244,7 +244,7 @@ async def uploads(request: Request):
     dl = re.sub(r'[\x00-\x1f"\\/]', "_", request.query_params.get("dl", ""))[:150].strip()
     attach = rel.endswith(".bin") or bool(dl)
     cdn = media.public_url(rel)
-    if cdn and config.MEDIA_PROXY and not attach:
+    if config.MEDIA_PROXY and not attach:
         # хостинг в России: CDN хранилища за рубежом замедлен — отдаём файл сами и сохраняем копию на диске,
         # дальше её отдаёт веб-сервер хостинга напрямую (папка uploads в корне сайта)
         local = await run_in_threadpool(media.cached_copy, rel)
