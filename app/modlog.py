@@ -13,6 +13,7 @@ ACTIONS = {
     "verify": "Выдана галочка", "unverify": "Галочка снята",
     "delete_post": "Удалена запись", "delete_comment": "Удалён комментарий",
     "delete_reel": "Удалён клип", "delete_reel_comment": "Удалён комментарий к клипу",
+    "calls_settings": "Изменены ретрансляторы звонков",
 }
 
 

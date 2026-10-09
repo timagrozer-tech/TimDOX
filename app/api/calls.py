@@ -51,7 +51,7 @@ def _rest_cred(secret: str, uid: int | None) -> tuple[str, str]:
 
 
 def _openrelay(uid: int | None) -> dict | None:
-    if os.environ.get("OPENRELAY", "1") == "0":
+    if os.environ.get("OPENRELAY", "0") == "0":  # публичный Open Relay не отвечает (проверка 2026-10-09) — выключен
         return None
     user, cred = _rest_cred(OPENRELAY_SECRET, uid)
     h = OPENRELAY_HOST
@@ -65,6 +65,8 @@ def ice_servers(uid: int | None = None) -> list[dict]:
     own = _turn_rest(uid)
     if own:
         servers.insert(0, own)
+    from .. import turn
+    servers += turn.servers()  # подключённые создателем в «Модерация → Звонки»
     free = _openrelay(uid)
     if free:
         servers.append(free)
@@ -201,8 +203,8 @@ async def decline(request: Request):
 @auth()
 async def ice(request: Request):
     """Серверы соединения для страницы «Проверка звонков»"""
-    return JSONResponse({"ice_servers": ice_servers(request.state.user["id"]),
-                         "turn": bool(os.environ.get("TURN_URLS") or os.environ.get("TURN_SECRET"))})
+    servers = ice_servers(request.state.user["id"])
+    return JSONResponse({"ice_servers": servers, "turn": any(s.get("username") for s in servers)})
 
 
 @auth()

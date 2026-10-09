@@ -216,7 +216,48 @@ async def stats(request: Request):
     })
 
 
+@auth()
+async def calls_settings(request: Request):
+    """Ретрансляторы звонков: Cloudflare TURN (ключ и токен) и любой TURN с постоянным логином"""
+    _admin(request)
+    from starlette.concurrency import run_in_threadpool
+    from .. import turn
+    cfg = turn.load()
+    if request.method == "PUT":
+        data = await body(request)
+        cf = data.get("cloudflare") or {}
+        if cf.get("clear"):
+            cfg.pop("cloudflare", None)
+        elif cf.get("key_id") or cf.get("token"):
+            old = cfg.get("cloudflare") or {}
+            key = str(cf.get("key_id") or old.get("key_id") or "").strip()[:200]
+            token = str(cf.get("token") or old.get("token") or "").strip()[:400]
+            if not (key and token):
+                raise ApiError(400, "Нужны и ID ключа TURN, и API-токен")
+            cfg["cloudflare"] = {"key_id": key, "token": token}
+        cu = data.get("custom")
+        if isinstance(cu, dict):
+            urls = [u.strip() for u in (cu.get("urls") or []) if isinstance(u, str) and u.strip()][:8]
+            if any(not u.startswith(("turn:", "turns:", "stun:")) for u in urls):
+                raise ApiError(400, "Адреса начинаются с turn:, turns: или stun:")
+            old = cfg.get("custom") or {}
+            cred = str(cu.get("credential") or "").strip() or old.get("credential", "")
+            cfg["custom"] = {"urls": urls, "username": str(cu.get("username") or "").strip()[:200], "credential": cred[:400]} if urls else {}
+        turn.save(cfg)
+        from .. import modlog
+        modlog.log(request.state.user["id"], "calls_settings", "settings")
+    result = turn.public_view(cfg)
+    if request.method == "PUT" or request.query_params.get("check"):
+        from .. import turncheck
+        servers = await run_in_threadpool(turn.servers, cfg)
+        checks = await run_in_threadpool(turncheck.check_all, servers)
+        result["checks"] = [{"url": u, "result": r} for u, r in checks]
+        result["servers"] = len(servers)
+    return JSONResponse(result)
+
+
 routes = [
+    Route("/api/admin/calls", calls_settings, methods=["GET", "PUT"]),
     Route("/api/admin/reports", reports_list, methods=["GET"]),
     Route("/api/admin/reports/resolve", resolve, methods=["POST"]),
     Route("/api/admin/users", users_list, methods=["GET"]),

@@ -117,6 +117,16 @@ def _turn_report() -> None:
         from app.api.calls import ice_servers
         for url, res in turncheck.check_all(ice_servers(0)):
             _req_queue.append(("SYS", "/__turn-check", 200 if res == "ok" else 500, 0, url[:120], res[:120], os.getpid()))
+        import socket
+        for host, port in (("turn.cloudflare.com", 3478), ("turn.cloudflare.com", 443), ("relay1.expressturn.com", 3478)):
+            t0 = _t.time()
+            try:
+                socket.create_connection((host, port), timeout=6).close()
+                res = "tcp ok"
+            except OSError as e:
+                res = f"tcp fail: {e}"
+            _req_queue.append(("SYS", "/__turn-reach", 200 if res == "tcp ok" else 500, int((_t.time() - t0) * 1000),
+                               f"{host}:{port}", res[:120], os.getpid()))
     except Exception as e:  # noqa: BLE001
         _req_queue.append(("SYS", "/__turn-check", 500, 0, "", repr(e)[:120], os.getpid()))
 

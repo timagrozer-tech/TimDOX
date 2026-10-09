@@ -57,7 +57,7 @@ const sig = (to, type, data) => api.post(`/api/calls/${cur.id}/signal`, { to, ty
 // ---------------------------------------------------------------- участники (P2P)
 function addPeer(uid, card) {
   if (!cur || cur.peers.has(uid)) return cur?.peers.get(uid);
-  const pc = new RTCPeerConnection({ iceServers: cur.ice, bundlePolicy: "max-bundle" });
+  const pc = new RTCPeerConnection({ iceServers: cur.ice, bundlePolicy: "max-bundle", iceCandidatePoolSize: 2 });
   const peer = { uid, card: card || { id: uid, name: "Участник" }, pc, polite: state.me.id < uid, makingOffer: false, ignoreOffer: false,
     stream: new MediaStream(), iceQueue: [], iceTimer: 0, state: { mic: true, cam: true } };
   cur.peers.set(uid, peer);
@@ -84,7 +84,11 @@ function addPeer(uid, card) {
   pc.oniceconnectionstatechange = () => {
     if (pc.iceConnectionState === "failed") {
       peer.fails = (peer.fails || 0) + 1;
-      if (peer.fails === 1) pc.restartIce?.();
+      if (peer.fails === 1) {
+        // свежие логины ретрансляторов и повторный поиск пути (ICE restart)
+        api.get("/api/calls/ice").then((d) => { try { pc.setConfiguration({ ...pc.getConfiguration(), iceServers: d.ice_servers }); } catch { /* старые браузеры */ } })
+          .catch(() => {}).finally(() => pc.restartIce?.());
+      }
       else setStatus("Не удаётся соединиться: сеть не пропускает звонок. Попробуйте Wi‑Fi или «Настройки» → «Проверка звонков»");
     }
     if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {

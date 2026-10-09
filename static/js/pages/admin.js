@@ -74,12 +74,12 @@ function modLog() {
 export async function adminPage({ query }) {
   if (!state.me?.is_admin) { navigate("/", { replace: true }); return h("div"); }
   setTitle("Модерация");
-  let tab = ["reports", "people", "log", "stats"].includes(query.tab) ? query.tab : "reports";
+  let tab = ["reports", "people", "log", "stats", "calls"].includes(query.tab) ? query.tab : "reports";
   const content = h("div.stack");
   const tabs = h("div.tabs", { role: "tablist" });
 
   async function draw() {
-    tabs.replaceChildren(...[["reports", "Жалобы", "flag"], ["people", "Люди", "users"], ["log", "Журнал", "list"], ["stats", "Статистика", "trend"]].map(([id, label, ic]) =>
+    tabs.replaceChildren(...[["reports", "Жалобы", "flag"], ["people", "Люди", "users"], ["log", "Журнал", "list"], ["stats", "Статистика", "trend"], ["calls", "Звонки", "phone"]].map(([id, label, ic]) =>
       h("button", { type: "button", role: "tab", "aria-selected": String(tab === id), onclick: () => { tab = id; history.replaceState(history.state, "", id === "reports" ? "/admin" : `/admin?tab=${id}`); draw(); } },
         icon(ic, "sm"), label, id === "reports" && state.counters.reports ? h("span.badge", String(state.counters.reports)) : null)));
     content.replaceChildren(h("div.spinner"));
@@ -88,6 +88,8 @@ export async function adminPage({ query }) {
         const { items } = await api.get("/api/admin/reports");
         content.replaceChildren(...(items.length ? items.map((it) => reportCard(it, () => { draw(); api.get("/api/counters").then(setCounters).catch(() => {}); }))
           : [h("div.card.empty", icon("check"), h("h2", "Жалоб нет"), h("p", "Всё спокойно. Новые жалобы появятся здесь, а в меню загорится счётчик."))]));
+      } else if (tab === "calls") {
+        content.replaceChildren(callsSettings(await api.get("/api/admin/calls")));
       } else if (tab === "log") {
         content.replaceChildren(modLog());
       } else if (tab === "people") {
@@ -137,4 +139,59 @@ export async function adminPage({ query }) {
   }
   draw();
   return h("div.stack", h("div.page-head", h("h1", "Модерация")), h("div.card", tabs), content);
+}
+
+
+/** Ретрансляторы звонков: без них звонки между двумя телефонами на мобильном интернете часто не соединяются */
+function callsSettings(d) {
+  const keyId = h("input.input", { placeholder: d.cloudflare.configured ? `Сохранён: ${d.cloudflare.key_id}` : "ID ключа TURN (Turn Token ID)", autocomplete: "off", "aria-label": "ID ключа TURN Cloudflare" });
+  const token = h("input.input", { type: "password", placeholder: d.cloudflare.configured ? "API-токен сохранён — введите, чтобы заменить" : "API-токен ключа TURN", autocomplete: "off", "aria-label": "API-токен Cloudflare" });
+  const urls = h("textarea.textarea", { rows: 3, placeholder: "turn:relay1.expressturn.com:3478\nturn:relay1.expressturn.com:3478?transport=tcp", "aria-label": "Адреса TURN" });
+  urls.value = (d.custom.urls || []).join("\n");
+  const user = h("input.input", { placeholder: "Логин", value: d.custom.username || "", autocomplete: "off", "aria-label": "Логин TURN" });
+  const pass = h("input.input", { type: "password", placeholder: d.custom.has_credential ? "Пароль сохранён — введите, чтобы заменить" : "Пароль", autocomplete: "off", "aria-label": "Пароль TURN" });
+  const results = h("div.stack");
+  const paintChecks = (r) => {
+    if (!r.checks) return;
+    results.replaceChildren(h("b", r.checks.length ? "Проверка с сервера сайта:" : "Нечего проверять — подключите ретранслятор"),
+      ...r.checks.map((c) => h("div.row", { style: { gap: "8px", alignItems: "baseline" } },
+        h("span", c.result === "ok" ? "✅" : "⚠️"), h("code", { style: { wordBreak: "break-all" } }, c.url), h("small.muted", c.result === "ok" ? "работает" : c.result))));
+  };
+  const save = h("button.btn.primary", { type: "button" }, "Сохранить и проверить");
+  save.addEventListener("click", () => busy(save, async () => {
+    const body = { custom: { urls: urls.value.split(/\s+/).filter(Boolean), username: user.value.trim(), credential: pass.value } };
+    if (keyId.value.trim() || token.value.trim()) body.cloudflare = { key_id: keyId.value.trim(), token: token.value.trim() };
+    try {
+      const r = await api.put("/api/admin/calls", body);
+      token.value = ""; pass.value = ""; keyId.value = "";
+      toast("Сохранено", { icon: "check" });
+      paintChecks(r);
+    } catch (e) { toastError(e); }
+  }));
+  const check = h("button.btn.soft", { type: "button" }, "Проверить");
+  check.addEventListener("click", () => busy(check, async () => {
+    try { paintChecks(await api.get("/api/admin/calls", { check: 1 })); } catch (e) { toastError(e); }
+  }));
+  const clearCf = d.cloudflare.configured ? h("button.btn.ghost.sm", { type: "button", onclick: async () => {
+    if (!await confirmDialog({ title: "Отключить Cloudflare TURN?", confirm: "Отключить", danger: true })) return;
+    try { await api.put("/api/admin/calls", { cloudflare: { clear: true } }); toast("Отключено"); } catch (e) { toastError(e); }
+  } }, "Отключить") : null;
+  return h("div.stack",
+    h("div.card.card-pad.stack",
+      h("h2", "Ретрансляторы звонков"),
+      h("p.muted", "Когда оба собеседника сидят с мобильного интернета, прямое соединение часто не строится, и звонок не проходит. Ретранслятор (TURN) передаёт звук и видео через себя. Подключите хотя бы один — оба варианта ниже бесплатные."),
+      h("p", d.cloudflare.configured || (d.custom.urls || []).length ? "✅ Ретранслятор подключён." : "⚠️ Ретранслятор не подключён — звонки работают только при прямом соединении.")),
+    h("div.card.card-pad.stack",
+      h("h3", "Cloudflare TURN — 1000 ГБ в месяц бесплатно"),
+      h("ol.muted", { style: { paddingLeft: "18px", margin: 0 } },
+        h("li", "Зарегистрируйтесь на dash.cloudflare.com (бесплатно, карта не нужна)."),
+        h("li", "Меню слева: Realtime → TURN Server → «Create»."),
+        h("li", "Скопируйте «Turn Token ID» и «API Token» и вставьте сюда. В чат их отправлять не нужно.")),
+      keyId, token, clearCf),
+    h("div.card.card-pad.stack",
+      h("h3", "Любой другой TURN с логином и паролем"),
+      h("p.muted", "Например, бесплатный тариф ExpressTURN (1000 ГБ в месяц) или свой сервер. Адреса — по одному в строке."),
+      urls, user, pass),
+    h("div.row", { style: { gap: "10px", flexWrap: "wrap" } }, save, check),
+    results);
 }
