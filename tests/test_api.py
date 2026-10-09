@@ -191,7 +191,7 @@ class ApiTest(unittest.TestCase):
         c = Client().register("gleb", "Глеб")
         r = c.post("/api/auth/register", {"email": "bad", "password": "123", "name": "x", "username": "!", "consent": False})
         self.assertEqual(r.status_code, 422)
-        self.assertEqual(set(r.json()["fields"]), {"phone", "email", "password", "name", "username", "consent"})
+        self.assertEqual(set(r.json()["fields"]), {"email", "password", "name", "username", "consent"})
         anon = Client()
         anon.post("/api/auth/forgot", {"email": "gleb@example.com"})
         outbox = (config.DATA_DIR / "outbox.log").read_text(encoding="utf-8")
