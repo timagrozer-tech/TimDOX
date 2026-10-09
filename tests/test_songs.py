@@ -47,7 +47,7 @@ class SongsTest(unittest.TestCase):
         self.assertEqual(mine[0]["stream"], s["stream"])
         got = self.petr.get(f"/api/music/songs/{s['id']}").json()
         self.assertEqual((got["plays"], got["likes"]), (1, 1))
-        top = self.petr.get("/api/music/songs", params={"sort": "popular"}).json()["items"]
+        top = self.petr.get("/api/music/songs", params={"sort": "popular", "user": "lena_song"}).json()["items"]
         self.assertEqual(top[0]["id"], s["id"])
         self.petr.delete("/api/music/likes", {"key": s["key"]})
         self.assertEqual(self.petr.get(f"/api/music/songs/{s['id']}").json()["likes"], 0)

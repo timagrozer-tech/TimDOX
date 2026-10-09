@@ -4933,3 +4933,64 @@ body.has-player .cookie-bar { bottom: calc(var(--dock-h, 62px) + 96px + env(safe
 @media (min-width: 900px) { body.has-player .cookie-bar { bottom: 100px; } }
 .av3d-tap { position: absolute; z-index: 2; right: 6%; bottom: 6%; padding: 3px 8px; border-radius: 999px; font: 800 12px/1.2 var(--font-display, inherit);
   color: #fff; background: var(--primary); box-shadow: 0 2px 10px rgb(0 0 0 / .35); pointer-events: none; }
+
+/* ==========================================================================
+   Артисты Yarko: карточка артиста, альбомы, награды
+   ========================================================================== */
+.ar-row { gap: 14px; }
+.ar-tile { flex: none; width: 116px; display: grid; justify-items: center; gap: 4px; text-align: center; color: inherit; text-decoration: none; }
+.ar-tile b { font-size: 14px; line-height: 1.25; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ar-tile small { color: var(--text-3); font-size: 12px; }
+.ar-av .avatar { width: 96px; height: 96px; box-shadow: 0 6px 20px rgb(0 0 0 / .25); }
+
+.ap-hero { position: relative; border-radius: 24px; overflow: hidden; background: var(--surface); border: 1px solid var(--border); }
+.ap-banner { display: block; width: 100%; height: 180px; object-fit: cover; }
+.ap-banner-ph { background: radial-gradient(120% 140% at 0% 0%, hsl(var(--hue) 80% 60%), transparent 60%), linear-gradient(135deg, hsl(calc(var(--hue) + 60) 70% 45%), hsl(calc(var(--hue) + 140) 70% 30%)); }
+.ap-head { display: grid; gap: 12px; padding: 0 20px 20px; margin-top: -56px; position: relative; }
+.ap-av .avatar { width: 112px; height: 112px; border: 4px solid var(--surface); box-shadow: 0 8px 24px rgb(0 0 0 / .3); }
+.ap-titles small { color: var(--text-3); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: 12px; }
+.ap-titles h1 { margin: 2px 0; font-size: clamp(26px, 6vw, 40px); line-height: 1.05; }
+.ap-user { color: var(--text-2); text-decoration: none; font-size: 14px; }
+.ap-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.ap-stat { display: grid; text-align: center; padding: 10px 4px; border-radius: 14px; background: var(--surface-2); }
+.ap-stat b { font-size: 18px; }
+.ap-stat small { color: var(--text-3); font-size: 11.5px; }
+.ap-bio { margin: 0; color: var(--text-2); white-space: pre-wrap; line-height: 1.55; }
+
+.alb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.alb { display: grid; gap: 4px; color: inherit; text-decoration: none; }
+.alb-art { position: relative; aspect-ratio: 1; border-radius: 16px; overflow: hidden; display: grid; place-items: center;
+  background: linear-gradient(135deg, hsl(var(--hue) 70% 55%), hsl(calc(var(--hue) + 80) 70% 35%)); box-shadow: 0 8px 22px rgb(0 0 0 / .22); }
+.alb-art img { width: 100%; height: 100%; object-fit: cover; }
+.alb-ph { color: #fff; opacity: .85; transform: scale(1.8); }
+.alb-kind { position: absolute; left: 8px; top: 8px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; color: #fff; background: rgb(0 0 0 / .45); }
+.alb-title { font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alb small { color: var(--text-3); font-size: 12.5px; }
+.alb-about { white-space: pre-wrap; opacity: .9; }
+.alb-pick { display: grid; gap: 6px; max-height: 42vh; overflow: auto; }
+.alb-pick-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); color: inherit; text-align: left; cursor: pointer; }
+.alb-pick-item span:last-child { display: grid; min-width: 0; }
+.alb-pick-item small { color: var(--text-3); }
+.alb-num { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: var(--surface); border: 1px solid var(--border); }
+.alb-pick-item.on { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 14%, var(--surface-2)); }
+.alb-pick-item.on .alb-num { background: var(--primary); color: #fff; border-color: transparent; }
+
+.aw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.aw { display: grid; justify-items: center; text-align: center; gap: 4px; padding: 14px 10px; border-radius: 18px; background: var(--surface-2); border: 1px solid var(--border); opacity: .55; filter: grayscale(.8); }
+.aw.on { opacity: 1; filter: none; }
+.aw-emoji { font-size: 34px; line-height: 1.1; }
+.aw b { font-size: 13.5px; }
+.aw small { color: var(--text-3); font-size: 11.5px; line-height: 1.35; }
+.aw.on.rare { border-color: #60a5fa; box-shadow: 0 0 0 1px #60a5fa55, 0 6px 18px #60a5fa22; }
+.aw.on.epic { border-color: #a78bfa; box-shadow: 0 0 0 1px #a78bfa66, 0 6px 22px #a78bfa33; }
+.aw.on.legendary { border-color: #fbbf24; box-shadow: 0 0 0 1px #fbbf2466, 0 8px 26px #fbbf2440; background: linear-gradient(160deg, color-mix(in srgb, #fbbf24 16%, var(--surface-2)), var(--surface-2)); }
+@media (max-width: 480px) { .ap-stats { grid-template-columns: repeat(2, 1fr); } .alb-grid { grid-template-columns: repeat(2, 1fr); } .aw-grid { grid-template-columns: repeat(2, 1fr); } }
+.ap-head, .ap-titles { min-width: 0; }
+.ap-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ap-hero .mu-mine-btns, .song-hero .mu-mine-btns { flex-wrap: wrap; }
+.song-hero .mu-mine-btns .btn { flex: 0 1 auto; }
+@media (max-width: 480px) {
+  .ap-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .song-hero .mu-mine-btns .btn, .ap-hero .mu-mine-btns .btn { padding-inline: 12px; font-size: 13.5px; }
+}
+.ap-hero .mu-mine-btns { margin-left: 0; }

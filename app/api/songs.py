@@ -41,6 +41,7 @@ def views(rows: list[dict], v: int) -> list[dict]:
             continue
         t = track_of(r, card)
         t.update({"author": card, "plays": r["plays"], "likes": r["likes"], "created_at": r["created_at"],
+                  "album_id": r.get("album_id"), "track_no": r.get("track_no") or 0,
                   "mine": r["author_id"] == v, "lyrics": r.get("lyrics") or "",
                   "genre_name": GENRES.get(r.get("genre") or "", "")})
         out.append(t)
@@ -131,6 +132,10 @@ async def create_song(request: Request):
         genre = str(form.get("genre") or "")
         if genre not in GENRES:
             genre = "other"
+        try:
+            album_id = int(form.get("album_id") or 0) or None
+        except ValueError:
+            album_id = None
         duration = _num(form.get("duration"), 0, 3600) or 0
         if duration and duration < 5:
             raise ApiError(400, "Песня слишком короткая")
@@ -151,9 +156,20 @@ async def create_song(request: Request):
         await form.close()
     name = (social.cards_by_ids([v]).get(v) or {}).get("name", "")
     search = f"{title} {artist or name}".lower()
+    prev = db.value("SELECT max(created_at) FROM songs WHERE author_id=?", (v,))
     cur = db.run("""INSERT INTO songs (author_id, title, artist, genre, lyrics, audio, cover, duration, size, search)
                     VALUES (?,?,?,?,?,?,?,?,?,?)""", (v, title, artist, genre, lyrics, a["path"], cover, duration, a["size"], search))
-    return JSONResponse(views([db.one("SELECT * FROM songs WHERE id=?", (cur.lastrowid,))], v)[0], status_code=201)
+    sid = cur.lastrowid
+    if album_id and db.value("SELECT 1 FROM albums WHERE id=? AND artist_id=?", (album_id, v)):
+        n = db.value("SELECT coalesce(max(track_no), 0) FROM songs WHERE album_id=?", (album_id,)) or 0
+        db.run("UPDATE songs SET album_id=?, track_no=? WHERE id=?", (album_id, n + 1, sid))
+    from . import artists
+    new = artists.check_awards(v)
+    # подписчикам — о новой песне, но не чаще раза в 6 часов от одного артиста
+    if not prev or prev < db.future(hours=-6):
+        for r in db.all("SELECT follower_id FROM follows WHERE followee_id=? LIMIT 500", (v,)):
+            social.notify(r["follower_id"], v, "new_song", extra={"song_id": sid, "title": title})
+    return JSONResponse({**views([db.one("SELECT * FROM songs WHERE id=?", (sid,))], v)[0], "new_awards": new}, status_code=201)
 
 
 @auth()
@@ -171,6 +187,8 @@ async def update_song(request: Request):
     name = (social.cards_by_ids([v]).get(v) or {}).get("name", "")
     db.run("UPDATE songs SET title=?, artist=?, lyrics=?, genre=?, search=? WHERE id=?",
            (title, artist, lyrics, genre, f"{title} {artist or name}".lower(), r["id"]))
+    from . import artists
+    artists.check_awards(v)
     return JSONResponse(views([db.one("SELECT * FROM songs WHERE id=?", (r["id"],))], v)[0])
 
 
@@ -195,7 +213,19 @@ async def delete_song(request: Request):
 async def played(request: Request):
     """Прослушивание: не чаще раза в 30 секунд с одного аккаунта (ограничитель запросов), просто счётчик"""
     limit(request, "song_play")
-    db.run("UPDATE songs SET plays=plays+1 WHERE id=?", (path_int(request),))
+    sid = path_int(request)
+    r = db.one("SELECT author_id, plays FROM songs WHERE id=?", (sid,))
+    if not r:
+        return ok()
+    db.run("UPDATE songs SET plays=plays+1 WHERE id=?", (sid,))
+    v = request.state.user["id"]
+    first = v != r["author_id"] and not db.value("SELECT 1 FROM song_listens WHERE song_id=? AND user_id=?", (sid, v))
+    if first:
+        db.run("INSERT OR IGNORE INTO song_listens (song_id, user_id) VALUES (?,?)", (sid, v))
+    # награды за прослушивания проверяем изредка: на круглых числах и новых слушателях
+    if first or (r["plays"] + 1) % 10 == 0:
+        from . import artists
+        artists.check_awards(r["author_id"])
     return ok()
 
 

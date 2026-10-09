@@ -631,6 +631,39 @@ CREATE INDEX IF NOT EXISTS idx_songs_author ON songs(author_id, id DESC);
 CREATE INDEX IF NOT EXISTS idx_songs_genre ON songs(genre, id DESC);
 CREATE INDEX IF NOT EXISTS idx_songs_rank ON songs(plays, likes);
 
+-- Карточки артистов, альбомы, слушатели и музыкальные награды (раздел «Музыка» → «Песни»)
+CREATE TABLE IF NOT EXISTS artists (
+    user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    name       TEXT NOT NULL DEFAULT '',
+    bio        TEXT NOT NULL DEFAULT '',
+    genre      TEXT NOT NULL DEFAULT '',
+    banner     TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE TABLE IF NOT EXISTS albums (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    artist_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title      TEXT NOT NULL,
+    kind       TEXT NOT NULL DEFAULT 'album',
+    about      TEXT NOT NULL DEFAULT '',
+    cover      TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_albums_artist ON albums(artist_id, id DESC);
+CREATE TABLE IF NOT EXISTS song_listens (
+    song_id    INTEGER NOT NULL REFERENCES songs(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (song_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS music_awards (
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code       TEXT NOT NULL,
+    song_id    INTEGER,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (user_id, code)
+);
+
 -- Дневные квоты загрузок (сутки по UTC)
 CREATE TABLE IF NOT EXISTS upload_usage (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

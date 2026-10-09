@@ -196,6 +196,10 @@ async def like(request: Request):
            (v, track["key"], json.dumps(track, ensure_ascii=False)))
     if key.startswith("yk:"):
         db.run("UPDATE songs SET likes=likes+1 WHERE id=?", (int(track["id"]),))
+        author = db.value("SELECT author_id FROM songs WHERE id=?", (int(track["id"]),))
+        if author and author != v:
+            from . import artists
+            artists.check_awards(author)
     return ok({"ok": True, "track": track})
 
 

@@ -17,7 +17,8 @@ function songMenu(anchor, t, onChange) {
     { label: "Играть следующей", icon: "queueAdd", onClick: () => playNext(t) },
     { label: isLiked(t.key) ? "Убрать из «Моей музыки»" : "В «Мою музыку»", icon: "heart", onClick: () => toggleLike(t) },
     { label: "Поделиться в ленте", icon: "share", onClick: () => shareTrack(t) },
-    t.author ? { label: `Профиль: ${t.author.name}`, icon: "user", onClick: () => navigate(`/u/${t.author.username}`) } : null,
+    t.author ? { label: "Карточка артиста", icon: "mic", onClick: () => navigate(`/music/artist/${t.author.username}`) } : null,
+    t.album_id ? { label: "Открыть альбом", icon: "list", onClick: () => navigate(`/music/album/${t.album_id}`) } : null,
     t.lyrics ? { label: "Текст песни", icon: "book", onClick: () => modal({ title: t.title, body: h("pre.song-lyrics", t.lyrics) }) } : null,
     t.mine ? "-" : null,
     t.mine ? { label: "Изменить", icon: "edit", onClick: () => openSongForm(null, (s) => onChange?.("edit", s), t) } : null,
@@ -28,11 +29,12 @@ function songMenu(anchor, t, onChange) {
   ], { title: t.title });
 }
 
-export function songRow(t, list, context, onChange) {
+export function songRow(t, list, context, onChange, { num = null } = {}) {
   const more = h("button.tr-more", { type: "button", "aria-label": "Ещё" }, icon("more"));
   more.addEventListener("click", (e) => { e.stopPropagation(); songMenu(more, t, onChange); });
   const who = t.artist || t.author?.name || "";
   const row = h(`div.tr.song-row${stateCls(t)}`, { dataset: { track: t.key }, role: "button", tabindex: 0, "aria-label": `${t.title} — ${who}` },
+    num != null ? h("span.tr-rank", String(num)) : null,
     h("span.tr-cover", coverOf(t), h("span.tr-over", icon("play", "sm"), icon("pause", "sm")), eq()),
     h("span.tr-main", h("span.tr-title", t.title),
       h("span.tr-sub", who, t.author && t.artist && t.artist !== t.author.name ? ` · ${t.author.name.split(" ")[0]}` : "",
@@ -74,7 +76,8 @@ export async function songsTab(box) {
     paint();
   };
   const paint = () => {
-    list.replaceChildren(...items.map((t) => songRow(t, items, "Песни Yarko", onChange)));
+    list.replaceChildren(...items.map((t, i) => songRow(t, items, sort === "chart" ? "Чарт Yarko" : "Песни Yarko", onChange, { num: sort === "chart" ? i + 1 : null })));
+    genres.hidden = sort === "chart";
     moreBtn.hidden = !next;
     empty.hidden = items.length > 0;
     empty.replaceChildren(h("span.mu-empty-ic", icon("mic")),
@@ -88,7 +91,7 @@ export async function songsTab(box) {
     if (append && next) params.cursor = next;
     box.classList.add("loading");
     try {
-      const d = await api.get("/api/music/songs", params);
+      const d = sort === "chart" ? { ...(await api.get("/api/music/chart")), next: null } : await api.get("/api/music/songs", params);
       if (my !== seq) return;
       items = append ? [...items, ...d.items] : d.items;
       next = d.next;
@@ -103,19 +106,25 @@ export async function songsTab(box) {
   const paintChips = () => {
     sorts.replaceChildren(
       chip("Новые", sort === "new", () => { sort = "new"; paintChips(); load(); }),
+      chip("🏆 Чарт", sort === "chart", () => { sort = "chart"; paintChips(); load(); }),
       chip("Популярные", sort === "popular", () => { sort = "popular"; paintChips(); load(); }),
       chip("Мои песни", sort === "mine", () => { sort = "mine"; paintChips(); load(); }));
     genres.replaceChildren(chip("Все жанры", !genre, () => { genre = ""; paintChips(); load(); }),
       ...first.genres.map((g) => chip(g.name, genre === g.slug, () => { genre = g.slug; paintChips(); load(); })));
   };
   paintChips(); paint();
+  const { artistsShelf, openAlbumForm } = await import("./artists.js");
+  const me = state.me?.username;
   box.replaceChildren(
     h("section.mu-cover-head.song-hero", { style: { "--hue": "280" } },
       h("span.mu-cover-emoji", "🎙️"),
       h("div", h("small", "Музыка от людей Yarko"), h("h1", "Песни"), h("p", "Публикуйте свои песни — их услышат все. Слушайте авторов из сообщества.")),
       h("div.mu-mine-btns",
-        h("button.btn.primary", { type: "button", onclick: () => openSongForm(null, (s) => { if (sort !== "popular") onChange("new", s); }) }, icon("upload", "sm"), "Опубликовать"),
-        h("button.btn.soft", { type: "button", onclick: () => items.length && playFrom(items, items[0], "Песни Yarko") }, icon("play", "sm"), "Слушать"))),
+        h("button.btn.primary", { type: "button", onclick: () => openSongForm(null, (s) => { if (sort === "new" || sort === "mine") onChange("new", s); }) }, icon("upload", "sm"), "Опубликовать"),
+        h("button.btn.soft", { type: "button", onclick: () => items.length && playFrom(items, items[0], "Песни Yarko") }, icon("play", "sm"), "Слушать"),
+        h("button.btn.soft", { type: "button", onclick: () => openAlbumForm() }, icon("list", "sm"), "Альбом"),
+        me ? h("a.btn.soft", { href: `/music/artist/${me}` }, icon("mic", "sm"), "Мой артист") : null)),
+    await artistsShelf(),
     sorts, genres,
     h("div.card.mu-card", list), empty, moreBtn);
 }
@@ -142,6 +151,9 @@ export async function openSongForm(file, onDone, edit = null) {
   const artist = h("input.input", { maxlength: 80, placeholder: `Исполнитель (по умолчанию — ${state.me?.name || "вы"})`, value: edit?.artist || "", "aria-label": "Исполнитель" });
   const genre = h("select.input", { "aria-label": "Жанр" }, h("option", { value: "" }, "Жанр"),
     ...genresList.map((g) => h("option", { value: g.slug, selected: (edit?.genre || "") === g.slug }, g.name)));
+  const myAlbums = edit ? [] : ((await api.get(`/api/music/artists/${state.me?.username}`).catch(() => null))?.albums || []);
+  const albumSel = myAlbums.length ? h("select.input", { "aria-label": "Альбом" }, h("option", { value: "" }, "Без альбома"),
+    ...myAlbums.map((a) => h("option", { value: String(a.id) }, `${a.kind_name}: ${a.title}`))) : null;
   const lyrics = h("textarea.textarea", { rows: 4, maxlength: 6000, placeholder: "Текст песни (необязательно)", "aria-label": "Текст песни" });
   lyrics.value = edit?.lyrics || "";
   const fileLabel = h("span.song-file-name", edit ? "" : "Файл не выбран");
@@ -175,7 +187,7 @@ export async function openSongForm(file, onDone, edit = null) {
         h("small.muted", `MP3, M4A, OGG, WAV или FLAC, до ${MAX_MB} МБ`)),
       h("div.song-main",
         edit ? null : h("button.song-cover", { type: "button", "aria-label": "Обложка", onclick: () => coverInput.click() }, coverPrev, h("small", "Обложка"), coverInput),
-        h("div.stack.grow", title, artist, genre)),
+        h("div.stack.grow", title, artist, genre, albumSel)),
       lyrics,
       h("small.muted", "Публикуйте только свои песни или те, на которые у вас есть права. Чужую музыку без разрешения удалим."),
       status, bar),
@@ -199,6 +211,7 @@ export async function openSongForm(file, onDone, edit = null) {
       fd.append("genre", genre.value);
       fd.append("lyrics", lyrics.value);
       if (duration) fd.append("duration", String(duration));
+      if (albumSel?.value) fd.append("album_id", albumSel.value);
       if (coverFile) fd.append("cover", coverFile, coverFile.name || "cover.jpg");
       fd.append("audio", audio, audio.name || "song.mp3");
       bar.hidden = false;
@@ -219,3 +232,11 @@ export async function openSongForm(file, onDone, edit = null) {
 }
 
 export const songsCount = (n) => pl(n, ["песня", "песни", "песен"]);
+
+const AWARD_NAMES = { debut: "🎤 Дебют", pioneer: "🚀 Первопроходец", album: "💿 Первый релиз", discography: "📀 Дискография",
+  prolific: "✍️ Плодовитый автор", poet: "📝 Поэт", genres: "🎨 Без рамок", plays100: "🎧 Первая сотня", plays1k: "🔥 Тысяча",
+  gold: "🥇 Золотая пластинка", platinum: "💎 Платиновая пластинка", listeners50: "👥 Своя публика", loved: "💜 Любимец публики", hit: "🏆 Хит Yarko" };
+/** Новые музыкальные награды — всплывающим сообщением */
+export function announceAwards(codes) {
+  (codes || []).forEach((c, i) => setTimeout(() => toast(`Новая музыкальная награда: ${AWARD_NAMES[c] || c}`, { icon: "trophy", duration: 4500 }), 900 * (i + 1)));
+}

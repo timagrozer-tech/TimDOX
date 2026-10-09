@@ -13,12 +13,13 @@ function row(n) {
     acts.replaceChildren(h("span.muted", { style: { fontSize: "13px" } }, rel.status === "friends" ? "Теперь вы друзья" : "Заявка отклонена"));
   }, { small: true })) : null;
   const el = h(`a.notif${n.read ? "" : ".unread"}`, { href: notifLink(n) },
-    h(`span.n-icon${others.length ? ".stacked" : ""}`, n.type === "item" ? h(`span.avatar.item-notif.${n.extra?.rarity || "rare"}`, "🎁") : avatar(n.actor),
+    h(`span.n-icon${others.length ? ".stacked" : ""}`, n.type === "item" ? h(`span.avatar.item-notif.${n.extra?.rarity || "rare"}`, "🎁")
+      : n.type === "music_award" ? h(`span.avatar.item-notif.${n.extra?.rarity || "rare"}`, n.extra?.emoji || "🏆") : avatar(n.actor),
       others.length ? avatar(others[0], "sm", { presence: false }) : null, notifBadge(n)),
     h("div.grow",
-      h("div.n-text", n.type === "item" ? null : h("b", n.actor.name),
+      h("div.n-text", n.type === "item" || n.type === "music_award" ? null : h("b", n.actor.name),
         others.length ? h("span", others.length === 1 ? " и " : " и ещё ", others.length === 1 ? h("b", others[0].name) : `${others.length} ${plural(others.length, ["человек", "человека", "человек"])}`) : null,
-        n.type === "item" ? null : " ", notifText(n, others.length > 0)),
+        n.type === "item" || n.type === "music_award" ? null : " ", notifText(n, others.length > 0)),
       n.snippet ? h("div.n-snippet", `«${n.snippet}»`) : null,
       h("div.n-time", timeAgo(n.created_at)),
       acts));

@@ -95,7 +95,8 @@ class MusicTest(unittest.TestCase):
         self.assertEqual(self.a.post("/api/music/likes", {"key": "itunes:701"}).status_code, 404, "фрагменты больше не поддерживаются")
         r = self.a.c.post("/api/posts", data={"music": "itunes:702"}, headers=self.a._h())
         self.assertEqual(r.status_code, 400)
-        self.assertEqual(self.a.get("/api/music/chart").status_code, 404)
+        # прежний чарт iTunes убран; /api/music/chart теперь — чарт песен людей Yarko
+        self.assertNotIn("itunes", self.a.get("/api/music/chart").text)
 
     def test_likes_and_friends(self):
         self.assertEqual(self.b.post("/api/music/likes", {"key": "audius:T3"}).status_code, 200)

@@ -67,6 +67,8 @@ def _connect_sqlite(path) -> sqlite3.Connection:
 
 # Новые столбцы для SQLite-баз, созданных до Этапа 2: (таблица, столбец, определение)
 MIGRATIONS = [
+    ("songs", "album_id", "INTEGER REFERENCES albums(id) ON DELETE SET NULL"),
+    ("songs", "track_no", "INTEGER NOT NULL DEFAULT 0"),
     ("reels", "visibility", "TEXT NOT NULL DEFAULT 'public'"),
     ("reels", "comments_off", "INTEGER NOT NULL DEFAULT 0"),
     ("posts", "community_id", "INTEGER REFERENCES communities(id) ON DELETE CASCADE"),

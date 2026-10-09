@@ -35,6 +35,9 @@ export function notifText(n, many = false) {
     case "market_sold": return `купил(а) ваш лот «${n.extra?.name || ""}» на рынке: +${n.extra?.amount || ""} KC 🪙`;
     case "transfer": return `перевёл(а) вам ${n.extra?.amount || ""} KC${n.extra?.note ? ` — «${n.extra.note}»` : ""} 🪙`;
     case "item": return `Новый предмет в коллекции: «${n.extra?.name || ""}» ✨`;
+    case "music_award": return `Музыкальная награда: ${n.extra?.emoji || "🏆"} «${n.extra?.name || ""}»`;
+    case "new_song": return `выпустил(а) новую песню «${n.extra?.title || ""}» 🎶`;
+    case "new_album": return `выпустил(а) ${(n.extra?.kind || "альбом").toLowerCase()} «${n.extra?.title || ""}» 💿`;
     case "invite_joined": return "присоединился(-ась) к Yarko по вашему приглашению 🎉";
     case "invite_qualified": return `стал(а) активным участником — приглашение засчитано (всего: ${n.extra?.count || 1})`;
     case "invite_tier": return `— благодаря этому приглашению у вас ${n.extra?.name || "новая галочка"}! 🏆`;
@@ -47,6 +50,9 @@ export function notifLink(n) {
   if (n.type === "transfer") return "/wallet";
   if (n.type === "market_sold") return "/market?tab=mine";
   if (n.type === "item") return `/collection?slot=${n.extra?.slot || "frame"}`;
+  if (n.type === "music_award") return `/music/artist/${n.actor.username}`;
+  if (n.type === "new_album") return `/music/album/${n.extra?.album_id}`;
+  if (n.type === "new_song") return `/music/artist/${n.actor.username}`;
   if (n.type === "community_request") return `/c/${n.extra?.slug}?tab=members`;
   if (n.type === "community_approved") return `/c/${n.extra?.slug}`;
   if (n.type.startsWith("event_")) return `/events/${n.extra?.event_id}`;
@@ -66,6 +72,7 @@ export function notifBadge(n) {
     community_request: ["users", "orange"], community_approved: ["users", "green"],
     event_invite: ["calendar", "orange"], event_going: ["calendar", "green"], item: ["gift", "gold"], reel_like: ["heart", ""], reel_comment: ["comment", ""],
     invite_joined: ["userAdd", "green"], invite_qualified: ["check", "green"], invite_tier: ["trophy", "gold"],
+    music_award: ["trophy", "gold"], new_song: ["music", ""], new_album: ["music", "green"],
   };
   const [ic, color] = map[n.type] || ["bell", ""];
   return h(`span.n-type${color ? "." + color : ""}`, icon(ic));

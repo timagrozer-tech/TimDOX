@@ -65,7 +65,7 @@ const P = {
   events: () => import("./pages/events.js"), guests: () => import("./pages/guests.js"), admin: () => import("./pages/admin.js"),
   world: () => import("./pages/world.js"), stats: () => import("./pages/stats.js"), invite: () => import("./pages/invite.js"),
   wallet: () => import("./pages/wallet.js"), shop: () => import("./pages/shop.js"), market: () => import("./pages/market.js"),
-  welcome: () => import("./pages/welcome.js"), music: () => import("./pages/music.js"),
+  welcome: () => import("./pages/welcome.js"), music: () => import("./pages/music.js"), artists: () => import("./music/artists.js"),
 };
 const legalPage = (kind) => (...args) => P.legal().then((m) => m.legalPage(kind)(...args));
 const profilePage = lazy(P.profile, "profilePage"), postPage = lazy(P.post, "postPage"), friendsPage = lazy(P.friends, "friendsPage");
@@ -78,6 +78,7 @@ const eventsPage = lazy(P.events, "eventsPage"), eventPage = lazy(P.events, "eve
 const adminPage = lazy(P.admin, "adminPage"), worldPage = lazy(P.world, "worldPage"), statsPage = lazy(P.stats, "statsPage");
 const invitePage = lazy(P.invite, "invitePage"), walletPage = lazy(P.wallet, "walletPage"), shopPage = lazy(P.shop, "shopPage");
 const marketPage = lazy(P.market, "marketPage"), welcomePage = lazy(P.welcome, "welcomePage");
+const artistPage = lazy(P.artists, "artistPage"), albumPage = lazy(P.artists, "albumPage");
 const musicPage = lazy(P.music, "musicPage"), genrePage = lazy(P.music, "genrePage"), playlistPage = lazy(P.music, "playlistPage");
 const showReveal = (...a) => P.collection().then((m) => m.showReveal(...a));
 // звонки должны слушать события с самого начала — модуль грузится сразу, но параллельно, не задерживая первый показ
@@ -137,6 +138,8 @@ route("/guests", guestsPage);
 route("/stats", statsPage);
 route("/music", musicPage);
 route("/music/genre/:slug", genrePage);
+route("/music/artist/:username", artistPage);
+route("/music/album/:id", albumPage);
 route("/music/playlist/:id", playlistPage);
 route("/admin", adminPage);
 route("/world", worldPage);
@@ -226,6 +229,7 @@ on("notification", (n) => {
     return;
   }
   if (location.pathname === "/notifications") return;
+  if (n.type === "music_award") { toast(notifText(n), { icon: "trophy", href: notifLink(n), duration: 5000 }); return; }
   toast(notifText(n), { title: n.actor.name, avatar: avatar(n.actor, "sm", { presence: false }), href: notifLink(n) });
 });
 on("message", ({ message, sender }) => {
