@@ -96,10 +96,13 @@ export async function profilePage({ params, query }) {
     if (has3d) {
       avEl.classList.add("is-3d");
       avEl.style.background = bgCss(data.avatar3d);
-      mount3D(avEl, data.avatar3d, { interactive: true, tapEmote: true }).then((v) => {
+      const go = () => { if (!avEl.isConnected) return; mount3D(avEl, data.avatar3d, { interactive: true, tapEmote: true }).then((v) => {
         if (!v || !avEl.isConnected) { v?.destroy(); avEl.classList.remove("is-3d"); return; }
         live3d = v; avEl.classList.add("ready");
-      }).catch(() => avEl.classList.remove("is-3d"));
+      }).catch(() => avEl.classList.remove("is-3d")); };
+      // на телефоне 3D запускаем после показа страницы, когда браузер свободен, — переход в профиль не подвисает
+      if (matchMedia("(pointer: coarse)").matches) setTimeout(() => (window.requestIdleCallback || setTimeout)(go, { timeout: 800 }), 120);
+      else go();
     }
     const editAvatar = (btn) => showMenu(btn, [
       { label: "Загрузить фото", icon: "image", onClick: () => uploadProfileImage("avatar", (url) => { data.user.avatar = url; state.me.avatar = url; data.avatar3d = null; renderHeader(); }) },

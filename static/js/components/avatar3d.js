@@ -1097,6 +1097,13 @@ function buildFace(T, spec, emotion, { skin, hairM, dark, white, mat, mesh, sphe
  * Вставляет живой 3D-аватар в container (он должен иметь размер).
  * Возвращает { update(spec), emote(name), snapshot(size) → Promise<Blob>, destroy() }.
  */
+// Телефон: 3D рисуется с меньшей чёткостью и ~30 кадрами в секунду, а во время прокрутки замирает —
+// иначе видеочип занят персонажем и страница листается рывками
+const MOBILE3D = matchMedia("(pointer: coarse)").matches;
+const MAX_DPR = MOBILE3D ? 1.5 : 2;
+let lastScroll = 0;
+if (MOBILE3D) addEventListener("scroll", () => { lastScroll = performance.now(); }, { passive: true });
+
 export async function mount3D(container, spec, { interactive = true, snapshotable = false, zoom = 1, tapEmote = false } = {}) {
   const T = await three();
   const canvas = document.createElement("canvas");
@@ -1104,12 +1111,12 @@ export async function mount3D(container, spec, { interactive = true, snapshotabl
   container.append(canvas);
   let renderer;
   try {
-    renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: snapshotable });
+    renderer = new T.WebGLRenderer({ canvas, antialias: !MOBILE3D, alpha: true, preserveDrawingBuffer: snapshotable });
   } catch {
     canvas.remove();
     return null;   // нет WebGL — остаётся обычная картинка
   }
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, MAX_DPR));
   renderer.outputColorSpace = T.SRGBColorSpace;
   renderer.toneMapping = T.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
@@ -1188,9 +1195,12 @@ export async function mount3D(container, spec, { interactive = true, snapshotabl
   let raf = 0, visible = true, t0 = performance.now();
   const io = new IntersectionObserver(([en]) => { visible = en.isIntersecting; if (visible && !raf) raf = requestAnimationFrame(frame); });
   io.observe(container);
+  let lastDraw = 0;
   function frame(now) {
     raf = 0;
     if (!visible || document.hidden) return;
+    if (MOBILE3D && (now - lastDraw < 30 || now - lastScroll < 200) && !snapshotable) { raf = requestAnimationFrame(frame); return; }
+    lastDraw = now;
     const t = (now - t0) / 1000;
     const { head, lids, mouth, pet, fx, idle } = char.userData;
     const still = reduced();
@@ -1253,8 +1263,8 @@ export async function mount3D(container, spec, { interactive = true, snapshotabl
       const cx = out.getContext("2d");
       drawBg(cx, size, cur);
       cx.drawImage(canvas, 0, 0, size, size);
-      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
-      renderer.setSize(w0 / Math.min(devicePixelRatio || 1, 2), h0 / Math.min(devicePixelRatio || 1, 2), false);
+      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, MAX_DPR));
+      renderer.setSize(w0 / Math.min(devicePixelRatio || 1, MAX_DPR), h0 / Math.min(devicePixelRatio || 1, MAX_DPR), false);
       resize();
       char.rotation.set(0, keep.y, keep.z); ud.head.rotation.set(keep.hx, keep.hy, keep.hz); char.position.y = keep.py;
       return new Promise((res) => out.toBlob(res, "image/png"));
@@ -1345,8 +1355,8 @@ export async function mount3D(container, spec, { interactive = true, snapshotabl
         if (char.userData.pet) char.userData.pet.visible = true;
         char.userData.head.rotation.set(0, 0, 0);
         char.position.set(0, 0, 0); char.scale.set(1, 1, 1);
-        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
-        renderer.setSize(w0 / Math.min(devicePixelRatio || 1, 2), h0 / Math.min(devicePixelRatio || 1, 2), false);
+        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, MAX_DPR));
+        renderer.setSize(w0 / Math.min(devicePixelRatio || 1, MAX_DPR), h0 / Math.min(devicePixelRatio || 1, MAX_DPR), false);
         resize();
         if (visible) raf = requestAnimationFrame(frame);
       }
