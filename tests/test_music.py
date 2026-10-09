@@ -199,6 +199,37 @@ class MusicProxyTest(unittest.TestCase):
         self.assertEqual(r.headers["content-type"], "image/png")
         self.assertEqual(Client().get("/api/music/art", params={"u": "https://img.example/1.png"}).status_code, 401)
 
+    def test_disk_copies_on_hosting(self):
+        """Хостинг: первое прослушивание пишет файл на диск, дальше — переадресация на готовый файл (его отдаёт веб-сервер)"""
+        import tempfile
+        from app import config
+        old = (config.MEDIA_PROXY, config.MEDIA_CACHE_DIR)
+        config.MEDIA_PROXY, config.MEDIA_CACHE_DIR = True, tempfile.mkdtemp()
+        try:
+            calls = []
+
+            def fake(tid, rng):
+                calls.append(rng)
+                return _FakeStream(b"ID3" + b"y" * 997, 200, {"Content-Type": "audio/mpeg", "Content-Length": "1000"})
+            music.open_audius_stream = fake
+            r = self.a.get("/api/music/play/T9")
+            self.assertEqual((r.status_code, len(r.content)), (200, 1000))
+            r2 = self.a.get("/api/music/play/T9", follow_redirects=False)
+            self.assertEqual(r2.status_code, 302)
+            self.assertEqual(r2.headers["location"], "/uploads/mcache/a/T9.mp3")
+            self.assertEqual(len(calls), 1)
+            # перемотка до сохранения не пишет обрывки
+            music.open_audius_stream = lambda tid, rng: _FakeStream(b"z" * 10, 206, {"Content-Length": "10", "Content-Range": "bytes 5-14/99"})
+            self.assertEqual(self.a.get("/api/music/play/T8", headers={"Range": "bytes=5-14"}).status_code, 206)
+            self.assertEqual(self.a.get("/api/music/play/T8", follow_redirects=False).status_code, 206)
+            music.fetch_art = lambda u: (b"\x89PNG", "image/png")
+            self.assertEqual(self.a.get("/api/music/art", params={"u": "https://img.example/2.png"}).status_code, 200)
+            r3 = self.a.get("/api/music/art", params={"u": "https://img.example/2.png"}, follow_redirects=False)
+            self.assertEqual(r3.status_code, 302)
+            self.assertTrue(r3.headers["location"].startswith("/uploads/mcache/art/"))
+        finally:
+            config.MEDIA_PROXY, config.MEDIA_CACHE_DIR = old
+
     def test_art_blocks_internal_addresses(self):
         for u in ("http://img.example/1.png", "https://127.0.0.1/x.png", "https://localhost/x.png",
                   "https://169.254.169.254/latest", "file:///etc/passwd", ""):

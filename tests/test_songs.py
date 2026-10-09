@@ -79,3 +79,17 @@ class SongsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BootMeTest(unittest.TestCase):
+    """Страница сразу содержит данные вошедшего — приложение стартует без запроса /api/auth/me"""
+
+    def test_boot_me(self):
+        c = Client().register("boot_me", "Бут Ми")
+        html = c.get("/").text
+        self.assertIn('id="boot-me"', html)
+        self.assertIn('"username": "boot_me"', html)
+        self.assertNotIn("<script type=\"application/json\" id=\"boot-me\">{\"user\": null", html)
+        anon = Client().get("/").text
+        self.assertNotIn('id="boot-me"', anon)
+        self.assertEqual(Client().get("/no-such-page").status_code, 200)

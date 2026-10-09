@@ -5,10 +5,10 @@ from collections import Counter
 
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response, StreamingResponse
+from starlette.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
 from starlette.routing import Route
 
-from .. import db, music, social
+from .. import config, db, music, social
 from ..web import ApiError, auth, body, limit, ok
 
 MAX_LIKES = 2000
@@ -199,12 +199,46 @@ async def like(request: Request):
     return ok({"ok": True, "track": track})
 
 
+# ---------------------------------------------------------------- копии на своём диске (хостинг)
+# Аудио и обложки из-за рубежа один раз скачиваются на диск хостинга (папка uploads), дальше их отдаёт
+# веб-сервер напрямую: перемотка мгновенная, а процессы Python не заняты минутами, пока играет песня.
+CACHE_CAP = 1536 * 1048576
+
+
+def _cache_path(*parts: str):
+    from pathlib import Path
+    return Path(config.MEDIA_CACHE_DIR).joinpath("mcache", *parts)
+
+
+def _trim_cache() -> None:
+    import os
+    import random
+    if random.random() > .05:
+        return
+    try:
+        files = [p for p in _cache_path().rglob("*") if p.is_file()]
+        total = sum(p.stat().st_size for p in files)
+        for p in sorted(files, key=lambda p: p.stat().st_mtime):
+            if total <= CACHE_CAP:
+                break
+            total -= p.stat().st_size
+            os.remove(p)
+    except OSError:
+        pass
+
+
 @auth()
 async def play(request: Request):
     """Аудио трека через наш сервер: из России Audius напрямую не открывается"""
+    import os
     limit(request, "music_play")
+    tid = request.path_params["id"]
+    cached = _cache_path("a", f"{tid}.mp3") if config.MEDIA_PROXY and music._ID.match(tid) else None
+    if cached is not None and cached.is_file():
+        return RedirectResponse(f"/uploads/mcache/a/{tid}.mp3", status_code=302, headers={"Cache-Control": "private, max-age=86400"})
+    rng = request.headers.get("range")
     try:
-        r = await run_in_threadpool(music.open_audius_stream, request.path_params["id"], request.headers.get("range"))
+        r = await run_in_threadpool(music.open_audius_stream, tid, rng)
     except music.Unavailable:
         raise ApiError(502, "Трек сейчас недоступен")
     headers = {"Accept-Ranges": "bytes", "Cache-Control": "private, max-age=3600"}
@@ -213,27 +247,70 @@ async def play(request: Request):
             headers[h] = r.headers[h]
     ctype = r.headers.get("Content-Type") or "audio/mpeg"
     status = getattr(r, "status", None) or r.getcode()
+    # первое прослушивание целиком (без перемотки): параллельно пишем файл на диск — следующее уже с диска
+    full = cached is not None and status == 200 and (not rng or rng.strip() in ("bytes=0-", "")) and \
+        str(r.headers.get("Content-Length") or "").isdigit() and int(r.headers["Content-Length"]) <= 60 * 1048576
 
     def chunks():
+        tmp = out = None
+        got = 0
+        if full:
+            try:
+                cached.parent.mkdir(parents=True, exist_ok=True)
+                tmp = cached.with_name(f"{cached.name}.{os.getpid()}.{id(r)}.tmp")
+                out = open(tmp, "wb")
+            except OSError:
+                out = None
         try:
             while True:
                 b = r.read(65536)
                 if not b:
                     break
+                if out:
+                    out.write(b); got += len(b)
                 yield b
         finally:
             r.close()
+            if out:
+                out.close()
+                try:
+                    if got == int(r.headers["Content-Length"]):
+                        os.replace(tmp, cached)
+                        _trim_cache()
+                    else:
+                        os.remove(tmp)
+                except OSError:
+                    pass
     return StreamingResponse(chunks(), status_code=status, media_type=ctype, headers=headers)
 
 
 @auth()
 async def art(request: Request):
     """Обложки и значки станций через наш сервер — тоже ради работы без VPN"""
+    import hashlib
+    import os
     limit(request, "music_play")
+    u = request.query_params.get("u", "")
+    ext_of = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif"}
+    name = hashlib.sha1(u.encode()).hexdigest()[:24]
+    if config.MEDIA_PROXY:
+        for ext in ext_of.values():
+            if _cache_path("art", f"{name}.{ext}").is_file():
+                return RedirectResponse(f"/uploads/mcache/art/{name}.{ext}", status_code=302,
+                                        headers={"Cache-Control": "public, max-age=604800"})
     try:
-        data, ctype = await _call(music.fetch_art, request.query_params.get("u", ""))
+        data, ctype = await _call(music.fetch_art, u)
     except ApiError:
         return Response(status_code=404)
+    if config.MEDIA_PROXY and ctype in ext_of:
+        try:
+            p = _cache_path("art", f"{name}.{ext_of[ctype]}")
+            p.parent.mkdir(parents=True, exist_ok=True)
+            tmp = p.with_name(p.name + f".{os.getpid()}.tmp")
+            tmp.write_bytes(data)
+            os.replace(tmp, p)
+        except OSError:
+            pass
     return Response(data, media_type=ctype, headers={"Cache-Control": "private, max-age=604800",
                                                      "X-Content-Type-Options": "nosniff"})
 

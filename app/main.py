@@ -209,12 +209,27 @@ class SelectiveGZip:
         return await self.app(scope, receive, send)
 
 
+def page_response(request: Request) -> HTMLResponse:
+    """Страница приложения. Вошедшему сразу кладём его данные (как /api/auth/me) в HTML — старт без лишнего запроса."""
+    html = seo.render(request.url.path)
+    try:
+        from .web import load_session
+        from .api.auth_routes import me_payload
+        load_session(request)
+        if request.state.user:
+            boot = json.dumps(me_payload(request), ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+            html = html.replace("</body>", f'<script type="application/json" id="boot-me">{boot}</script>\n</body>', 1)
+    except Exception:  # noqa: BLE001 — без данных приложение просто спросит их само
+        log.exception("boot-me")
+    return HTMLResponse(html, headers={"Cache-Control": "no-cache, private", "Vary": "Cookie"})
+
+
 async def http_error(request: Request, exc: HTTPException):
     if request.url.path.startswith("/api/"):
         text = {404: "Не найдено", 405: "Метод не поддерживается"}.get(exc.status_code, exc.detail)
         return JSONResponse({"error": text}, status_code=exc.status_code)
     if exc.status_code == 404:
-        return HTMLResponse(seo.render(request.url.path), headers={"Cache-Control": "no-cache"})
+        return page_response(request)
     return JSONResponse({"error": exc.detail}, status_code=exc.status_code)
 
 
@@ -232,7 +247,7 @@ async def server_error(request: Request, exc: Exception):
 async def spa(request: Request):
     if request.url.path.startswith("/api/"):
         return JSONResponse({"error": "Не найдено"}, status_code=404)
-    return HTMLResponse(seo.render(request.url.path), headers={"Cache-Control": "no-cache"})
+    return page_response(request)
 
 
 async def versioned_static(request: Request):

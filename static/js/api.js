@@ -61,21 +61,45 @@ async function request(method, url, data, isForm = false) {
   return body;
 }
 
+// Короткий кэш ответов GET: повторный заход в раздел (туда-обратно, вкладки) — мгновенно, без похода в сеть.
+// Одинаковые одновременные запросы склеиваются в один. Любое изменение (POST/PATCH/PUT/DELETE) и события
+// реального времени очищают кэш, поэтому устаревших данных человек не видит.
+const getCache = new Map(); // url → { t, p }
+const CACHE_MS = 20000;
+const NO_CACHE = /^\/api\/(poll|auth\/|calls|music\/(play|art|wave)|perf|admin)/;
+export function clearApiCache() { getCache.clear(); }
+function cachedGet(url) {
+  if (NO_CACHE.test(url)) return request("GET", url);
+  const hit = getCache.get(url);
+  if (hit && Date.now() - hit.t < CACHE_MS) return hit.p;
+  const p = request("GET", url);
+  getCache.set(url, { t: Date.now(), p });
+  p.catch(() => { if (getCache.get(url)?.p === p) getCache.delete(url); });
+  if (getCache.size > 200) getCache.delete(getCache.keys().next().value);
+  return p;
+}
+// служебные записи (замеры, прослушивания, прочтение) не меняют то, что на экране, — кэш не трогаем
+const KEEPS_CACHE = /^\/api\/(perf|calls\/[^/]+\/(diag|signal)|music\/songs\/\d+\/play|conversations\/\d+\/(read|typing)|notifications\/read)/;
+const mutate = (method, url, data, isForm) => { if (!KEEPS_CACHE.test(url)) getCache.clear(); return request(method, url, data, isForm); };
+
 export const api = {
   get: (url, params) => {
     if (params) {
       const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null && v !== ""));
       if ([...q].length) url += (url.includes("?") ? "&" : "?") + q;
     }
-    return request("GET", url);
+    return cachedGet(url);
   },
-  post: (url, data = {}) => request("POST", url, data),
-  patch: (url, data) => request("PATCH", url, data),
-  put: (url, data) => request("PUT", url, data),
-  del: (url, data) => request("DELETE", url, data),
-  form: (url, formData, method = "POST") => request(method, url, formData, true),
+  /** то же без кэша — когда нужны самые свежие данные */
+  fresh: (url) => request("GET", url),
+  post: (url, data = {}) => mutate("POST", url, data),
+  patch: (url, data) => mutate("PATCH", url, data),
+  put: (url, data) => mutate("PUT", url, data),
+  del: (url, data) => mutate("DELETE", url, data),
+  form: (url, formData, method = "POST") => mutate(method, url, formData, true),
   /** Загрузка с прогрессом (0..1). Возвращает { promise, abort }. */
   upload(url, formData, onProgress) {
+    getCache.clear();
     const xhr = new XMLHttpRequest();
     const promise = new Promise((resolve, reject) => {
       xhr.open("POST", url);
@@ -99,7 +123,11 @@ export const api = {
 };
 
 export async function loadMe() {
-  const me = await api.get("/api/auth/me");
+  // при первом запуске данные уже лежат в странице (сервер вложил их в HTML) — без лишнего запроса
+  let me = null;
+  const boot = document.getElementById("boot-me");
+  if (boot) { try { me = JSON.parse(boot.textContent); } catch { /* */ } boot.remove(); }
+  if (!me) me = await api.get("/api/auth/me");
   state.me = me.user;
   state.csrf = me.csrf || null;
   state.requireEmailConfirm = !!me.require_email_confirm;
@@ -121,12 +149,16 @@ const EVENTS = ["notification", "message", "message_update", "typing", "read", "
   "call_invite", "call_signal", "call_join", "call_leave", "call_decline", "call_end"];
 
 function dispatch(ev, data) {
+  if (ev !== "presence" && ev !== "typing") getCache.clear(); // пришло новое — кэш устарел
   if (ev === "counters") setCounters(data);
   if (ev.startsWith("call_")) boostPoll();
   emit(ev, data);
 }
 
 // ---- опрос сервера (хостинг без постоянных соединений): раз в 2 с, во время звонка — чаще, в фоне — реже
+let lastTouch = Date.now();
+addEventListener("pointerdown", () => { lastTouch = Date.now(); }, { passive: true, capture: true });
+addEventListener("keydown", () => { lastTouch = Date.now(); }, { passive: true, capture: true });
 let polling = false, pollTimer = null, cursor = null, boostUntil = 0, pollFails = 0;
 export function boostPoll(ms = 90000) {
   boostUntil = Date.now() + ms;
@@ -135,7 +167,8 @@ export function boostPoll(ms = 90000) {
 function pollDelay() {
   if (pollFails) return Math.min(2000 * 2 ** pollFails, 30000);
   if (Date.now() < boostUntil) return 700;
-  return document.hidden ? 30000 : 5000;
+  if (document.hidden) return 30000;
+  return Date.now() - lastTouch < 30000 ? 2500 : 5000; // человек что-то делает — чаще, просто смотрит — реже
 }
 async function pollOnce() {
   pollTimer = null;

@@ -143,6 +143,9 @@ export async function messagesPage({ params }) {
 
   async function openChat(id) {
     let conv;
+    // сообщения запрашиваем сразу, параллельно с данными диалога, — минус один круг до сервера
+    const msgsReq = api.get(`/api/conversations/${id}/messages`);
+    msgsReq.catch(() => {});
     try { conv = await api.get(`/api/conversations/${id}`); } catch (e) {
       chatPane.replaceChildren(h("div.chat-empty", h("div.empty", icon("x"), h("h2", "Диалог не найден"), h("p", e.message))));
       return;
@@ -740,7 +743,7 @@ export async function messagesPage({ params }) {
     });
 
     try {
-      const res = await api.get(`/api/conversations/${id}/messages`);
+      const res = await msgsReq;
       chat.messages = res.items;
       chat.hasMore = res.has_more;
       Object.assign(chat.senders, res.senders || {});

@@ -1,5 +1,5 @@
 // Точка входа клиентского приложения.
-import { api, state, loadMe, connectStream, on } from "./api.js";
+import { api, state, loadMe, connectStream, on, clearApiCache } from "./api.js";
 import { saveInitData, tgInitData } from "./components/tglink.js";
 import { initTelegramApp } from "./tgapp.js";
 import { h, avatar } from "./dom.js";
@@ -36,6 +36,7 @@ function initPullToRefresh() {
     busyNow = true;
     ind.classList.add("loading");
     navigator.vibrate?.(10);
+    clearApiCache();
     try { await rerender(true); } catch { /* ошибка покажется на странице */ }
     setTimeout(() => { ind.classList.remove("loading", "ready"); ind.style.transform = ""; busyNow = false; }, 300);
   });
@@ -81,6 +82,21 @@ const musicPage = lazy(P.music, "musicPage"), genrePage = lazy(P.music, "genrePa
 const showReveal = (...a) => P.collection().then((m) => m.showReveal(...a));
 // звонки должны слушать события с самого начала — модуль грузится сразу, но параллельно, не задерживая первый показ
 const callsReady = import("./call/call.js").then((m) => m.initCalls()).catch((e) => console.error(e));
+// нажали на пункт меню — пока палец поднимается, уже грузим код раздела и его данные
+const pf = (u) => api.get(u).catch(() => {});
+const PREFETCH = [
+  [/^\/$/, () => { pf("/api/feed"); pf("/api/stories"); }],
+  [/^\/messages$/, () => { P.messages().catch(() => {}); pf("/api/conversations"); }],
+  [/^\/notifications$/, () => { P.notifications().catch(() => {}); pf("/api/notifications"); }],
+  [/^\/reels$/, () => { P.reels().catch(() => {}); pf("/api/reels"); }],
+  [/^\/u\/([^/]+)$/, (m) => { P.profile().catch(() => {}); pf(`/api/users/${encodeURIComponent(decodeURIComponent(m[1]))}`); }],
+  [/^\/music$/, () => { P.music().catch(() => {}); }],
+];
+document.addEventListener("pointerdown", (e) => {
+  const a = e.target.closest?.(".tabbar a[href], .sidebar a[href], .topbar a[href], .nav a[href]");
+  if (!a || !state.me || a.origin !== location.origin || a.pathname === location.pathname) return;
+  for (const [re, fn] of PREFETCH) { const m = a.pathname.match(re); if (m) { try { fn(m); } catch { /* */ } break; } }
+}, { passive: true, capture: true });
 // самые частые разделы подгружаем заранее, когда браузер свободен, — переход будет мгновенным
 const idle = window.requestIdleCallback || ((f) => setTimeout(f, 1500));
 setTimeout(() => idle(() => { for (const k of ["messages", "profile", "notifications", "reels", "post"]) P[k]().catch(() => {}); }), 4000);
