@@ -216,11 +216,15 @@ def _compose_reply(conv: int, persona_id: int, uid: int) -> str | None:
     quests.remember(uid, persona_id, None, closeness=1)
     db.run("UPDATE ai_memory SET chats_day=? WHERE user_id=? AND persona_id=?", (f"{day}:{n_today + 1}", uid, persona_id))
     from .. import consents
+    from ..security import is_rude
+    if is_rude(msg):  # на брань — спокойная просьба общаться вежливо, без нейросети
+        return random.choice(texts.RUDE).format(name=name or "друг")
     # переписка уходит нейросети только с согласия человека; без него персонаж отвечает заготовками
     if llm.enabled() and n_today < CHAT_PER_DAY and consents.has(uid, "ai"):
         history = "\n".join(f"{'Ты' if r['sender_id'] == persona_id else name}: {r['text']}" for r in reversed(last) if r["text"])
         system = (f"Ты — {p['name']}, {p['role']} в организации «{org.get('name')}» соцсети Yarko. Ты ИИ-персонаж и не скрываешь этого. "
                   f"О себе: {p['bio']} Стиль: {p['style']}. Отвечай по-русски, коротко (1–3 предложения), тепло и по делу, без выдуманных фактов. "
+                  "На грубость и пошлость не поддакивай и не продолжай тему — спокойно попроси общаться вежливо. "
                   f"Что ты помнишь о собеседнике ({name}): {', '.join(facts) or 'пока ничего'}. Его репутация у вашей организации: {points} "
                   f"(звание «{texts.title_for(points)}»). Можешь предлагать задания из раздела «Мир Yarko».")
         answer = llm.complete(system, f"Переписка:\n{history}\n\nОтветь на последнее сообщение.", max_tokens=300)

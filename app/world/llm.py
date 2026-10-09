@@ -7,6 +7,8 @@ import logging
 import os
 import re
 import urllib.error
+import sys
+import time
 import urllib.request
 
 from .. import db
@@ -24,6 +26,11 @@ def providers() -> list[dict]:
     if os.environ.get("GROQ_API_KEY"):
         out.append({"name": "groq", "url": "https://api.groq.com/openai/v1/chat/completions", "key": os.environ["GROQ_API_KEY"],
                     "model": os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"), "json": True})
+        # запасная модель того же ключа: у каждой модели Groq свои лимиты — упёрлись в одну, отвечает другая
+        fb = os.environ.get("GROQ_FALLBACK_MODEL", "llama-3.3-70b-versatile")
+        if fb and fb != os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"):
+            out.append({"name": "groq-fb", "url": "https://api.groq.com/openai/v1/chat/completions", "key": os.environ["GROQ_API_KEY"],
+                        "model": fb, "json": True})
     if os.environ.get("OPENROUTER_API_KEY"):
         out.append({"name": "openrouter", "url": "https://openrouter.ai/api/v1/chat/completions", "key": os.environ["OPENROUTER_API_KEY"],
                     "model": os.environ.get("OPENROUTER_MODEL", "openrouter/free"), "json": False})
@@ -54,8 +61,24 @@ def budget_left() -> int:
     return DAILY_TOKENS - used_today()
 
 
+_pause: dict[str, float] = {}  # провайдер → до какого времени не беспокоить (после 429/5xx)
+
+
+def _diag(name: str, msg: str) -> None:
+    """Сбой нейросети — в журнал запросов (SYS /__llm), чтобы причину было видно без доступа к логам хостинга"""
+    log.warning("LLM %s: %s", name, msg)
+    w = sys.modules.get("app.wsgi")
+    if w is not None:
+        try:
+            w._req_queue.append(("SYS", "/__llm", 500, 0, name[:40], msg[:200], os.getpid()))
+        except Exception:  # noqa: BLE001
+            pass
+
+
 def _post(p: dict, messages: list, max_tokens: int, want_json: bool) -> tuple[str, int]:
-    payload = {"model": p["model"], "messages": messages, "max_tokens": max_tokens, "temperature": 0.9}
+    # у «думающих» моделей (gpt-oss) лимит включает скрытые рассуждения: без запаса ответ выходил пустым
+    room = max_tokens + 700 if "gpt-oss" in p["model"] else max_tokens
+    payload = {"model": p["model"], "messages": messages, "max_tokens": room, "temperature": 0.9}
     if p["name"] == "groq" and "gpt-oss" in p["model"]:
         payload["reasoning_effort"] = "low"  # меньше скрытых «размышлений» — меньше токенов
     if want_json and p["json"]:
@@ -70,7 +93,10 @@ def _post(p: dict, messages: list, max_tokens: int, want_json: bool) -> tuple[st
     req = urllib.request.Request(p["url"], data=json.dumps(payload).encode(), headers=headers, method="POST")
     with urllib.request.urlopen(req, timeout=90) as resp:
         data = json.loads(resp.read())
-    text = data["choices"][0]["message"].get("content") or ""
+    ch = data["choices"][0]
+    text = ch["message"].get("content") or ""
+    if not text.strip():
+        _diag(p["name"], f"пустой ответ, finish={ch.get('finish_reason')}")
     used = (data.get("usage") or {}).get("total_tokens") or (len(text) // 3 + sum(len(m["content"]) for m in messages) // 3)
     return text, int(used)
 
@@ -81,13 +107,22 @@ def complete(system: str, user: str, max_tokens: int = 1500, want_json: bool = F
         return None
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
     for p in providers():
+        if _pause.get(p["name"], 0) > time.time():
+            continue
         try:
             text, used = _post(p, messages, max_tokens, want_json)
         except urllib.error.HTTPError as e:
-            log.warning("LLM %s недоступен: %s %s", p["name"], e.code, e.read()[:200])
+            body = e.read()[:200]
+            if e.code == 429 or e.code >= 500:
+                try:
+                    wait = float(e.headers.get("retry-after") or 20)
+                except ValueError:
+                    wait = 20
+                _pause[p["name"]] = time.time() + min(max(wait, 5), 300)
+            _diag(p["name"], f"{e.code} {body!r}")
             continue
         except (urllib.error.URLError, TimeoutError, KeyError, ValueError, OSError) as e:
-            log.warning("LLM %s недоступен: %s", p["name"], e)
+            _diag(p["name"], repr(e)[:160])
             continue
         _set_state(f"tokens:{db.now()[:10]}", str(used_today() + used))
         _set_state("llm:last", f"{p['name']} {db.now()}")

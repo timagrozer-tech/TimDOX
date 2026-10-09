@@ -5184,3 +5184,21 @@ body.has-player .cookie-bar { bottom: calc(var(--dock-h, 62px) + 96px + env(safe
   :root[data-skin="retro"] .sidebar { top: 56px !important; }
 }
 :root[data-skin="retro"] body:has(.auth)::before, :root[data-skin="retro"] body:has(.auth)::after { display: none !important; }
+/* ретро: правки по скриншотам — аватар не уезжает под край карточки, питомец не прячется за кнопкой фото,
+   у вкладок одна полоска вместо двух, счётчик в шапке не сливается с синим фоном, всплывашки не закрывают поле ввода */
+:root[data-skin="retro"] .profile-card .avatar-slot { margin-top: 0 !important; }
+:root[data-skin="retro"] .profile-card .avatar-slot .pet { right: auto !important; left: -16px; bottom: -8px; }
+:root[data-skin="retro"] .tabs a::after, :root[data-skin="retro"] .tabs button::after, :root[data-skin="retro"] [role="tab"]::after { display: none !important; }
+:root[data-skin="retro"] .topbar .badge { background: #fff !important; color: #45688e !important; border: 0 !important; font-weight: 700;
+  min-width: 16px; height: 16px; line-height: 16px; padding: 0 4px; font-size: 10px; top: 4px; right: 2px; outline: 0 !important; box-shadow: 0 0 0 1px #45688e !important; }
+:root[data-skin="retro"] .topbar .badge:empty, :root[data-skin="retro"] .topbar .badge[data-count="0"] { display: none !important; }
+@media (max-width: 719px) {
+  :root[data-skin="retro"] .profile-card .tabs, :root[data-skin="retro"] .profile-space > .tabs { scrollbar-width: none; }
+  :root[data-skin="retro"] .tabs a, :root[data-skin="retro"] .tabs button { padding-left: 9px !important; padding-right: 9px !important; font-size: 14px; gap: 0 !important; }
+  :root[data-skin="retro"] .tabs a svg, :root[data-skin="retro"] .tabs button svg { display: none !important; }
+}
+@media (min-width: 720px) {
+  :root[data-skin="retro"] .toasts { left: 16px; right: auto; transform: none; bottom: 16px; width: 330px; align-items: stretch; }
+  :root[data-skin="retro"] .toast { border-radius: 2px !important; background: #3e5d82; color: #fff; box-shadow: 0 2px 6px rgb(0 0 0 / .3); font-size: 13px; padding: 10px 12px; }
+  :root[data-skin="retro"] .toast.error { background: #a33; }
+}

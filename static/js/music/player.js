@@ -17,6 +17,7 @@ let ctx = "";          // откуда играет: «Волна Yarko», «Ж�
 let shuffle = false;
 let repeat = "off";    // off | all | one
 let errors = 0;
+let loadSeq = 0, failedSeq = -1, skipTimer = 0; // одна ошибка на одну загрузку: иначе «ошибка + отказ play()» крутили очередь по кругу
 let buffering = false;
 const liked = new Set();
 let likesLoaded = false;
@@ -108,6 +109,7 @@ export function playQueue(tracks, start = 0, context = "") {
 export function playFrom(list, t, context = "") {
   const cur = current();
   if (cur && cur.key === t.key) { toggle(); return; }
+  errors = 0;
   const i = list.findIndex((x) => x.key === t.key);
   playQueue(list, Math.max(0, i), context);
 }
@@ -119,17 +121,20 @@ export function playNext(t) {
 }
 export function toggle() {
   if (!current()) return;
+  if (audio.paused) errors = 0; // человек сам нажал «Играть» — даём трекам новую попытку
   if (audio.paused) play(); else audio.pause();
 }
 function play() {
   pauseLocalMedia();
+  const seq = loadSeq;
   audio.play().catch((e) => {
     if (e.name === "NotAllowedError") { notify(); return; }
-    if (e.name !== "AbortError") onError();
+    if (e.name !== "AbortError") onError(seq);
   });
 }
-export function next(auto = false) {
+export function next(auto = false, fromError = false) {
   if (!queue.length) return;
+  if (!auto && !fromError) errors = 0;
   if (auto && repeat === "one") { audio.currentTime = 0; play(); return; }
   if (index < queue.length - 1) index += 1;
   else if (repeat === "all" || !auto) index = 0;
@@ -178,6 +183,8 @@ function load(autoplay) {
   const t = current();
   if (!t) return;
   buffering = true;
+  clearTimeout(skipTimer);
+  loadSeq += 1;
   audio.preload = "auto";
   audio.src = streamUrl(t);
   audio.currentTime = 0;
@@ -186,18 +193,19 @@ function load(autoplay) {
   save(); notify();
 }
 
-function onError() {
+function onError(seq = loadSeq) {
   const t = current();
-  if (!t) return;
+  if (!t || seq !== loadSeq || failedSeq === seq) return; // эта загрузка уже обработана или устарела
+  failedSeq = seq;
   errors += 1;
   buffering = false;
-  if (errors >= 3 || queue.length < 2) {
+  if (errors >= Math.min(3, queue.length) || queue.length < 2) {
     toast(t.live ? "Станция сейчас не вещает" : "Не получается воспроизвести трек", { error: true, icon: "x" });
-    audio.pause(); notify(); errors = 0;
-    return;
+    audio.pause(); notify();
+    return; // счётчик сбросится только после удачного запуска — повторной карусели не будет
   }
   toast(t.live ? "Станция не отвечает — включаю следующую" : "Трек недоступен — включаю следующий", { icon: "skipForward" });
-  next();
+  skipTimer = setTimeout(() => { if (seq === loadSeq) next(false, true); }, 700);
 }
 
 let countedKey = "";

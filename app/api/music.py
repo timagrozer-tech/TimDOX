@@ -207,6 +207,7 @@ async def like(request: Request):
 # Аудио и обложки из-за рубежа один раз скачиваются на диск хостинга (папка uploads), дальше их отдаёт
 # веб-сервер напрямую: перемотка мгновенная, а процессы Python не заняты минутами, пока играет песня.
 CACHE_CAP = 1536 * 1048576
+_bad_tracks: dict[str, float] = {}
 
 
 def _cache_path(*parts: str):
@@ -240,10 +241,17 @@ async def play(request: Request):
     cached = _cache_path("a", f"{tid}.mp3") if config.MEDIA_PROXY and music._ID.match(tid) else None
     if cached is not None and cached.is_file():
         return RedirectResponse(f"/uploads/mcache/a/{tid}.mp3", status_code=302, headers={"Cache-Control": "private, max-age=86400"})
+    import time
+    if _bad_tracks.get(tid, 0) > time.time():
+        raise ApiError(502, "Трек сейчас недоступен")
     rng = request.headers.get("range")
     try:
         r = await run_in_threadpool(music.open_audius_stream, tid, rng)
     except music.Unavailable:
+        # недоступный трек 10 минут не спрашиваем у Audius заново — ответ мгновенный, сервер не занят
+        if len(_bad_tracks) > 2000:
+            _bad_tracks.clear()
+        _bad_tracks[tid] = time.time() + 600
         raise ApiError(502, "Трек сейчас недоступен")
     headers = {"Accept-Ranges": "bytes", "Cache-Control": "private, max-age=3600"}
     for h in ("Content-Length", "Content-Range"):
