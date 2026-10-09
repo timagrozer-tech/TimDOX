@@ -342,6 +342,9 @@ async def housekeeping():
     """Раз в 10 минут удаляет истёкшие истории и старые сессии."""
     while True:
         try:
+            if not db.IS_PG and os.environ.get("YARKO_RUNTIME") == "passenger":
+                from . import dbcopy  # хостинг: раз в сутки резервная копия локальной базы
+                await asyncio.to_thread(dbcopy.backup, config.DB_PATH)
             removed = stories.cleanup_expired()
             referrals.qualify_pending()
             economy.settle_incoming()

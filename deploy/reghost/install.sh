@@ -130,6 +130,7 @@ for line in open(sys.argv[1], encoding="utf-8"):
     if k and not k.startswith("#"):
         os.environ.setdefault(k, v)
 os.environ["DATA_DIR"] = os.environ.get("DATA_DIR", "") + "/smoke"
+os.environ["YARKO_LOCAL_DB"] = "0"  # проверка не копирует базу
 from app.wsgi import application
 res = {}
 body = b"".join(application({"REQUEST_METHOD": "GET", "PATH_INFO": "/api/health", "QUERY_STRING": "", "wsgi.input": io.BytesIO(),

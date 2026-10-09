@@ -34,6 +34,45 @@ def _leader() -> bool:
 LEADER = _leader()
 os.environ["KRUG_BACKGROUND"] = "1" if LEADER else "0"
 
+
+_req_queue: list = []
+_req_lock = threading.Lock()
+PG_URLS = os.environ.get("DATABASE_URL", "").split()  # прежняя база: журнал запросов и запасная копия
+
+
+def _local_db() -> None:
+    """База на самом хостинге (docs/adr/0001): SQLite в DATA_DIR. При первом запуске — копия из PostgreSQL."""
+    from pathlib import Path
+    if os.environ.get("YARKO_LOCAL_DB", "1") == "0":
+        return
+    target = Path(os.environ.get("DATA_DIR", "data")) / "yarko.db"
+    urls = os.environ.get("DATABASE_URL", "").split()
+    if not target.exists():
+        if not urls:
+            return
+        import time as _t
+        t0 = _t.time()
+        try:
+            from app import dbcopy
+            dbcopy.ensure_local(target, urls, log=lambda m: print("Yarko: " + m, file=sys.stderr))
+            _req_queue.append(("SYS", "/__db-local-ready", 200, int((_t.time() - t0) * 1000), "", "", os.getpid()))
+        except Exception as e:  # noqa: BLE001 — копия не удалась: работаем с прежней базой, попробуем при следующем запуске
+            print(f"Yarko: локальная база не создана, остаюсь на PostgreSQL: {e!r}", file=sys.stderr)
+            _req_queue.append(("SYS", "/__db-local-failed", 500, int((_t.time() - t0) * 1000), "", repr(e)[:120], os.getpid()))
+            return
+        if not target.exists():
+            return
+    os.environ["DATABASE_URL"] = ""
+    os.environ["DB_PATH"] = str(target)
+    if "app.db" in sys.modules:  # модуль уже загружен копированием — переключаем его на локальный файл
+        from app import config, db
+        db.DATABASE_URLS, db.DATABASE_URL, db.IS_PG = [], "", False
+        db._conn = None
+        config.DB_PATH = target
+
+
+_local_db()
+
 from app.main import app as asgi_app  # noqa: E402 — после настройки окружения
 
 _loop = asyncio.new_event_loop()
@@ -72,21 +111,48 @@ if LEADER:
 _DONE = object()
 
 
+
+
 def _log_request(method: str, path: str, status: int, t0: float, environ) -> None:
-    """Короткий журнал запросов в базе (сутки): видно, что дошло до сайта на хостинге, — без доступа к его логам"""
+    """Короткий журнал запросов (сутки): видно, что дошло до сайта и как быстро, — без доступа к логам хостинга.
+    Пишется пачками раз в 20 секунд в PostgreSQL (Supabase), если он задан, иначе в основную базу."""
     if os.environ.get("YARKO_REQ_LOG", "1") == "0" or (path == "/api/poll" and status == 200):
         return
-    try:
-        import time as _t
-        from app import db
-        ip = environ.get("REMOTE_ADDR", "")
-        db.run("INSERT INTO req_log (method, path, status, ms, ip_prefix, ua, pid) VALUES (?,?,?,?,?,?,?)",
-               (method, path[:200], status, int((_t.time() - t0) * 1000), ".".join(ip.split(".")[:3]) + ".*",
-                environ.get("HTTP_USER_AGENT", "")[:120], os.getpid()))
-        if hash(t0) % 200 == 0:
-            db.run("DELETE FROM req_log WHERE created_at < ?", (db.future(days=-1),))
-    except Exception:  # noqa: BLE001 — журнал не должен ломать ответ
-        pass
+    import time as _t
+    ip = environ.get("REMOTE_ADDR", "")
+    with _req_lock:
+        if len(_req_queue) < 2000:
+            _req_queue.append((method, path[:200], status, int((_t.time() - t0) * 1000), ".".join(ip.split(".")[:3]) + ".*",
+                               environ.get("HTTP_USER_AGENT", "")[:120], os.getpid()))
+
+
+def _flush_requests() -> None:
+    import time as _t
+    pg = None
+    while True:
+        _t.sleep(20)
+        with _req_lock:
+            batch = _req_queue[:]
+            _req_queue.clear()
+        if not batch:
+            continue
+        try:
+            from app import db
+            if PG_URLS:
+                if pg is None:
+                    pg = db.PgConnection(PG_URLS)
+                for row in batch:
+                    pg.execute("INSERT INTO req_log (method, path, status, ms, ip_prefix, ua, pid) VALUES (?,?,?,?,?,?,?)", row)
+                if hash(_t.time()) % 30 == 0:
+                    pg.execute("DELETE FROM req_log WHERE created_at < ?", (db.future(days=-1),))
+            else:
+                for row in batch:
+                    db.run("INSERT INTO req_log (method, path, status, ms, ip_prefix, ua, pid) VALUES (?,?,?,?,?,?,?)", row)
+        except Exception:  # noqa: BLE001 — журнал не должен мешать сайту
+            pg = None
+
+
+threading.Thread(target=_flush_requests, name="req-log", daemon=True).start()
 
 
 def application(environ, start_response):
