@@ -71,6 +71,9 @@ MIGRATIONS = [
     ("profiles", "now_playing", "TEXT"),
     ("profiles", "now_playing_at", "TEXT"),
     ("profiles", "find_by_phone", "INTEGER NOT NULL DEFAULT 1"),
+    ("profiles", "wall_open", "INTEGER NOT NULL DEFAULT 1"),
+    ("posts", "wall_id", "INTEGER REFERENCES users(id) ON DELETE CASCADE"),
+    ("posts", "graffiti", "INTEGER NOT NULL DEFAULT 0"),
     ("users", "phone", "TEXT"),
     ("users", "phone_verified_at", "TEXT"),
     ("songs", "album_id", "INTEGER REFERENCES albums(id) ON DELETE SET NULL"),
@@ -138,6 +141,7 @@ MIGRATIONS = [
 POST_MIGRATION_SQL = """
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone) WHERE phone IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_posts_community ON posts(community_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_wall ON posts(wall_id, id DESC) WHERE wall_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_profiles_school ON profiles(school_year);
 CREATE INDEX IF NOT EXISTS idx_notif_post ON notifications(post_id);
 CREATE INDEX IF NOT EXISTS idx_notif_comment ON notifications(comment_id);

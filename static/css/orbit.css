@@ -5147,7 +5147,7 @@ body.has-player .cookie-bar { bottom: calc(var(--dock-h, 62px) + 96px + env(safe
 
 /* ---------- «Ретро 2010»: исправления по скриншотам ---------- */
 /* углы: всё прямоугольное (кружки-точки «в сети», спиннеры и т.п. — псевдоэлементы, их не трогаем) */
-:root[data-skin="retro"] body *:not(.spinner):not(.ptr-spin):not(.mu-eq i):not(.aw-emoji):not(input[type="radio"]) { border-radius: 2px !important; }
+:root[data-skin="retro"] body *:not(.spinner):not(.ptr-spin):not(.mu-eq i):not(.aw-emoji):not(.gf-size i):not(input[type="radio"]) { border-radius: 2px !important; }
 /* рамки аватаров (купленные украшения) — тоже квадратные, без вращения */
 :root[data-skin="retro"] .avatar[data-frame]::before, :root[data-skin="retro"] .avatar[data-frame]::after,
 :root[data-skin="retro"] .avatar-slot.has-frame::before, :root[data-skin="retro"] .avatar-slot.has-frame::after { border-radius: 3px !important; }
@@ -5226,3 +5226,23 @@ body.has-player .cookie-bar { bottom: calc(var(--dock-h, 62px) + 96px + env(safe
   background: var(--primary-soft, rgba(127, 127, 255, .12)); color: var(--primary); font: 500 13px/1.3 var(--font); cursor: pointer; }
 .np-line .np-text { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .np-line:hover { filter: brightness(.97); }
+
+/* ---------------------------------------------------------------- граффити и стена */
+.gf { display: grid; gap: 10px; }
+.gf-board { border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; background: #fff; line-height: 0; }
+.gf-canvas { width: 100%; aspect-ratio: 2 / 1; height: auto; touch-action: none; cursor: crosshair; display: block; }
+.gf-tools { display: grid; gap: 8px; }
+.gf-colors { display: flex; flex-wrap: wrap; gap: 6px; }
+.gf-color { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border-strong); cursor: pointer; padding: 0; }
+.gf-color.on { outline: 2px solid var(--primary); outline-offset: 2px; }
+.gf-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gf-sizes { display: flex; gap: 4px; }
+.gf-size { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--border); background: var(--surface-2); border-radius: 8px; cursor: pointer; }
+.gf-size.on { border-color: var(--primary); background: var(--primary-soft); }
+.gf-size i { display: block; border-radius: 50%; background: var(--text); }
+.gf-op { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-2); }
+.gf-alpha { width: 90px; accent-color: var(--primary); }
+.graffiti-label { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--text-3); margin-bottom: 4px; }
+.wall-to { font-size: 14px; color: var(--text-3); white-space: nowrap; }
+.wall-to .icon { width: 12px; height: 12px; vertical-align: -1px; }
+.wall-compose .composer { padding: 0; }

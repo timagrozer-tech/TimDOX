@@ -337,6 +337,13 @@ export async function profilePage({ params, query }) {
     if (id === "posts") {
       const wrap = h("div.stack");
       if (isMe) wrap.append(h("div.card", composer({ placeholder: "Что у вас нового?" })));
+      // стена друга: можно оставить запись или граффити, как раньше
+      let wallComposer = null;
+      if (!isMe && data.can_wall) {
+        wallComposer = composer({ placeholder: "Оставить запись на стене…", wall: u, compact: true,
+          onPosted: (p) => { list.prepend(postCard(p)); } });
+        wrap.append(h("div.card.wall-compose", wallComposer));
+      }
       const card = h("div.card.feed");
       const list = infiniteList({
         load: (cursor) => api.get(`/api/users/${u.username}/posts`, { cursor }),

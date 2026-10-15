@@ -418,3 +418,15 @@
 :root[data-skin="retro"] .np-line .icon { color: #6d8fb3; }
 :root[data-skin="retro"] .np-line b { font-weight: 700; }
 :root[data-skin="retro"] .np-line:hover .np-text { text-decoration: underline; }
+
+/* ---------- граффити и стена в «Ретро 2010» ---------- */
+:root[data-skin="retro"] .gf-board { border-radius: 0 !important; border-color: #c5d0db; }
+:root[data-skin="retro"] .gf-color { border-radius: 1px !important; width: 24px; height: 24px; border: 1px solid #b2bdc8; }
+:root[data-skin="retro"] .gf-color.on { outline: 2px solid #5b7da3; }
+:root[data-skin="retro"] .gf-size { border-radius: 2px !important; }
+:root[data-skin="retro"] .gf-size i { border-radius: 50% !important; background: #45688e; }
+:root[data-skin="retro"] .gf-size.on { background: #e1e7ef; border-color: #8fa6bf; }
+:root[data-skin="retro"] .wall-to { font-size: 12.5px; }
+:root[data-skin="retro"] .wall-to .name { font-size: 12.5px; }
+:root[data-skin="retro"] .wall-compose { padding: 8px 10px !important; background: #f7f8fa !important; }
+:root[data-skin="retro"] .graffiti-label { font-size: 11.5px; color: #828a99; }

@@ -24,6 +24,7 @@ export function notifText(n, many = false) {
     case "follow": return "подписался(-ась) на ваши обновления";
     case "repost": return "поделился(-ась) вашей записью";
     case "quote": return "процитировал(а) вашу запись";
+    case "wall_post": return n.extra?.graffiti ? "нарисовал(а) граффити на вашей стене 🎨" : "оставил(а) запись на вашей стене";
     case "community_request": return `хочет вступить в сообщество «${n.extra?.name || ""}»`;
     case "community_approved": return `одобрил(а) вашу заявку в сообщество «${n.extra?.name || ""}»`;
     case "event_invite": return `приглашает вас на мероприятие «${n.extra?.title || ""}»`;
@@ -68,7 +69,7 @@ export function notifBadge(n) {
   const map = {
     comment: ["comment", ""], reply: ["comment", ""], mention: ["at", ""],
     friend_request: ["userPlus", "orange"], friend_accept: ["userCheck", "green"],
-    follow: ["user", ""], repost: ["repeat", "green"], quote: ["quote", ""],
+    follow: ["user", ""], repost: ["repeat", "green"], quote: ["quote", ""], wall_post: ["brush", "orange"],
     community_request: ["users", "orange"], community_approved: ["users", "green"],
     event_invite: ["calendar", "orange"], event_going: ["calendar", "green"], item: ["gift", "gold"], reel_like: ["heart", ""], reel_comment: ["comment", ""],
     invite_joined: ["userAdd", "green"], invite_qualified: ["check", "green"], invite_tier: ["trophy", "gold"],

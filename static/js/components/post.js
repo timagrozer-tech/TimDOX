@@ -55,7 +55,9 @@ function head(post, menuBtn) {
     h("div.who",
       asComm ? h("a.name", { href: `/c/${c.slug}` }, c.name)
         : h("div", h("a.name", { href: `/u/${post.author.username}` }, post.author.name, vmark(post.author)),
-          c ? h("span.muted", { style: { fontSize: "14px" } }, " в ", h("a", { href: `/c/${c.slug}` }, c.name)) : null),
+          c ? h("span.muted", { style: { fontSize: "14px" } }, " в ", h("a", { href: `/c/${c.slug}` }, c.name)) : null,
+          // запись на чужой стене: «Автор → Хозяин стены», как раньше
+          post.wall ? h("span.wall-to", " ", icon("chevronRight", "sm"), " ", h("a.name", { href: `/u/${post.wall.username}` }, post.wall.name)) : null),
       h("div.meta",
         h("a", { href: `/post/${post.id}`, title: fullDate(post.created_at) }, h("time", { datetime: post.created_at }, timeAgo(post.created_at))),
         post.circle ? h("span", { title: `Видит круг «${post.circle}»`, class: "row", style: { gap: "4px" } }, "·", icon("users", "sm"), post.circle)
@@ -66,6 +68,7 @@ function head(post, menuBtn) {
 
 function body(post, { clamp = true } = {}) {
   const parts = [];
+  if (post.graffiti) parts.push(h("div.graffiti-label", icon("brush", "sm"), "Граффити"));
   if (post.text) {
     const t = richText(post.text, "post-text");
     if (clamp && (post.text.length > 700 || post.text.split("\n").length > 10)) {
@@ -302,6 +305,7 @@ export function postCard(input, opts = {}) {
       mine ? "-" : null,
       mine ? { label: "Редактировать", icon: "edit", onClick: () => editPost(p) } : null,
       mine ? { label: "Удалить", icon: "trash", danger: true, onClick: () => deletePost(p) } : null,
+      !mine && p.can_delete ? { label: "Удалить со своей стены", icon: "trash", danger: true, onClick: () => deletePost(p) } : null,
       !mine && mod ? { label: "Удалить (модерация)", icon: "trash", danger: true, onClick: () => deletePost(p) } : null,
       !mine ? { label: "Пожаловаться", icon: "flag", danger: true, onClick: () => report("post", p.id) } : null,
     ]);

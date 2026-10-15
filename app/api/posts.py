@@ -35,7 +35,7 @@ def hydrate(rows: list[dict], v: int, depth: int = 0) -> list[dict]:
     ph = db.placeholders(ids)
     t = tuple(ids)
 
-    authors = social.cards_by_ids(r["author_id"] for r in rows)
+    authors = social.cards_by_ids({r["author_id"] for r in rows} | {r["wall_id"] for r in rows if r.get("wall_id")})
     media_rows = db.all(f"SELECT * FROM post_media WHERE post_id IN ({ph}) ORDER BY position", t)
     media_by = {}
     for m in media_rows:
@@ -104,6 +104,9 @@ def hydrate(rows: list[dict], v: int, depth: int = 0) -> list[dict]:
             "poll": poll_by.get(r["id"]),
             "music": _music(r.get("music")),
             "support": support_by.get(r["id"]),
+            "wall": authors.get(r["wall_id"]) if r.get("wall_id") else None,
+            "graffiti": bool(r.get("graffiti")),
+            "can_delete": r["author_id"] == v or r.get("wall_id") == v,
         }
         if r["quote_of"] and depth == 0:
             item["quote"] = quotes.get(r["quote_of"]) or {"unavailable": True}
@@ -203,7 +206,8 @@ async def user_posts(request: Request):
     cursor = int_param(request, "cursor", 2**62)
     rows = db.all(f"""
         SELECT p.* FROM posts p JOIN profiles pr ON pr.user_id = p.author_id
-        WHERE p.author_id = :uid AND p.community_id IS NULL AND p.id < :cursor AND {visible_post_sql()}
+        WHERE ((p.author_id = :uid AND p.wall_id IS NULL) OR p.wall_id = :uid) AND p.community_id IS NULL AND p.id < :cursor
+          AND {visible_post_sql()}
         ORDER BY p.id DESC LIMIT :lim""", {"v": v, "uid": prof["user_id"], "cursor": cursor, "lim": PAGE + 1})
     return JSONResponse(_page(rows, v))
 
@@ -218,7 +222,7 @@ async def user_photos(request: Request):
     rows = db.all(f"""
         SELECT m.id, m.post_id, m.path AS url, m.thumb, m.width, m.height, m.alt
         FROM post_media m JOIN posts p ON p.id = m.post_id JOIN profiles pr ON pr.user_id = p.author_id
-        WHERE p.author_id = :uid AND p.community_id IS NULL AND m.id < :cursor AND {visible_post_sql()}
+        WHERE p.author_id = :uid AND p.community_id IS NULL AND p.wall_id IS NULL AND p.graffiti = 0 AND m.id < :cursor AND {visible_post_sql()}
         ORDER BY m.id DESC LIMIT 31""", {"v": v, "uid": prof["user_id"], "cursor": cursor})
     return JSONResponse({"items": rows[:30], "next_cursor": rows[29]["id"] if len(rows) > 30 else None})
 
@@ -377,6 +381,27 @@ async def _create_post(request: Request, v: int, form):
                 raise ApiError(404, "Круг не найден")
             visibility = "friends"
 
+    # запись на стене друга (как раньше во «ВКонтакте»): только друзьям и если хозяин стены это разрешил
+    wall_id = None
+    if form.get("wall_id") and not community_id:
+        try:
+            wall_id = int(form.get("wall_id"))
+        except ValueError:
+            raise ApiError(400, "Некорректная стена")
+        if wall_id == v:
+            wall_id = None
+        else:
+            owner = db.one("SELECT user_id, wall_open, profile_visibility FROM profiles WHERE user_id=?", (wall_id,))
+            if not owner:
+                raise ApiError(404, "Пользователь не найден")
+            if social.blocked_between(v, wall_id) or not social.are_friends(v, wall_id):
+                raise ApiError(403, "Писать на стене можно только друзьям")
+            if not owner["wall_open"]:
+                raise ApiError(403, "Хозяин страницы закрыл стену для записей")
+            visibility = "public" if owner["profile_visibility"] == "public" else "friends"
+            circle_id = None
+    graffiti = 1 if form.get("graffiti") == "1" and files else 0
+
     if files:
         limit(request, "upload")
     saved = []
@@ -389,8 +414,8 @@ async def _create_post(request: Request, v: int, form):
         raise
 
     with db.tx() as c:
-        cur = c.execute("""INSERT INTO posts (author_id, text, visibility, quote_of, community_id, as_community, circle_id, music)
-                           VALUES (?,?,?,?,?,?,?,?)""", (v, text, visibility, quote_of, community_id, as_community, circle_id, music_json))
+        cur = c.execute("""INSERT INTO posts (author_id, text, visibility, quote_of, community_id, as_community, circle_id, music, wall_id, graffiti)
+                           VALUES (?,?,?,?,?,?,?,?,?,?)""", (v, text, visibility, quote_of, community_id, as_community, circle_id, music_json, wall_id, graffiti))
         pid = cur.lastrowid
         for i, s in enumerate(saved):
             alt = clean_text(alts[i] if i < len(alts) and isinstance(alts[i], str) else "", 300)
@@ -402,6 +427,8 @@ async def _create_post(request: Request, v: int, form):
     if quote_of:
         author = db.value("SELECT author_id FROM posts WHERE id=?", (quote_of,))
         social.notify(author, v, "quote", post_id=pid)
+    if wall_id:
+        social.notify(wall_id, v, "wall_post", post_id=pid, extra={"graffiti": bool(graffiti)})
     row = db.one("SELECT * FROM posts WHERE id=?", (pid,))
     economy.on_post(v, pid, text, bool(saved))
     return JSONResponse(hydrate([row], v)[0], status_code=201)
@@ -479,9 +506,10 @@ async def delete_post(request: Request):
     pid = path_int(request)
     row = db.one("SELECT * FROM posts WHERE id=?", (pid,))
     is_mod = bool(row and row["community_id"] and community_role(row["community_id"], v["id"]) in ("admin", "moderator"))
-    if not row or (row["author_id"] != v["id"] and not v["is_admin"] and not is_mod):
+    wall_owner = bool(row and row.get("wall_id") == v["id"])
+    if not row or (row["author_id"] != v["id"] and not v["is_admin"] and not is_mod and not wall_owner):
         raise ApiError(404, "Запись не найдена")
-    if row["author_id"] != v["id"]:  # чужая запись — это действие администрации или модератора сообщества
+    if row["author_id"] != v["id"] and not wall_owner:  # чужая запись — это действие администрации или модератора сообщества
         from .. import modlog
         modlog.log(v["id"], "delete_post", "post", pid, row["author_id"], role="admin" if v["is_admin"] else "moderator",
                    details={"text": modlog.snippet(row["text"]), "community_id": row["community_id"]})

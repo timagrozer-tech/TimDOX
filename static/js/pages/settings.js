@@ -396,6 +396,10 @@ export async function settingsPage({ query = {} } = {}) {
   musicStatus.addEventListener("change", async () => {
     try { await api.patch("/api/me/settings", { music_status: musicStatus.checked }); if (state.me) state.me.music_status = musicStatus.checked; toast("Сохранено", { icon: "check", duration: 1800 }); } catch (e) { toastError(e); }
   });
+  const wallOpen = h("input", { type: "checkbox", checked: s.wall_open, "aria-label": "Друзья могут писать на моей стене" });
+  wallOpen.addEventListener("change", async () => {
+    try { await api.patch("/api/me/settings", { wall_open: wallOpen.checked }); toast("Сохранено", { icon: "check", duration: 1800 }); } catch (e) { toastError(e); }
+  });
   const findByPhone = h("input", { type: "checkbox", checked: s.find_by_phone, "aria-label": "Находить меня по номеру телефона" });
   findByPhone.addEventListener("change", async () => {
     try { await api.patch("/api/me/settings", { find_by_phone: findByPhone.checked }); toast("Сохранено", { icon: "check", duration: 1800 }); } catch (e) { toastError(e); }
@@ -579,6 +583,7 @@ export async function settingsPage({ query = {} } = {}) {
         settingRow("Кто видит друзей", null, privacy.friends_visibility),
         settingRow("Новые записи по умолчанию", "Можно изменить при публикации", privacy.default_visibility),
         settingRow("Режим невидимки", "Не показываться в «Гостях»", invisible),
+        settingRow("Друзья могут писать на моей стене", "Записи и граффити друзей появятся на вашей странице — удалить их можно в любой момент", wallOpen),
         settingRow("Транслировать аудио в статус", "На вашей странице видно, какую песню вы сейчас слушаете", musicStatus),
         settingRow("Находить меня по номеру телефона", "Друзья, у которых записан ваш номер, увидят вас в «Найти друзей по контактам»", findByPhone)),
       section("Круги", "Списки друзей, для которых можно публиковать отдельно — например, только для близких.", circlesBox)]],

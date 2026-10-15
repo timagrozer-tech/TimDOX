@@ -111,6 +111,7 @@ async def profile(request: Request):
         "friends_visible": _can_see_friends(v, p),
         "equipped": collection.parse_equipped(p.get("equipped")),
         "can_verify": bool(request.state.user["is_admin"]),
+        "can_wall": uid != v and rel["status"] == "friends" and not rel["blocked_by_me"] and bool(p.get("wall_open", 1)),
     }
     data["space"] = constellation.load_space(p.get("space"))
     from .. import shop
@@ -457,6 +458,7 @@ async def settings_get(request: Request):
     p["invisible"] = bool(p["invisible"])
     p["music_status"] = bool(p.get("music_status"))
     p["find_by_phone"] = bool(p.get("find_by_phone", 1))
+    p["wall_open"] = bool(p.get("wall_open", 1))
     p.pop("now_playing", None); p.pop("now_playing_at", None)
     p["appearance"] = parse_appearance(p["appearance"])
     pend = email_codes.pending(u["id"], "email_change")
@@ -613,6 +615,8 @@ async def settings_update(request: Request):
         sets.append("music_status=?"); params.append(1 if data["music_status"] else 0)
         if not data["music_status"]:
             sets.append("now_playing=NULL")
+    if "wall_open" in data:
+        sets.append("wall_open=?"); params.append(1 if data["wall_open"] else 0)
     if "find_by_phone" in data:
         sets.append("find_by_phone=?"); params.append(1 if data["find_by_phone"] else 0)
     if "show_birth_date" in data:

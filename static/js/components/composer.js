@@ -55,14 +55,15 @@ export function audienceSelect(value, { withCircles = true } = {}) {
   return btn;
 }
 
-export function composer({ placeholder = "Что у вас нового?", quote = null, compact = false, onPosted, community = null, music = null } = {}) {
-  const photos = []; // {file, url, alt}
+export function composer({ placeholder = "Что у вас нового?", quote = null, compact = false, onPosted, community = null, music = null, wall = null } = {}) {
+  const photos = []; // {file, url, alt, graffiti}
   const ta = attachMentions(h("textarea", { placeholder, maxlength: MAX_LEN + 100, rows: 2, "aria-label": "Текст записи" }));
   const fit = autosize(ta);
   const counter = h("span.counter");
   const previews = h("div.previews");
   const fileInput = h("input", { type: "file", accept: "image/jpeg,image/png,image/webp,image/gif", multiple: true, hidden: true, "aria-label": "Добавить фото" });
-  const vis = community ? null : audienceSelect(state.me?.default_visibility || "public");
+  // на стене друга видимость задаёт хозяин стены — выбора аудитории нет
+  const vis = community || wall ? null : audienceSelect(state.me?.default_visibility || "public");
   const canAsCommunity = community && ["admin", "moderator"].includes(community.role);
   const asCommunity = canAsCommunity ? h("input", { type: "checkbox", checked: true }) : null;
   const submit = h("button.btn.primary", { type: "submit" }, "Опубликовать");
@@ -143,7 +144,7 @@ export function composer({ placeholder = "Что у вас нового?", quote
   ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) form.requestSubmit(); });
 
   // черновик: текст не пропадает, если окно закрыли или страница перезагрузилась
-  const draftKey = quote ? null : `krug-draft:${community ? `c${community.id}` : "me"}`;
+  const draftKey = quote ? null : `krug-draft:${community ? `c${community.id}` : wall ? `w${wall.id}` : "me"}`;
   const readDraft = () => { try { return draftKey ? localStorage.getItem(draftKey) || "" : ""; } catch { return ""; } };
   const writeDraft = (v) => { try { if (!draftKey) return; if (v.trim()) localStorage.setItem(draftKey, v); else localStorage.removeItem(draftKey); } catch { /* приватный режим */ } };
   let draftTimer = null;
@@ -173,6 +174,8 @@ export function composer({ placeholder = "Что у вас нового?", quote
       if (community) {
         fd.append("community_id", community.id);
         fd.append("as_community", asCommunity?.checked ? "1" : "0");
+      } else if (wall) {
+        fd.append("wall_id", wall.id);
       } else if (vis.value.startsWith("circle:")) {
         fd.append("visibility", "friends");
         fd.append("circle_id", vis.value.slice(7));
@@ -181,6 +184,7 @@ export function composer({ placeholder = "Что у вас нового?", quote
       if (music) fd.append("music", music.key);
       if (poll) fd.append("poll", JSON.stringify({ options: poll.options.map((o) => o.trim()).filter(Boolean), multiple: poll.multiple, days: poll.days }));
       for (const p of photos) { fd.append("photos", p.file); fd.append("alts", p.alt || ""); }
+      if (photos.some((p) => p.graffiti)) fd.append("graffiti", "1");
       await busy(submit, async () => {
         try {
           const post = await api.form("/api/posts", fd);
@@ -210,6 +214,12 @@ export function composer({ placeholder = "Что у вас нового?", quote
       h("button.btn.ghost.icon-only", { type: "button", title: "Добавить фото", "aria-label": "Добавить фото", onclick: () => fileInput.click() }, icon("image")),
       quote ? null : pollBtn,
       quote ? null : musicBtn,
+      quote || community ? null : h("button.btn.ghost.icon-only.gf-btn", { type: "button", title: "Граффити", "aria-label": "Нарисовать граффити", onclick: async () => {
+        if (photos.length >= MAX_PHOTOS) { toast(`Можно прикрепить не больше ${MAX_PHOTOS} картинок`, { error: true }); return; }
+        const { drawGraffiti } = await import("./graffiti.js");
+        const f = await drawGraffiti();
+        if (f) { photos.push({ file: f, url: URL.createObjectURL(f), alt: "Граффити", graffiti: true }); refresh(); }
+      } }, icon("brush")),
       vis,
       canAsCommunity ? h("label.check", { style: { fontSize: "13px" } }, asCommunity, `От имени сообщества`) : null,
       h("div.spacer"),
