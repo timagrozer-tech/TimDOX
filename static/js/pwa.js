@@ -71,6 +71,9 @@ function androidDialog() {
         h("li", "Если телефон спросит — разрешите установку из этого браузера: ", h("b", "«Настройки» → «Разрешить из этого источника»"), "."),
         h("li", "Нажмите ", h("b", "«Установить»"), " и войдите в Yarko.")),
       h("p.muted", "Приложение обновляется само вместе с сайтом. Нужен Android 7.0 или новее."),
+      h("p.muted", "Ещё у нас есть ", h("a", { href: "/static/player/index.html" }, h("b", "Ярко Плеер")),
+        " — офлайн-плеер для музыки с телефона, с эквалайзером и таймером сна: ",
+        h("a", { href: "/static/downloads/yarko-player.apk", download: "yarko-player.apk" }, "скачать для Android"), "."),
       deferred ? h("button.btn.ghost", { type: "button", onclick: async () => { m.close(); deferred.prompt(); await deferred.userChoice.catch(() => ({})); deferred = null; listeners.forEach((fn) => fn()); } },
         "Или установить без скачивания файла") : null),
   });

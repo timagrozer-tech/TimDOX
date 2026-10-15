@@ -6,15 +6,16 @@ import { TwaGenerator, TwaManifest, ConsoleLog } from "@bubblewrap/core";
 import Color from "color";
 
 const out = path.resolve(process.argv[2] || "android/project");
-const cfg = JSON.parse(fs.readFileSync(new URL("./app.json", import.meta.url), "utf8"));
-const web = JSON.parse(fs.readFileSync(new URL("../static/manifest.webmanifest", import.meta.url), "utf8"));
+// второй аргумент — файл настроек приложения (android/app.json — Yarko, android/player.json — Ярко Плеер)
+const cfg = JSON.parse(fs.readFileSync(path.resolve(process.argv[3] || "android/app.json"), "utf8"));
+const web = JSON.parse(fs.readFileSync(path.resolve(cfg.webManifest || "static/manifest.webmanifest"), "utf8"));
 
 // значки берём прямо из репозитория — сборка не зависит от того, отвечает ли сайт серверам GitHub
 const RAW = cfg.rawBase;
 web.icons = web.icons.map((i) => ({ ...i, src: RAW + i.src }));
 web.shortcuts = (web.shortcuts || []).map((s) => ({ ...s, icons: (s.icons || []).map((i) => ({ ...i, src: RAW + i.src })) }));
 
-const m = TwaManifest.fromWebManifestJson(new URL(`https://${cfg.host}/static/manifest.webmanifest`), web);
+const m = TwaManifest.fromWebManifestJson(new URL(`https://${cfg.host}/${cfg.webManifest || "static/manifest.webmanifest"}`), web);
 // цвета в bubblewrap — объекты из библиотеки color
 const col = (v) => Color(v);
 Object.assign(m, {
@@ -30,8 +31,8 @@ Object.assign(m, {
   fallbackType: "customtabs",
   orientation: "portrait",
   minSdkVersion: cfg.minSdkVersion,
-  iconUrl: RAW + "/static/img/icon-512.png",
-  maskableIconUrl: RAW + "/static/img/icon-maskable-512.png",
+  iconUrl: RAW + (cfg.iconPath || "/static/img/icon-512.png"),
+  maskableIconUrl: RAW + (cfg.maskableIconPath || "/static/img/icon-maskable-512.png"),
   signingKey: { path: "./unused.keystore", alias: "unused" },
   generatorApp: "yarko-ci",
 });

@@ -36,25 +36,23 @@ jobs:
           mkdir -p out
           npm init -y > /dev/null
           npm install --no-audit --no-fund @bubblewrap/core@1 color@4 2>&1 | tail -5 | tee out/build-log.txt
-          node android/generate.mjs build/project 2>&1 | tee -a out/build-log.txt
 
-      - name: Gradle assembleRelease
-        shell: bash
-        working-directory: build/project
-        run: |
-          set -o pipefail
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tail -80 | tee -a ../../out/build-log.txt
-
-      - name: Align APK
+      # каждое приложение — свой файл настроек: Yarko (app.json) и Ярко Плеер (player.json)
+      - name: Build and align APKs
         shell: bash
         run: |
           set -o pipefail
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          APK=$(find build/project -name "*release*unsigned*.apk" | head -1)
-          echo "build-tools: $BT, apk: $APK" | tee -a out/build-log.txt
-          "$BT/zipalign" -f -p 4 "$APK" out/yarko-unsigned.apk
-          "$BT/zipalign" -c -p 4 out/yarko-unsigned.apk | tail -1 | tee -a out/build-log.txt
+          for CFG in android/app.json android/player.json; do
+            NAME=$(node -e "console.log(require('./$CFG').output || 'yarko-unsigned.apk')")
+            DIR="build/$(basename "$CFG" .json)"
+            echo "== $CFG -> $NAME" | tee -a out/build-log.txt
+            node android/generate.mjs "$DIR" "$CFG" 2>&1 | tail -20 | tee -a out/build-log.txt
+            (cd "$DIR" && chmod +x gradlew && ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tail -40) | tee -a out/build-log.txt
+            APK=$(find "$DIR" -name "*release*unsigned*.apk" | head -1)
+            "$BT/zipalign" -f -p 4 "$APK" "out/$NAME"
+            "$BT/zipalign" -c -p 4 "out/$NAME" | tail -1 | tee -a out/build-log.txt
+          done
           ls -la out | tee -a out/build-log.txt
 
       - name: Publish to branch android-build

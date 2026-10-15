@@ -4,16 +4,18 @@ assetlinks.json подтверждает Android, что приложение sp
 во весь экран, без адресной строки. Отпечаток — открытая часть ключа подписи (не секрет).
 """
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, RedirectResponse
 from starlette.routing import Route
 
 PACKAGE = "space.yarko.app"
+# второе приложение — «Ярко Плеер» (офлайн-плеер своей музыки, /static/player/); подписано тем же ключом
+PACKAGES = (PACKAGE, "space.yarko.player")
 SHA256 = "88:C2:8E:0A:C0:16:67:9E:80:68:87:9D:89:AE:1B:CF:31:C0:B5:2F:EB:0E:7D:E8:F6:0C:A6:CE:E7:B3:46:F2"
 
 
-def statement() -> dict:
+def statement(package: str = PACKAGE) -> dict:
     return {"relation": ["delegate_permission/common.handle_all_urls"],
-            "target": {"namespace": "android_app", "package_name": PACKAGE, "sha256_cert_fingerprints": [SHA256]}}
+            "target": {"namespace": "android_app", "package_name": package, "sha256_cert_fingerprints": [SHA256]}}
 
 
 def merge_static_assetlinks(site) -> bool:
@@ -31,15 +33,20 @@ def merge_static_assetlinks(site) -> bool:
         return False
     if not isinstance(data, list):
         return False
-    for st in data:
-        t = (st or {}).get("target") or {}
-        if t.get("package_name") == PACKAGE:
-            if SHA256 in (t.get("sha256_cert_fingerprints") or []):
-                return False
-            t.setdefault("sha256_cert_fingerprints", []).append(SHA256)
-            break
-    else:
-        data.append(statement())
+    changed = False
+    for pkg in PACKAGES:
+        for st in data:
+            t = (st or {}).get("target") or {}
+            if t.get("package_name") == pkg:
+                if SHA256 not in (t.get("sha256_cert_fingerprints") or []):
+                    t.setdefault("sha256_cert_fingerprints", []).append(SHA256)
+                    changed = True
+                break
+        else:
+            data.append(statement(pkg))
+            changed = True
+    if not changed:
+        return False
     tmp = f.with_name("assetlinks.json.new")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     os.replace(tmp, f)
@@ -47,7 +54,12 @@ def merge_static_assetlinks(site) -> bool:
 
 
 async def assetlinks(request: Request):
-    return JSONResponse([statement()], headers={"Cache-Control": "public, max-age=3600", "Access-Control-Allow-Origin": "*"})
+    return JSONResponse([statement(p) for p in PACKAGES], headers={"Cache-Control": "public, max-age=3600", "Access-Control-Allow-Origin": "*"})
 
 
-routes = [Route("/.well-known/assetlinks.json", assetlinks, methods=["GET"])]
+async def player(request: Request):
+    return RedirectResponse("/static/player/index.html" + (("?" + request.url.query) if request.url.query else ""), status_code=302)
+
+
+routes = [Route("/.well-known/assetlinks.json", assetlinks, methods=["GET"]),
+          Route("/player", player, methods=["GET", "HEAD"]), Route("/player/", player, methods=["GET", "HEAD"])]

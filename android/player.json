@@ -1,0 +1,21 @@
+{
+  "packageId": "space.yarko.player",
+  "host": "xn--j1aie3d.space",
+  "name": "Ярко Плеер",
+  "launcherName": "Ярко Плеер",
+  "startUrl": "/static/player/index.html?source=android",
+  "webManifest": "static/player/manifest.webmanifest",
+  "iconPath": "/static/player/icon-512.png",
+  "maskableIconPath": "/static/player/icon-maskable-512.png",
+  "themeColor": "#4a6d93",
+  "navigationColor": "#ffffff",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#dae1e8",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#ffffff",
+  "versionName": "1.0.0",
+  "versionCode": 1,
+  "minSdkVersion": 24,
+  "output": "yarko-player-unsigned.apk",
+  "rawBase": "https://raw.githubusercontent.com/timagrozer-tech/TimDOX/krug-site"
+}

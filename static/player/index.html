@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ярко Плеер</title>
+<meta name="description" content="Офлайн-плеер для музыки с телефона: эквалайзер, спектр, плейлисты, таймер сна. Файлы не покидают устройство.">
+<meta name="theme-color" content="#4a6d93">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="player.css?v=1">
+</head>
+<body>
+<div class="app" id="app">
+  <header class="bar">
+    <div class="brand"><img src="icon-192.png" alt="" width="22" height="22"><b>Ярко</b> Плеер</div>
+    <div class="bar-act">
+      <button class="bar-btn" id="btnAdd" title="Добавить музыку" aria-label="Добавить музыку">＋ Музыка</button>
+      <button class="bar-btn icon" id="btnMenu" title="Настройки" aria-label="Настройки">⋯</button>
+    </div>
+  </header>
+
+  <section class="now" aria-label="Сейчас играет">
+    <div class="now-top">
+      <div class="cover" id="cover"><span id="coverText">♪</span><img id="coverImg" alt=""></div>
+      <div class="meta">
+        <div class="title" id="npTitle">Ничего не играет</div>
+        <div class="artist" id="npArtist">Добавьте песни с телефона</div>
+        <div class="badges"><span id="npBadge"></span><span id="sleepBadge" class="sleep-badge" hidden></span></div>
+      </div>
+      <button class="fav" id="btnFav" aria-label="В избранное" title="В избранное">☆</button>
+    </div>
+    <canvas class="viz" id="viz" height="64" aria-hidden="true"></canvas>
+    <div class="seek">
+      <span id="tCur">0:00</span>
+      <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Перемотка">
+      <span id="tDur">0:00</span>
+    </div>
+    <div class="controls">
+      <button class="ctl small" id="btnShuffle" aria-label="Перемешать" title="Перемешать">⤮</button>
+      <button class="ctl" id="btnPrev" aria-label="Предыдущая">⏮</button>
+      <button class="ctl play" id="btnPlay" aria-label="Играть">▶</button>
+      <button class="ctl" id="btnNext" aria-label="Следующая">⏭</button>
+      <button class="ctl small" id="btnRepeat" aria-label="Повтор" title="Повтор">↻</button>
+    </div>
+    <div class="subctl">
+      <label class="vol">🔈<input type="range" id="vol" min="0" max="100" value="90" aria-label="Громкость"></label>
+      <button class="chip" id="btnSleep">☾ Таймер сна</button>
+      <button class="chip" id="btnSpeed">1×</button>
+    </div>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="all" class="on">Все песни</button>
+    <button role="tab" data-tab="fav">Избранное</button>
+    <button role="tab" data-tab="lists">Плейлисты</button>
+    <button role="tab" data-tab="eq">Эквалайзер</button>
+  </nav>
+
+  <main class="pane" id="pane">
+    <div id="viewList">
+      <div class="list-head" id="listHead"></div>
+      <input class="search" id="search" type="search" placeholder="Поиск по песням и исполнителям" aria-label="Поиск">
+      <ol class="tracks" id="tracks"></ol>
+      <div class="empty" id="empty" hidden></div>
+    </div>
+    <div id="viewLists" hidden>
+      <div class="list-head"><span>Мои плейлисты</span><button class="link" id="btnNewList">Создать плейлист</button></div>
+      <ul class="lists" id="lists"></ul>
+    </div>
+    <div id="viewEq" hidden>
+      <div class="eq-head">
+        <label class="switch"><input type="checkbox" id="eqOn"> Эквалайзер включён</label>
+        <select id="eqPreset" aria-label="Пресет"></select>
+      </div>
+      <div class="eq" id="eq"></div>
+      <div class="eq-extra">
+        <label>Усиление <input type="range" id="preamp" min="-12" max="12" step="1" value="0"> <output id="preampOut">0 дБ</output></label>
+        <label>Ширина стерео <input type="range" id="stereo" min="0" max="200" step="10" value="100"> <output id="stereoOut">100%</output></label>
+      </div>
+      <p class="hint">Эквалайзер действует на все песни. Настройки сохраняются на этом устройстве.</p>
+    </div>
+  </main>
+
+  <footer class="foot">Песни хранятся только на этом устройстве · <a href="/" id="yarkoLink">ярко.space</a></footer>
+</div>
+
+<input type="file" id="file" accept="audio/*,.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac" multiple hidden>
+<div class="sheet-bg" id="sheetBg" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" hidden></div>
+<div class="toast" id="toast" role="status" hidden></div>
+<audio id="audio" preload="metadata"></audio>
+<script src="player.js?v=1" type="module"></script>
+</body>
+</html>

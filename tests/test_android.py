@@ -15,6 +15,15 @@ class AndroidTest(unittest.TestCase):
         self.assertEqual(t["package_name"], "space.yarko.app")
         self.assertRegex(t["sha256_cert_fingerprints"][0], r"^([0-9A-F]{2}:){31}[0-9A-F]{2}$")
         self.assertIn("delegate_permission/common.handle_all_urls", r.json()[0]["relation"])
+        self.assertEqual([x["target"]["package_name"] for x in r.json()], ["space.yarko.app", "space.yarko.player"])
+
+    def test_player_pages(self):
+        c = TestClient(app)
+        r = c.get("/player", follow_redirects=False)
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(r.headers["location"], "/static/player/index.html")
+        for f in ("index.html", "player.js", "player.css", "sw.js", "manifest.webmanifest", "icon-512.png"):
+            self.assertEqual(c.get("/static/player/" + f).status_code, 200, f)
 
     def test_merge_existing_static_file(self):
         """Чужая запись в уже существующем файле на хостинге сохраняется, запись Yarko добавляется один раз"""
@@ -27,7 +36,7 @@ class AndroidTest(unittest.TestCase):
         self.assertTrue(android.merge_static_assetlinks(d))
         self.assertFalse(android.merge_static_assetlinks(d))
         names = [x["target"]["package_name"] for x in json.load(open(path))]
-        self.assertEqual(names, ["other.app", "space.yarko.app"])
+        self.assertEqual(names, ["other.app", "space.yarko.app", "space.yarko.player"])
         self.assertFalse(android.merge_static_assetlinks(tempfile.mkdtemp()))  # файла нет — ничего не создаём
 
 
