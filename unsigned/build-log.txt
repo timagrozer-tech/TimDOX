@@ -1,0 +1,17 @@
+npm warn deprecated google-p12-pem@3.1.4: Package is no longer maintained
+npm warn deprecated @types/gapi.client.androidpublisher@3.0.2: use @types/gapi.client.androidpublisher-v3 instead; see https://github.com/Maxim-Mazurok/google-api-typings-generator/issues/652 for details
+npm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+
+added 265 packages in 9s
+/home/runner/work/TimDOX/TimDOX/node_modules/@bubblewrap/core/dist/lib/TwaManifest.js:173
+            themeColor: this.themeColor.hex(),
+                                        ^
+
+TypeError: this.themeColor.hex is not a function
+    at TwaManifest.toJson (/home/runner/work/TimDOX/TimDOX/node_modules/@bubblewrap/core/dist/lib/TwaManifest.js:173:41)
+    at file:///home/runner/work/TimDOX/TimDOX/android/generate.mjs:41:41
+    at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+    at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v20.20.2
