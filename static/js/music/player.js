@@ -5,10 +5,25 @@ import { h, icon } from "../dom.js";
 import { toast, toastError, showMenu } from "../ui.js";
 import { pushOverlay, navigate } from "../router.js";
 import { fmtDur, pauseLocalMedia } from "../components/mediakit.js";
+import { bindEq, openEqualizer, spectrum, eqActive } from "./eq.js";
 
 const STORE = "krug-player";
-const audio = new Audio();
-audio.preload = "metadata";
+// два «канала»: основной — для треков с нашего сервера (через него работает эквалайзер),
+// второй — для радио с чужих сайтов (браузер не даёт обрабатывать их звук, иначе была бы тишина)
+const mainEl = new Audio();
+const liveEl = new Audio();
+mainEl.preload = liveEl.preload = "metadata";
+let audio = mainEl;
+bindEq(mainEl);
+const sameOrigin = (url) => { try { return new URL(url, location.href).origin === location.origin; } catch { return true; } };
+function useElementFor(url) {
+  const want = sameOrigin(url) ? mainEl : liveEl;
+  if (want === audio) return;
+  const old = audio;
+  want.volume = old.volume;
+  audio = want;
+  old.pause(); old.removeAttribute("src"); old.load();
+}
 
 let queue = [];        // треки в порядке воспроизведения
 let original = null;   // порядок до перемешивания
@@ -185,6 +200,7 @@ function load(autoplay) {
   buffering = true;
   clearTimeout(skipTimer);
   loadSeq += 1;
+  useElementFor(streamUrl(t));
   audio.preload = "auto";
   audio.src = streamUrl(t);
   audio.currentTime = 0;
@@ -208,27 +224,32 @@ function onError(seq = loadSeq) {
   skipTimer = setTimeout(() => { if (seq === loadSeq) next(false, true); }, 700);
 }
 
+/** Событие от любого из двух каналов — но обрабатываем только тот, что сейчас играет */
+function onAudio(type, fn) {
+  for (const el of [mainEl, liveEl]) el.addEventListener(type, (e) => { if (el === audio) fn(e); });
+}
 let countedKey = "";
-audio.addEventListener("playing", () => {
+onAudio("playing", () => {
   errors = 0; buffering = false; notify();
   const t = current();
   // песни людей Yarko: счётчик прослушиваний (раз за включение трека)
   if (t?.source === "yarko" && countedKey !== t.key) { countedKey = t.key; api.post(`/api/music/songs/${t.id}/play`).catch(() => {}); }
 });
-audio.addEventListener("pause", notify);
-audio.addEventListener("waiting", () => { buffering = true; paintUi(); });
-audio.addEventListener("canplay", () => { buffering = false; paintUi(); });
-audio.addEventListener("ended", () => next(true));
-audio.addEventListener("error", () => { if (audio.getAttribute("src")) onError(); });
-audio.addEventListener("timeupdate", () => { paintTime(); if (Math.floor(audio.currentTime) % 5 === 0) save(); });
-audio.addEventListener("loadedmetadata", paintTime);
-audio.addEventListener("volumechange", () => save());
+onAudio("pause", notify);
+onAudio("waiting", () => { buffering = true; paintUi(); });
+onAudio("canplay", () => { buffering = false; paintUi(); });
+onAudio("ended", () => next(true));
+onAudio("error", () => { if (audio.getAttribute("src")) onError(); });
+onAudio("timeupdate", () => { paintTime(); if (Math.floor(audio.currentTime) % 5 === 0) save(); });
+onAudio("loadedmetadata", paintTime);
+onAudio("volumechange", () => save());
 
+window.addEventListener("krug:eq", () => full?.querySelector(".fp-eq-btn")?.classList.toggle("on", eqActive()));
 // чужое видео или голосовое со звуком — музыка на паузу
 window.addEventListener("krug:local-play", () => { if (!audio.paused) audio.pause(); });
 document.addEventListener("play", (e) => {
   const el = e.target;
-  if (el instanceof HTMLMediaElement && el !== audio && !el.muted && !audio.paused) audio.pause();
+  if (el instanceof HTMLMediaElement && el !== mainEl && el !== liveEl && !el.muted && !audio.paused) audio.pause();
 }, true);
 
 // ---------------------------------------------------------------- экран блокировки и наушники
@@ -269,6 +290,7 @@ function restore() {
     queue = s.queue; index = s.index; shuffle = !!s.shuffle; repeat = s.repeat || "off"; ctx = s.ctx || "";
     audio.volume = typeof s.vol === "number" ? Math.min(1, Math.max(0, s.vol)) : 1;
     const t = current();
+    useElementFor(streamUrl(t));
     audio.preload = "none"; // не тянем звук, пока человек не нажмёт «Играть»
     audio.src = streamUrl(t);
     if (s.t && !t.live) audio.addEventListener("loadedmetadata", () => { audio.currentTime = Math.min(s.t, (audio.duration || s.t) - 1); }, { once: true });
@@ -350,6 +372,7 @@ function buildFull() {
           h("div.fp-orbit", h("span.fp-planet")),
           h("div.fp-disc"),
           h("div.fp-hole")),
+        h("canvas.fp-spectrum", { width: 320, height: 44, "aria-hidden": "true" }),
         h("div.fp-info",
           h("div.fp-titles", h("h2.fp-title"), h("p.fp-artist")),
           h("span.fp-like-slot")),
@@ -363,6 +386,7 @@ function buildFull() {
           h("button.fp-icon.fp-repeat", { type: "button", "aria-label": "Повтор", onclick: () => cycleRepeat() }, icon("repeat"), h("small", "1"))),
         h("div.fp-extra",
           h("label.fp-volume", icon("volume", "sm"), vol),
+          h("button.fp-chip.fp-eq-btn", { type: "button", onclick: () => openEqualizer({ crossOrigin: audio === liveEl }) }, icon("eq", "sm"), "Эквалайзер"),
           h("button.fp-chip", { type: "button", onclick: () => shareTrack(current()) }, icon("share", "sm"), "В ленту"),
           h("button.fp-chip.fp-queue-btn", { type: "button", "aria-expanded": "false", onclick: () => (queueOpen ? closeQueue() : openQueue()) }, icon("list", "sm"), "Очередь"))),
       h("div.fp-scrim", { onclick: () => closeQueue() }),
@@ -429,6 +453,44 @@ export function openFull() {
   releaseOverlay = pushOverlay(() => closeFull(true));
   paintUi();
   full.querySelector(".fp-play").focus({ preventScroll: true });
+  drawSpectrum();
+}
+
+// ---------------------------------------------------------------- живой спектр под обложкой
+const BARS = 32;
+// на iPhone обработка звука может глушить музыку при выключенном экране — там спектр подключаем, только если включён эквалайзер
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const levels = new Float32Array(BARS), peaks = new Float32Array(BARS);
+let specRaf = 0;
+function drawSpectrum() {
+  cancelAnimationFrame(specRaf);
+  const cv = full?.querySelector(".fp-spectrum");
+  if (!cv) return;
+  const g = cv.getContext("2d");
+  const color = getComputedStyle(cv).color || "#5b7da3";
+  const tick = () => {
+    if (!full || full.hidden) { specRaf = 0; return; }
+    const W = cv.clientWidth || 320, H = cv.clientHeight || 44, dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    const playing = !audio.paused;
+    const live = playing && audio === mainEl && spectrum(levels, { connect: !IOS || eqActive() });
+    if (!live) for (let i = 0; i < BARS; i++) levels[i] = playing ? 0.12 + 0.1 * Math.abs(Math.sin(Date.now() / 260 + i * 0.7)) : levels[i] * 0.86;
+    g.clearRect(0, 0, cv.width, cv.height);
+    g.fillStyle = color;
+    const bw = cv.width / BARS, gap = Math.max(1, bw * 0.28);
+    for (let i = 0; i < BARS; i++) {
+      const v = Math.max(0.03, levels[i]);
+      peaks[i] = Math.max(v, peaks[i] - 0.012);
+      const bh = v * cv.height, x = i * bw + gap / 2;
+      g.globalAlpha = 0.85;
+      g.fillRect(x, cv.height - bh, bw - gap, bh);
+      g.globalAlpha = 0.5;
+      g.fillRect(x, cv.height - peaks[i] * cv.height - 2 * dpr, bw - gap, 2 * dpr); // «пики» сверху, как в старых плеерах
+    }
+    g.globalAlpha = 1;
+    specRaf = requestAnimationFrame(tick);
+  };
+  specRaf = requestAnimationFrame(tick);
 }
 let releaseQueue = null;
 const queueIsSheet = () => window.innerWidth < 900;
@@ -506,6 +568,7 @@ function placeMini() {
 window.addEventListener("resize", () => placeMini());
 
 function paintUi() {
+  full?.querySelector(".fp-eq-btn")?.classList.toggle("on", eqActive());
   const t = current();
   document.body.classList.toggle("has-player", !!t);
   if (!t) { if (mini) mini.hidden = true; return; }
@@ -615,6 +678,7 @@ export function trackMenu(anchor, t, { inPlayer = false } = {}) {
     t.permalink ? { label: t.source === "audius" ? "Открыть на Audius" : "Сайт станции", icon: "external", onClick: () => openUrl(t.permalink) } : null,
     inPlayer ? "-" : null,
     inPlayer ? { label: sleepAt ? `Таймер сна · ${Math.max(1, Math.round((sleepAt - Date.now()) / 60000))} мин` : "Таймер сна", icon: "moon", onClick: () => setTimeout(() => sleepMenu(anchor), 50) } : null,
+    inPlayer ? { label: "Эквалайзер", icon: "eq", onClick: () => openEqualizer({ crossOrigin: audio === liveEl }) } : null,
     inPlayer ? { label: "Раздел «Музыка»", icon: "music", onClick: () => { closeFull(); navigate("/music"); } } : null,
   ], { title: t.title });
 }

@@ -310,6 +310,9 @@ def open_audius_stream(tid: str, rng: str | None):
 def resolve(key: str) -> dict | None:
     """Проверенные данные трека по ключу вида source:id — клиенту на слово не верим."""
     source, _, tid = str(key or "").partition(":")
+    if source == "yk":  # песни людей Yarko — из своей базы
+        from .api import songs
+        return songs.resolve(str(key))
     try:
         if source == "audius":
             return audius_track(tid)

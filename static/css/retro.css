@@ -341,3 +341,74 @@
   :root[data-skin="retro"] .shop-tabs [role="tab"] { flex-direction: row !important; gap: 0; }
   :root[data-skin="retro"] .st-tile-label { white-space: normal; font-size: 12px; }
 }
+
+/* ---------- эквалайзер и спектр в «Ретро 2010» ---------- */
+:root[data-skin="retro"] .fp-spectrum { color: #5b7da3; }
+:root[data-skin="retro"] .fp-chip.fp-eq-btn.on { background: #5b7da3 !important; color: #fff !important; border-color: #4a6d93 !important; }
+:root[data-skin="retro"] .eq-chip { border-radius: 2px !important; background: #f0f3f7; border-color: #dae1e8; color: #2b587a; font-size: 12px; padding: 6px 10px; }
+:root[data-skin="retro"] .eq-chip:hover { background: #e1e7ef; }
+:root[data-skin="retro"] .eq-chip.on { background: #5b7da3; border-color: #4a6d93; color: #fff; }
+:root[data-skin="retro"] .eq-bands { border-radius: 2px !important; background: linear-gradient(#fafbfc, #eef2f6); border-color: #dae1e8; }
+:root[data-skin="retro"] .eq-range { accent-color: #5b7da3; }
+
+/* ---------- телефон: большой плеер — крупные кнопки внизу экрана, под большим пальцем ---------- */
+@media (max-width: 899px) {
+  :root[data-skin="retro"] .fp-main { display: flex !important; flex-direction: column; justify-content: flex-start; min-height: 100% !important; gap: 10px !important; }
+  :root[data-skin="retro"] .fp-stage { width: min(84vw, 42vh) !important; margin: 18px auto 0 !important; }
+  :root[data-skin="retro"] .fp-spectrum { margin-top: 8px; }
+  :root[data-skin="retro"] .fp-info { margin-top: auto; }
+  :root[data-skin="retro"] .fp-title { font-size: 19px !important; }
+  :root[data-skin="retro"] .fp-artist { font-size: 14.5px !important; }
+  :root[data-skin="retro"] .fp-range { height: 28px; }
+  :root[data-skin="retro"] .fp-range::-webkit-slider-runnable-track { height: 6px; }
+  :root[data-skin="retro"] .fp-range::-webkit-slider-thumb { width: 14px; height: 22px; margin-top: -9px; }
+  :root[data-skin="retro"] .fp-ctrls { gap: 4px !important; justify-content: space-between !important; padding: 4px 18px !important; }
+  :root[data-skin="retro"] .fp-ctrls .fp-icon { width: 54px !important; height: 54px !important; }
+  :root[data-skin="retro"] .fp-ctrls .fp-icon .icon { width: 24px !important; height: 24px !important; }
+  :root[data-skin="retro"] .fp-ctrls .fp-big .icon { width: 30px !important; height: 30px !important; }
+  :root[data-skin="retro"] .fp-play { width: 84px !important; height: 66px !important; }
+  :root[data-skin="retro"] .fp-play .icon { width: 30px !important; height: 30px !important; }
+  :root[data-skin="retro"] .fp-extra { display: grid !important; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 6px 18px 0 !important; }
+  :root[data-skin="retro"] .fp-extra .fp-volume { display: none !important; }
+  :root[data-skin="retro"] .fp-chip { justify-content: center; min-height: 46px; font-size: 13.5px !important; }
+}
+
+/* ---------- телефон: профиль — обложка-полоса, фото в белой рамке поверх неё, аккуратные счётчики ---------- */
+@media (max-width: 899px) {
+  :root[data-skin="retro"] .profile-card { overflow: hidden; padding-bottom: 4px !important; }
+  :root[data-skin="retro"] .profile-card .cover { display: block !important; height: 112px !important; margin: 0 !important; border-radius: 0 !important;
+    background: linear-gradient(135deg, #6d8fb3 0%, #4f7298 55%, #45688e 100%) !important; border-bottom: 1px solid #45688e; position: relative; }
+  :root[data-skin="retro"] .profile-card .cover::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(135deg, rgb(255 255 255 / .05) 0 2px, transparent 2px 9px); display: block !important; }
+  :root[data-skin="retro"] .profile-card .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  :root[data-skin="retro"] .profile-card .cover-btn { position: absolute; right: 8px; top: 8px; z-index: 2; padding: 5px 8px !important; min-height: 0 !important;
+    background: rgb(0 0 0 / .35) !important; color: #fff !important; border: 1px solid rgb(255 255 255 / .35) !important; font-size: 12px; }
+  :root[data-skin="retro"] .profile-card .cover-btn .cover-btn-text { display: none; }
+  :root[data-skin="retro"] .profile-card .avatar-slot { margin-top: -66px !important; position: relative; z-index: 1; align-self: center; }
+  :root[data-skin="retro"] .profile-card .avatar.xl { width: 128px !important; height: 128px !important; }
+  :root[data-skin="retro"] .profile-card .avatar-slot .pet { background: transparent !important; border: 0 !important; }
+  :root[data-skin="retro"] .profile-card .avatar-slot { padding: 4px; background: #fff; border: 1px solid #c5d0db; box-shadow: 0 2px 6px rgb(0 0 0 / .18); }
+  :root[data-skin="retro"] .profile-card .avatar-edit { right: 8px !important; bottom: 8px !important; width: 32px !important; height: 32px !important; }
+  :root[data-skin="retro"] .profile-name h1 { font-size: 20px !important; margin-top: 4px !important; }
+  :root[data-skin="retro"] .profile-meta { gap: 6px !important; row-gap: 4px !important; font-size: 13px; justify-content: center; flex-wrap: wrap; }
+  :root[data-skin="retro"] .profile-meta .official-chip, :root[data-skin="retro"] .profile-meta .profile-title { font-size: 12px !important; padding: 2px 7px !important;
+    box-shadow: none !important; }
+  :root[data-skin="retro"] .profile-status { font-size: 13px !important; color: #4c5a6a !important; background: #f5f7fa !important; border: 1px solid #e3e8ee !important;
+    padding: 5px 10px !important; min-height: 0 !important; }
+  :root[data-skin="retro"] .profile-status.empty { border-style: dashed !important; color: #828a99 !important; background: transparent !important; }
+  :root[data-skin="retro"] .profile-bio { font-size: 13.5px !important; color: #333; line-height: 1.45; padding: 0 6px; }
+  :root[data-skin="retro"] .profile-info { font-size: 13px !important; }
+  :root[data-skin="retro"] .profile-counts { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 0 !important; margin: 10px 0 4px !important;
+    border-top: 1px solid #e3e8ee; border-bottom: 1px solid #e3e8ee; background: #fafbfc; }
+  :root[data-skin="retro"] .profile-counts .stat { padding: 9px 2px !important; border-left: 1px solid #e3e8ee !important; min-width: 0; }
+  :root[data-skin="retro"] .profile-counts .stat:first-child { border-left: 0 !important; }
+  :root[data-skin="retro"] .profile-counts .stat b { font-size: 17px !important; color: #2b587a; display: block; }
+  :root[data-skin="retro"] .profile-counts .stat span { font-size: 11.5px !important; color: #828a99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  :root[data-skin="retro"] .profile-actions { display: flex !important; gap: 6px !important; padding: 6px 2px 2px; }
+  :root[data-skin="retro"] .profile-actions > * { flex: 1 1 auto; justify-content: center; }
+  :root[data-skin="retro"] .profile-actions > a.btn.outline:first-child { flex: 1 1 auto; justify-content: center; background: #5b7da3 !important; color: #fff !important; border: 1px solid #4a6d93 !important; }
+  :root[data-skin="retro"] .profile-actions > * { min-height: 40px !important; }
+  :root[data-skin="retro"] .profile-actions > .icon-only, :root[data-skin="retro"] .profile-actions > .stats-btn { flex: 0 0 44px; width: 44px; padding: 0 !important; justify-content: center; }
+  :root[data-skin="retro"] .profile-actions > .stats-btn span { display: none; }
+  :root[data-skin="retro"] .showcase-row, :root[data-skin="retro"] .profile-main > .card { margin-top: 6px; }
+}

@@ -69,6 +69,16 @@ class SongsTest(unittest.TestCase):
         no_file = self.lena.post("/api/music/songs", data={"title": "Без файла"})
         self.assertEqual(no_file.status_code, 400)
 
+    def test_song_in_post(self):
+        """Свою песню можно прикрепить к новой записи — в записи хранится проверенная копия трека"""
+        s = self.publish(self.lena, title="Песня для записи").json()
+        r = self.petr.post("/api/posts", data={"text": "Послушайте!", "music": s["key"]})
+        self.assertEqual(r.status_code, 201, r.text)
+        m = r.json()["music"]
+        self.assertEqual((m["key"], m["source"], m["stream"]), (s["key"], "yarko", s["stream"]))
+        bad = self.petr.post("/api/posts", data={"text": "x", "music": "yk:999999"})
+        self.assertEqual(bad.status_code, 400)
+
     def test_home_and_search_include_songs(self):
         s = self.publish(self.lena, title="Песня для поиска").json()
         home = self.petr.get("/api/music/home").json()
