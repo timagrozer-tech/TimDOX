@@ -28,7 +28,8 @@ Object.assign(m, {
   appVersionName: cfg.versionName,
   appVersionCode: cfg.versionCode,
   enableNotifications: true,
-  fallbackType: "customtabs",
+  // если на телефоне нет браузера с поддержкой TWA (или он не подтвердил сайт) — встроенное окно без адресной строки
+  fallbackType: cfg.fallbackType || "webview",
   orientation: "portrait",
   minSdkVersion: cfg.minSdkVersion,
   iconUrl: RAW + (cfg.iconPath || "/static/img/icon-512.png"),
