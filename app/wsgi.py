@@ -131,10 +131,24 @@ def _turn_report() -> None:
         _req_queue.append(("SYS", "/__turn-check", 500, 0, "", repr(e)[:120], os.getpid()))
 
 
+def _android_links() -> None:
+    """Android-приложение: запись Yarko в assetlinks.json хостинга (иначе в приложении видна адресная строка)"""
+    site = os.environ.get("YARKO_SITE")
+    if not site:
+        return
+    try:
+        from app import android
+        changed = android.merge_static_assetlinks(site)
+        _req_queue.append(("SYS", "/__assetlinks", 200, 0, "", "merged" if changed else "ok", os.getpid()))
+    except Exception as e:  # noqa: BLE001
+        _req_queue.append(("SYS", "/__assetlinks", 500, 0, "", repr(e)[:120], os.getpid()))
+
+
 def _become_leader() -> None:
     from app import selfupdate
     selfupdate.start()
     threading.Thread(target=_turn_report, name="turn-check", daemon=True).start()
+    threading.Thread(target=_android_links, name="assetlinks", daemon=True).start()
 
 
 if LEADER:
