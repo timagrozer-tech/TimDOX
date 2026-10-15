@@ -2,48 +2,8 @@ npm warn deprecated google-p12-pem@3.1.4: Package is no longer maintained
 npm warn deprecated @types/gapi.client.androidpublisher@3.0.2: use @types/gapi.client.androidpublisher-v3 instead; see https://github.com/Maxim-Mazurok/google-api-typings-generator/issues/652 for details
 npm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
 
-added 266 packages in 12s
-{
-  "packageId": "space.yarko.app",
-  "host": "xn--j1aie3d.space",
-  "name": "Yarko",
-  "launcherName": "Yarko",
-  "display": "standalone",
-  "themeColor": "#4A6D93",
-  "themeColorDark": "#000000",
-  "navigationColor": "#FFFFFF",
-  "navigationColorDark": "#000000",
-  "navigationDividerColor": "#DAE1E8",
-  "navigationDividerColorDark": "#000000",
-  "backgroundColor": "#FFFFFF",
-  "enableNotifications": true,
-  "startUrl": "/?source=android",
-  "iconUrl": "https://raw.githubusercontent.com/timagrozer-tech/TimDOX/krug-site/static/img/icon-512.png",
-  "maskableIconUrl": "https://raw.githubusercontent.com/timagrozer-tech/TimDOX/krug-site/static/img/icon-maskable-512.png",
-  "splashScreenFadeOutDuration": 300,
-  "signingKey": {
-    "path": "./unused.keystore",
-    "alias": "unused"
-  },
-  "appVersionName": "1.0.0",
-  "appVersionCode": 1,
-  "shortcuts": [
-    {
-      "name": "Сообщения",
-      "shortName": "Сообщения",
-      "url": "https://xn--j1aie3d.space/messages",
-      "chosenIconUrl": "https://raw.githubusercontent.com/timagrozer-tech/TimDOX/krug-site/static/img/icon-192.png"
-    },
-    {
-      "name": "Клипы",
-      "shortName": "Клипы",
-      "url": "https://xn--j1aie3d.space/reels",
-      "chosenIconUrl": "https://raw.githubusercontent.com/timagrozer-tech/TimDOX/krug-site/static/img/icon-192.png"
-    }
-  ],
-  "generatorApp": "yarko-ci",
-  "webManifestUrl": "https://xn--j1aie3d.space/static/manifest.webmanifest",
-  "fallbackType": "customtabs",
+added 266 packages in 11s
+== android/app.json -> yarko-unsigned.apk
   "features": {},
   "alphaDependencies": {
     "enabled": false
@@ -63,46 +23,11 @@ added 266 packages in 12s
   "displayOverride": [],
   "appVersion": "1.0.0"
 }
-project ready: /home/runner/work/TimDOX/TimDOX/build/project
-Downloading https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
-..................................................................................................................................
-
-Welcome to Gradle 8.11.1!
-
-Here are the highlights of this release:
- - Parallel load and store for Configuration Cache
- - Java compilation errors at the end of the build output
- - Consolidated report for warnings and deprecations
-
-For more details see https://docs.gradle.org/8.11.1/release-notes.html
-
-To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
-Daemon will be stopped at the end of the build 
-> Task :app:generateShorcutsFile UP-TO-DATE
-> Task :app:preBuild UP-TO-DATE
-> Task :app:preReleaseBuild UP-TO-DATE
-> Task :app:mergeReleaseJniLibFolders
-> Task :app:mergeReleaseNativeLibs NO-SOURCE
-> Task :app:stripReleaseDebugSymbols NO-SOURCE
-> Task :app:extractReleaseNativeSymbolTables NO-SOURCE
-> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
-> Task :app:javaPreCompileRelease
-> Task :app:checkReleaseDuplicateClasses
-> Task :app:checkReleaseAarMetadata
-> Task :app:generateReleaseResValues
-> Task :app:mapReleaseSourceSetPaths
-> Task :app:generateReleaseResources
-> Task :app:packageReleaseResources
-> Task :app:createReleaseCompatibleScreenManifests
-> Task :app:extractDeepLinksRelease
-> Task :app:parseReleaseLocalResources
-
-> Task :app:processReleaseMainManifest
-package="space.yarko.app" found in source AndroidManifest.xml: /home/runner/work/TimDOX/TimDOX/build/project/app/src/main/AndroidManifest.xml.
-Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
-Recommendation: remove package="space.yarko.app" from the source AndroidManifest.xml: /home/runner/work/TimDOX/TimDOX/build/project/app/src/main/AndroidManifest.xml.
+project ready: /home/runner/work/TimDOX/TimDOX/build/app
+Recommendation: remove package="space.yarko.app" from the source AndroidManifest.xml: /home/runner/work/TimDOX/TimDOX/build/app/app/src/main/AndroidManifest.xml.
 
 > Task :app:processReleaseManifest
+> Task :app:processReleaseManifestForPackage
 > Task :app:extractProguardFiles
 > Task :app:processReleaseJavaRes NO-SOURCE
 > Task :app:mergeReleaseArtProfile
@@ -117,7 +42,6 @@ Recommendation: remove package="space.yarko.app" from the source AndroidManifest
 > Task :app:sdkReleaseDependencyData
 > Task :app:writeReleaseAppMetadata
 > Task :app:writeReleaseSigningConfigVersions
-> Task :app:processReleaseManifestForPackage
 > Task :app:mergeReleaseJavaResource
 > Task :app:mergeReleaseResources
 > Task :app:processReleaseResources
@@ -130,7 +54,7 @@ Recommendation: remove package="space.yarko.app" from the source AndroidManifest
 > Task :app:packageRelease
 > Task :app:createReleaseApkListingFileRedirect
 > Task :app:assembleRelease
-[Incubating] Problems report is available at: file:///home/runner/work/TimDOX/TimDOX/build/project/build/reports/problems/problems-report.html
+[Incubating] Problems report is available at: file:///home/runner/work/TimDOX/TimDOX/build/app/build/reports/problems/problems-report.html
 
 Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
 
@@ -138,11 +62,26 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 1m 12s
+BUILD SUCCESSFUL in 59s
 36 actionable tasks: 36 executed
-build-tools: /usr/local/lib/android/sdk/build-tools/37.0.0, apk: build/project/app/build/outputs/apk/release/app-release-unsigned.apk
-total 2336
-drwxr-xr-x  2 runner runner    4096 Oct 15 11:27 .
-drwxr-xr-x 14 runner runner    4096 Oct 15 11:26 ..
--rw-r--r--  1 runner runner    6363 Oct 15 11:27 build-log.txt
--rw-r--r--  1 runner runner 2373739 Oct 15 11:27 yarko-unsigned.apk
+== android/player.json -> yarko-player-unsigned.apk
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "launchHandlerClientMode": "",
+  "displayOverride": [],
+  "appVersion": "1.0.0"
+}
+<anonymous_script>:1
+<!doctype html>
+^
+
+SyntaxError: Unexpected token '<', "<!doctype "... is not valid JSON
+    at JSON.parse (<anonymous>)
+    at TwaGenerator.writeWebManifest (/home/runner/work/TimDOX/TimDOX/node_modules/@bubblewrap/core/dist/lib/TwaGenerator.js:225:38)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async TwaGenerator.createTwaProject (/home/runner/work/TimDOX/TimDOX/node_modules/@bubblewrap/core/dist/lib/TwaGenerator.js:352:13)
+    at async file:///home/runner/work/TimDOX/TimDOX/android/generate.mjs:45:1
+
+Node.js v20.20.2
