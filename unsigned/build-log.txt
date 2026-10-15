@@ -2,7 +2,7 @@ npm warn deprecated google-p12-pem@3.1.4: Package is no longer maintained
 npm warn deprecated @types/gapi.client.androidpublisher@3.0.2: use @types/gapi.client.androidpublisher-v3 instead; see https://github.com/Maxim-Mazurok/google-api-typings-generator/issues/652 for details
 npm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
 
-added 266 packages in 11s
+added 266 packages in 9s
 {
   "packageId": "space.yarko.app",
   "host": "xn--j1aie3d.space",
@@ -103,10 +103,10 @@ Setting the namespace via the package attribute in the source AndroidManifest.xm
 Recommendation: remove package="space.yarko.app" from the source AndroidManifest.xml: /home/runner/work/TimDOX/TimDOX/build/project/app/src/main/AndroidManifest.xml.
 
 > Task :app:processReleaseManifest
-> Task :app:mergeReleaseArtProfile
+> Task :app:processReleaseManifestForPackage
 > Task :app:extractProguardFiles
 > Task :app:processReleaseJavaRes NO-SOURCE
-> Task :app:processReleaseManifestForPackage
+> Task :app:mergeReleaseArtProfile
 > Task :app:mergeReleaseStartupProfile
 > Task :app:mergeReleaseShaders
 > Task :app:compileReleaseShaders NO-SOURCE
@@ -117,8 +117,8 @@ Recommendation: remove package="space.yarko.app" from the source AndroidManifest
 > Task :app:collectReleaseDependencies
 > Task :app:sdkReleaseDependencyData
 > Task :app:writeReleaseAppMetadata
-> Task :app:mergeReleaseJavaResource
 > Task :app:writeReleaseSigningConfigVersions
+> Task :app:mergeReleaseJavaResource
 > Task :app:mergeReleaseResources
 > Task :app:processReleaseResources
 > Task :app:compileReleaseJavaWithJavac
@@ -138,11 +138,11 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 1m 7s
+BUILD SUCCESSFUL in 1m 14s
 36 actionable tasks: 36 executed
 build-tools: /usr/local/lib/android/sdk/build-tools/37.0.0, apk: build/project/app/build/outputs/apk/release/app-release-unsigned.apk
 total 2336
-drwxr-xr-x  2 runner runner    4096 Oct 15 11:06 .
-drwxr-xr-x 14 runner runner    4096 Oct 15 11:04 ..
--rw-r--r--  1 runner runner    6362 Oct 15 11:06 build-log.txt
--rw-r--r--  1 runner runner 2373739 Oct 15 11:06 yarko-unsigned.apk
+drwxr-xr-x  2 runner runner    4096 Oct 15 11:16 .
+drwxr-xr-x 14 runner runner    4096 Oct 15 11:15 ..
+-rw-r--r--  1 runner runner    6362 Oct 15 11:16 build-log.txt
+-rw-r--r--  1 runner runner 2373739 Oct 15 11:16 yarko-unsigned.apk
