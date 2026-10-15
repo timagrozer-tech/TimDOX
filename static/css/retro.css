@@ -461,3 +461,7 @@
   background: none !important; box-shadow: none !important; border-radius: 0 !important; opacity: 0; }
 :root[data-skin="retro"] .setting-row input[type="checkbox"]:checked, :root[data-skin="retro"] .switch:checked, :root[data-skin="retro"] .guest-toggle input[type="checkbox"]:checked, :root[data-skin="retro"] label.check.switchy input[type="checkbox"]:checked { background: #5b7da3 !important; border-color: #4a6d93 !important; }
 :root[data-skin="retro"] .setting-row input[type="checkbox"]:checked::after, :root[data-skin="retro"] .switch:checked::after, :root[data-skin="retro"] .guest-toggle input[type="checkbox"]:checked::after, :root[data-skin="retro"] label.check.switchy input[type="checkbox"]:checked::after { opacity: 1; }
+/* «Сейчас слушает» — отдельной строкой, статус ниже */
+:root[data-skin="retro"] .np-line { flex-basis: 100%; max-width: 100%; }
+@media (max-width: 899px) { :root[data-skin="retro"] .np-line { justify-content: center; } }
+@media (min-width: 900px) { :root[data-skin="retro"] .np-line { justify-content: flex-start; } }
