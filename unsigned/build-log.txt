@@ -86,8 +86,8 @@ Daemon will be stopped at the end of the build
 > Task :app:stripReleaseDebugSymbols NO-SOURCE
 > Task :app:extractReleaseNativeSymbolTables NO-SOURCE
 > Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
-> Task :app:javaPreCompileRelease
 > Task :app:checkReleaseDuplicateClasses
+> Task :app:javaPreCompileRelease
 > Task :app:checkReleaseAarMetadata
 > Task :app:generateReleaseResValues
 > Task :app:mapReleaseSourceSetPaths
@@ -115,10 +115,10 @@ Recommendation: remove package="space.yarko.app" from the source AndroidManifest
 > Task :app:compressReleaseAssets
 > Task :app:extractReleaseVersionControlInfo
 > Task :app:collectReleaseDependencies
+> Task :app:mergeReleaseJavaResource
 > Task :app:sdkReleaseDependencyData
 > Task :app:writeReleaseAppMetadata
 > Task :app:writeReleaseSigningConfigVersions
-> Task :app:mergeReleaseJavaResource
 > Task :app:mergeReleaseResources
 > Task :app:processReleaseResources
 > Task :app:compileReleaseJavaWithJavac
@@ -138,11 +138,11 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 1m 14s
+BUILD SUCCESSFUL in 1m
 36 actionable tasks: 36 executed
 build-tools: /usr/local/lib/android/sdk/build-tools/37.0.0, apk: build/project/app/build/outputs/apk/release/app-release-unsigned.apk
 total 2336
-drwxr-xr-x  2 runner runner    4096 Oct 15 11:16 .
-drwxr-xr-x 14 runner runner    4096 Oct 15 11:15 ..
--rw-r--r--  1 runner runner    6362 Oct 15 11:16 build-log.txt
--rw-r--r--  1 runner runner 2373739 Oct 15 11:16 yarko-unsigned.apk
+drwxr-xr-x  2 runner runner    4096 Oct 15 11:24 .
+drwxr-xr-x 14 runner runner    4096 Oct 15 11:23 ..
+-rw-r--r--  1 runner runner    6358 Oct 15 11:24 build-log.txt
+-rw-r--r--  1 runner runner 2373739 Oct 15 11:24 yarko-unsigned.apk
