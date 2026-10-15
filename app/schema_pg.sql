@@ -1064,3 +1064,9 @@ ALTER TABLE reels ADD COLUMN IF NOT EXISTS comments_off INTEGER NOT NULL DEFAULT
 ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified_at TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone) WHERE phone IS NOT NULL;
+
+-- «Транслировать аудио в статус» и поиск друзей по номеру телефона
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS music_status INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS now_playing TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS now_playing_at TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS find_by_phone INTEGER NOT NULL DEFAULT 1;

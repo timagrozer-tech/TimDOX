@@ -412,3 +412,9 @@
   :root[data-skin="retro"] .profile-actions > .stats-btn span { display: none; }
   :root[data-skin="retro"] .showcase-row, :root[data-skin="retro"] .profile-main > .card { margin-top: 6px; }
 }
+
+/* «Транслировать аудио в статус» — строка с нотой, как раньше */
+:root[data-skin="retro"] .np-line { background: transparent !important; padding: 2px 0 !important; color: #2b587a !important; font-size: 12.5px; margin: 2px 0 0 !important; }
+:root[data-skin="retro"] .np-line .icon { color: #6d8fb3; }
+:root[data-skin="retro"] .np-line b { font-weight: 700; }
+:root[data-skin="retro"] .np-line:hover .np-text { text-decoration: underline; }

@@ -38,6 +38,7 @@ def me_payload(request: Request) -> dict:
             "phone": db.value("SELECT phone FROM users WHERE id=?", (u["id"],)) or "",
             "avatar": u["avatar"], "theme": u["theme"], "appearance": parse_appearance(u["appearance"]), "background": u["background"], "default_visibility": u["default_visibility"], "email_verified": bool(u["email_verified_at"]),
             "is_admin": bool(u["is_admin"]),
+            "music_status": bool(db.value("SELECT music_status FROM profiles WHERE user_id=?", (u["id"],))),
         },
         "csrf": request.state.session["csrf"],
         "counters": social.counters(u["id"]),

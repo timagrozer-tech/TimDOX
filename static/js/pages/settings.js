@@ -392,6 +392,14 @@ export async function settingsPage({ query = {} } = {}) {
   }
 
   const invisible = h("input", { type: "checkbox", checked: s.invisible, "aria-label": "Режим невидимки" });
+  const musicStatus = h("input", { type: "checkbox", checked: s.music_status, "aria-label": "Транслировать аудио в статус" });
+  musicStatus.addEventListener("change", async () => {
+    try { await api.patch("/api/me/settings", { music_status: musicStatus.checked }); if (state.me) state.me.music_status = musicStatus.checked; toast("Сохранено", { icon: "check", duration: 1800 }); } catch (e) { toastError(e); }
+  });
+  const findByPhone = h("input", { type: "checkbox", checked: s.find_by_phone, "aria-label": "Находить меня по номеру телефона" });
+  findByPhone.addEventListener("change", async () => {
+    try { await api.patch("/api/me/settings", { find_by_phone: findByPhone.checked }); toast("Сохранено", { icon: "check", duration: 1800 }); } catch (e) { toastError(e); }
+  });
   invisible.addEventListener("change", async () => {
     try { await api.patch("/api/me/settings", { invisible: invisible.checked }); toast("Сохранено", { icon: "check", duration: 1800 }); } catch (e) { toastError(e); }
   });
@@ -570,7 +578,9 @@ export async function settingsPage({ query = {} } = {}) {
         settingRow("Кто может писать", null, privacy.message_privacy),
         settingRow("Кто видит друзей", null, privacy.friends_visibility),
         settingRow("Новые записи по умолчанию", "Можно изменить при публикации", privacy.default_visibility),
-        settingRow("Режим невидимки", "Не показываться в «Гостях»", invisible)),
+        settingRow("Режим невидимки", "Не показываться в «Гостях»", invisible),
+        settingRow("Транслировать аудио в статус", "На вашей странице видно, какую песню вы сейчас слушаете", musicStatus),
+        settingRow("Находить меня по номеру телефона", "Друзья, у которых записан ваш номер, увидят вас в «Найти друзей по контактам»", findByPhone)),
       section("Круги", "Списки друзей, для которых можно публиковать отдельно — например, только для близких.", circlesBox)]],
     ["security", "Защита", "shield", () => [
       section("Двухфакторная защита", "Помимо пароля при входе нужен код из приложения на вашем телефоне.", twoFactorBox()),

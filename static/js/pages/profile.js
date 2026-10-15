@@ -152,6 +152,7 @@ export async function profilePage({ params, query }) {
             u.badge ? h("span.official-chip", u.badge) : null,
             data.title ? h("span.profile-title", { dataset: data.title_style ? { style: data.title_style } : {} }, data.title) : null,
             !isMe && rel.follows_you && rel.status !== "friends" ? h("span.meta-note", "подписан(а) на вас") : null),
+          nowPlayingLine(),
           statusChip()),
         u.ai ? personaBox() : null,
         shown("about") && data.bio && !data.hidden ? h("p.profile-bio", data.bio) : null,
@@ -187,6 +188,16 @@ export async function profilePage({ params, query }) {
   function stat(n, forms, onClick) {
     if (n == null) return null;
     return h("button.stat", { type: "button", onclick: onClick }, h("b", String(n)), h("span", pl(n, forms).split(" ")[1]));
+  }
+
+  // «Сейчас слушает» — как трансляция аудио в статус раньше: нажали — заиграла та же песня
+  function nowPlayingLine() {
+    const t = data.now_playing;
+    if (!t) return null;
+    return h("button.np-line", { type: "button", title: "Слушать", onclick: async () => {
+      const m = await import("../music/player.js");
+      m.playQueue([t], 0, `Сейчас слушает ${u.name.split(" ")[0]}`);
+    } }, icon("music", "sm"), h("span.np-text", h("b", t.artist || ""), t.artist ? " — " : "", t.title));
   }
 
   function statusChip() {

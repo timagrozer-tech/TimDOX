@@ -234,7 +234,27 @@ onAudio("playing", () => {
   const t = current();
   // песни людей Yarko: счётчик прослушиваний (раз за включение трека)
   if (t?.source === "yarko" && countedKey !== t.key) { countedKey = t.key; api.post(`/api/music/songs/${t.id}/play`).catch(() => {}); }
+  broadcast(t);
 });
+
+// «Транслировать аудио в статус»: друзья видят на странице, что вы сейчас слушаете (включается в меню плеера)
+let broadcastKey = "", broadcastAt = 0;
+function broadcast(t) {
+  if (!t || !state.me?.music_status) return;
+  // тот же трек — не чаще раза в 10 минут (чтобы строка «сейчас слушает» не устаревала на длинных станциях)
+  if (t.key === broadcastKey && Date.now() - broadcastAt < 600000) return;
+  broadcastKey = t.key; broadcastAt = Date.now();
+  api.post("/api/me/now-playing", { key: t.key }).catch(() => {});
+}
+export async function setBroadcast(on) {
+  try {
+    await api.patch("/api/me/settings", { music_status: on });
+    if (state.me) state.me.music_status = on;
+    broadcastKey = "";
+    if (on && !audio.paused) broadcast(current());
+    toast(on ? "Теперь на вашей странице видно, что вы слушаете" : "Трансляция в статус выключена", { icon: "check", duration: 2200 });
+  } catch (e) { toastError(e); }
+}
 onAudio("pause", notify);
 onAudio("waiting", () => { buffering = true; paintUi(); });
 onAudio("canplay", () => { buffering = false; paintUi(); });
@@ -678,6 +698,7 @@ export function trackMenu(anchor, t, { inPlayer = false } = {}) {
     t.permalink ? { label: t.source === "audius" ? "Открыть на Audius" : "Сайт станции", icon: "external", onClick: () => openUrl(t.permalink) } : null,
     inPlayer ? "-" : null,
     inPlayer ? { label: sleepAt ? `Таймер сна · ${Math.max(1, Math.round((sleepAt - Date.now()) / 60000))} мин` : "Таймер сна", icon: "moon", onClick: () => setTimeout(() => sleepMenu(anchor), 50) } : null,
+    inPlayer ? { label: state.me?.music_status ? "Транслировать в статус ✓" : "Транслировать в статус", icon: "radio", onClick: () => setBroadcast(!state.me?.music_status) } : null,
     inPlayer ? { label: "Эквалайзер", icon: "eq", onClick: () => openEqualizer({ crossOrigin: audio === liveEl }) } : null,
     inPlayer ? { label: "Раздел «Музыка»", icon: "music", onClick: () => { closeFull(); navigate("/music"); } } : null,
   ], { title: t.title });

@@ -44,6 +44,42 @@ def _can_see_friends(v: int, prof: dict) -> bool:
     return vis == "public" or (vis == "friends" and social.are_friends(v, uid))
 
 
+NOW_PLAYING_FRESH_MIN = 15
+
+
+def now_playing_of(p: dict) -> dict | None:
+    """«Сейчас слушает» — только если человек сам включил трансляцию и трек свежий (не старше 15 минут)"""
+    if not p.get("music_status") or not p.get("now_playing") or not p.get("now_playing_at"):
+        return None
+    if p["now_playing_at"] < db.future(minutes=-NOW_PLAYING_FRESH_MIN):
+        return None
+    try:
+        return json.loads(p["now_playing"])
+    except (TypeError, ValueError):
+        return None
+
+
+@auth()
+async def now_playing_set(request: Request):
+    """Плеер сообщает, что включился новый трек. Данные трека берём из источника, а не от клиента"""
+    limit(request, "song_play")
+    v = request.state.user["id"]
+    if request.method == "DELETE":
+        db.run("UPDATE profiles SET now_playing=NULL WHERE user_id=?", (v,))
+        return ok()
+    if not db.value("SELECT music_status FROM profiles WHERE user_id=?", (v,)):
+        return ok({"broadcast": False})
+    d = await body(request)
+    from .. import music
+    from starlette.concurrency import run_in_threadpool
+    track = music.public(await run_in_threadpool(music.resolve, str(d.get("key") or "")[:100]))
+    if not track:
+        return ok({"broadcast": False})
+    keep = {k: track[k] for k in ("key", "source", "id", "title", "artist", "artwork", "duration", "stream", "live") if k in track}
+    db.run("UPDATE profiles SET now_playing=?, now_playing_at=? WHERE user_id=?", (json.dumps(keep, ensure_ascii=False), db.now(), v))
+    return ok({"broadcast": True})
+
+
 @auth()
 async def profile(request: Request):
     v = request.state.user["id"]
@@ -90,6 +126,9 @@ async def profile(request: Request):
     if uid != v and not rel["blocked_by_me"]:
         from .people_extra import record_visit
         record_visit(uid, v)
+    np = now_playing_of(p) if full else None
+    if np:
+        data["now_playing"] = np
     if full:
         data.update({
             "bio": p["bio"], "city": p["city"], "education": p["education"], "work": p["work"],
@@ -416,6 +455,9 @@ async def settings_get(request: Request):
     p["phone"] = db.value("SELECT phone FROM users WHERE id=?", (u["id"],)) or ""
     p["show_birth_date"] = bool(p["show_birth_date"])
     p["invisible"] = bool(p["invisible"])
+    p["music_status"] = bool(p.get("music_status"))
+    p["find_by_phone"] = bool(p.get("find_by_phone", 1))
+    p.pop("now_playing", None); p.pop("now_playing_at", None)
     p["appearance"] = parse_appearance(p["appearance"])
     pend = email_codes.pending(u["id"], "email_change")
     p["pending_email"] = pend["new_email"] if pend else None
@@ -567,6 +609,12 @@ async def settings_update(request: Request):
                 sets.append(f"{field}=?"); params.append(year)
     if "invisible" in data:
         sets.append("invisible=?"); params.append(1 if data["invisible"] else 0)
+    if "music_status" in data:
+        sets.append("music_status=?"); params.append(1 if data["music_status"] else 0)
+        if not data["music_status"]:
+            sets.append("now_playing=NULL")
+    if "find_by_phone" in data:
+        sets.append("find_by_phone=?"); params.append(1 if data["find_by_phone"] else 0)
     if "show_birth_date" in data:
         sets.append("show_birth_date=?")
         params.append(1 if data["show_birth_date"] else 0)
@@ -838,6 +886,7 @@ routes = [
     Route("/api/me/settings", settings_get, methods=["GET"]),
     Route("/api/me/settings", settings_update, methods=["PATCH"]),
     Route("/api/me/status", set_status, methods=["PATCH", "DELETE"]),
+    Route("/api/me/now-playing", now_playing_set, methods=["POST", "DELETE"]),
     Route("/api/me/email", email_change, methods=["POST"]),
     Route("/api/me/phone", phone_change, methods=["POST"]),
     Route("/api/me/email/confirm", email_confirm, methods=["POST"]),
