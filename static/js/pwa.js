@@ -8,8 +8,11 @@ const listeners = new Set();
 export const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-/** Можно ли предложить установку (Chrome/Edge/Android — кнопкой, iPhone — инструкцией) */
-export const canInstall = () => !isStandalone() && (!!deferred || isIOS());
+const isAndroid = () => /android/i.test(navigator.userAgent);
+export const APK_URL = "/static/downloads/yarko.apk";
+
+/** Можно ли предложить установку (Android — приложение из файла, Chrome/Edge — кнопкой, iPhone — инструкцией) */
+export const canInstall = () => !isStandalone() && (isAndroid() || !!deferred || isIOS());
 
 export function onInstallChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
@@ -36,6 +39,7 @@ export function initPwa() {
 }
 
 export async function install() {
+  if (isAndroid()) { androidDialog(); return; }
   if (deferred) {
     deferred.prompt();
     const { outcome } = await deferred.userChoice.catch(() => ({}));
@@ -56,8 +60,25 @@ export async function install() {
   });
 }
 
+/** Android: своё приложение Yarko (файл APK с сайта) — на весь экран, с уведомлениями и своим значком */
+function androidDialog() {
+  const m = modal({
+    title: "Приложение Yarko для Android", narrow: true,
+    body: h("div.stack.install-steps",
+      h("a.btn.primary.apk-btn", { href: APK_URL, download: "yarko.apk" }, icon("download", "sm"), "Скачать приложение"),
+      h("ol",
+        h("li", "Откройте скачанный файл ", h("b", "yarko.apk"), " (в уведомлении о загрузке или в «Загрузках»)."),
+        h("li", "Если телефон спросит — разрешите установку из этого браузера: ", h("b", "«Настройки» → «Разрешить из этого источника»"), "."),
+        h("li", "Нажмите ", h("b", "«Установить»"), " и войдите в Yarko.")),
+      h("p.muted", "Приложение обновляется само вместе с сайтом. Нужен Android 7.0 или новее."),
+      deferred ? h("button.btn.ghost", { type: "button", onclick: async () => { m.close(); deferred.prompt(); await deferred.userChoice.catch(() => ({})); deferred = null; listeners.forEach((fn) => fn()); } },
+        "Или установить без скачивания файла") : null),
+  });
+}
+
 export function installButton(cls = "btn.soft") {
-  const btn = h(`button.${cls}`, { type: "button", onclick: install }, icon("install", "sm"), "Установить приложение");
+  const label = isAndroid() ? "Приложение для Android" : "Установить приложение";
+  const btn = h(`button.${cls}`, { type: "button", onclick: install }, icon("install", "sm"), label);
   const paint = () => { btn.hidden = !canInstall(); };
   paint();
   onInstallChange(paint);
