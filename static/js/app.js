@@ -69,6 +69,7 @@ const P = {
   world: () => import("./pages/world.js"), stats: () => import("./pages/stats.js"), invite: () => import("./pages/invite.js"),
   wallet: () => import("./pages/wallet.js"), shop: () => import("./pages/shop.js"), market: () => import("./pages/market.js"),
   welcome: () => import("./pages/welcome.js"), music: () => import("./pages/music.js"), artists: () => import("./music/artists.js"),
+  playlists: () => import("./music/playlists.js"),
 };
 const legalPage = (kind) => (...args) => P.legal().then((m) => m.legalPage(kind)(...args));
 const profilePage = lazy(P.profile, "profilePage"), postPage = lazy(P.post, "postPage"), friendsPage = lazy(P.friends, "friendsPage");
@@ -143,6 +144,7 @@ route("/music", musicPage);
 route("/music/genre/:slug", genrePage);
 route("/music/artist/:username", artistPage);
 route("/music/album/:id", albumPage);
+route("/music/my/:id", lazy(P.playlists, "myPlaylistPage"));
 route("/music/playlist/:id", playlistPage);
 route("/admin", adminPage);
 route("/world", worldPage);

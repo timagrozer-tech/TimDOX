@@ -441,3 +441,13 @@
 :root[data-skin="retro"] .start-step b { font-size: 12.5px; color: #2b587a; }
 :root[data-skin="retro"] .start-step small { font-size: 11.5px; }
 :root[data-skin="retro"] .start-ic { width: 22px; height: 22px; background: #e1e7ef; color: #45688e; }
+
+/* ---------- свои плейлисты в «Ретро 2010» ---------- */
+:root[data-skin="retro"] .upl { padding: 6px; border: 1px solid #e3e8ee; background: #fff; }
+:root[data-skin="retro"] .upl:hover { border-color: #c5d0db; background: #f7f9fb; }
+:root[data-skin="retro"] .upl b { font-size: 12.5px; color: #2b587a; }
+:root[data-skin="retro"] .upl small { font-size: 11.5px; color: #828a99; }
+:root[data-skin="retro"] .upl-art { border: 1px solid #d3dbe4; box-shadow: 0 1px 3px rgb(0 0 0 / .12) !important; background: #6d8fb3 !important; }
+:root[data-skin="retro"] .upl-pick-row:hover { background: #f0f3f7; }
+:root[data-skin="retro"] .upl-pick-row b { font-size: 13px; color: #2b587a; }
+:root[data-skin="retro"] .upl-head > .upl-art { width: 96px; height: 96px; }

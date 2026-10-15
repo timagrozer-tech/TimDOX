@@ -129,12 +129,12 @@ async function russianTab(box) {
 }
 
 async function myTab(box) {
-  const d = await api.get("/api/music/likes");
+  const [d, shelfEl] = await Promise.all([api.get("/api/music/likes"), import("../music/playlists.js").then((m) => m.playlistsShelf())]);
   setLiked(d.items.map((t) => t.key));
   if (!d.items.length) {
     box.replaceChildren(h("div.card.empty.mu-empty", h("span.mu-empty-ic", icon("heart")), h("h2", "Здесь будет ваша музыка"),
       h("p", "Нажимайте ♥ у треков и радиостанций — они соберутся здесь, а «Волна Yarko» начнёт подстраиваться под ваш вкус."),
-      h("a.btn.primary", { href: "/music" }, "Найти музыку")));
+      h("a.btn.primary", { href: "/music" }, "Найти музыку")), shelfEl);
     return;
   }
   const tracks = d.items.filter((t) => !t.live), stations = d.items.filter((t) => t.live);
@@ -145,6 +145,7 @@ async function myTab(box) {
       h("div.mu-mine-btns",
         tracks.length ? h("button.btn.primary", { type: "button", onclick: () => { setShuffle(false); playQueue(tracks, 0, "Моя музыка"); } }, icon("play", "sm"), "Слушать") : null,
         tracks.length > 2 ? h("button.btn.soft", { type: "button", onclick: () => { playQueue(tracks, Math.floor(Math.random() * tracks.length), "Моя музыка"); setShuffle(true); } }, icon("shuffle", "sm"), "Вперемешку") : null)),
+    shelfEl,
     tracks.length ? h("div.card.mu-card", trackList(tracks, "Моя музыка")) : null,
     stations.length ? h("section.mu-shelf", h("div.mu-shelf-head", h("div", h("h2", "Мои станции"))), h("div.sr-grid", stations.map((s) => stationTile(s, stations)))) : null);
 }

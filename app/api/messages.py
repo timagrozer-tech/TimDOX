@@ -49,12 +49,13 @@ def _preview_text(m: dict) -> str:
     if kind == "deleted":
         return "Сообщение удалено"
     labels = {"photo": "📷 Фото", "video": "🎬 Видео", "audio": "🎵 Музыка", "voice": "🎤 Голосовое", "sticker": "Стикер",
-              "file": "📎 Файл", "location": "📍 Местоположение", "contact": "👤 Контакт", "gif": "GIF"}
+              "file": "📎 Файл", "location": "📍 Местоположение", "contact": "👤 Контакт", "gif": "GIF", "track": "🎵 Песня"}
     base = labels.get(kind, "")
-    if kind in ("file", "contact") and m.get("media"):
+    if kind in ("file", "contact", "track") and m.get("media"):
         try:
             info = json.loads(m["media"]) if isinstance(m["media"], str) else m["media"]
-            base = f"📎 {info.get('name') or 'Файл'}" if kind == "file" else f"👤 {info.get('name') or 'Контакт'}"
+            base = (f"📎 {info.get('name') or 'Файл'}" if kind == "file" else f"👤 {info.get('name') or 'Контакт'}" if kind == "contact"
+                    else f"🎵 {' — '.join(x for x in (info.get('artist'), info.get('title')) if x) or 'Песня'}")
         except (ValueError, TypeError, AttributeError):
             pass
     text = (m.get("text") or "").strip()
@@ -621,8 +622,16 @@ async def share(request: Request):
             raise ApiError(404, "Пользователь не найден")
         info = {"type": "contact", "user_id": p["user_id"], "username": p["username"], "name": p["name"],
                 "avatar": p["avatar"], "verified": bool(p["verified"])}
+    elif kind == "track":
+        # песня из «Музыки» — данные берём из источника, а не от клиента
+        from .. import music
+        from starlette.concurrency import run_in_threadpool
+        track = music.public(await run_in_threadpool(music.resolve, str(data.get("key") or "")[:100]))
+        if not track:
+            raise ApiError(400, "Трек недоступен")
+        info = {"type": "track", **track}
     else:
-        raise ApiError(400, "Можно отправить местоположение или контакт")
+        raise ApiError(400, "Можно отправить местоположение, контакт или песню")
     return JSONResponse(deliver_message(conv_id, v, "", kind, info, reply_to=_reply_id(data)), status_code=201)
 
 

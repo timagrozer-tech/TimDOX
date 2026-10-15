@@ -5264,3 +5264,27 @@ body.has-player .cookie-bar { bottom: calc(var(--dock-h, 62px) + 96px + env(safe
 .start-step.done { opacity: .55; }
 .start-step.done .start-ic { background: #d9f2df; color: #1e8a3a; }
 .start-step.done b { text-decoration: line-through; }
+
+/* ---------------------------------------------------------------- свои плейлисты */
+.upl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.upl { display: flex; flex-direction: column; gap: 3px; color: inherit; text-decoration: none; min-width: 0; }
+.upl b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.upl small { font-size: 12.5px; color: var(--text-3); }
+.upl-art { position: relative; display: block; width: 100%; aspect-ratio: 1; border-radius: 16px; overflow: hidden; background: hsl(var(--hue, 220) 45% 55%); box-shadow: var(--shadow-sm); margin-bottom: 4px; }
+.upl-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.upl-art.grid4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.upl-art.empty { display: grid; place-items: center; color: #fff; }
+.upl-art.empty .icon { width: 34px; height: 34px; }
+.upl-pick { display: grid; gap: 4px; max-height: 50vh; overflow: auto; }
+.upl-pick-row { display: flex; align-items: center; gap: 10px; padding: 6px; border: 0; background: transparent; border-radius: 10px; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.upl-pick-row:hover { background: var(--surface-2); }
+.upl-pick-row .upl-art { width: 44px; height: 44px; flex: none; margin: 0; border-radius: 8px; }
+.upl-pick-row b { display: block; font-size: 14px; }
+.upl-pick-row small { color: var(--text-3); font-size: 12.5px; }
+.upl-head > .upl-art { width: 120px; height: 120px; flex: none; margin: 0; }
+.upl-del { margin-left: -4px; }
+.track-slot { min-width: 240px; }
+.k-track .mu-attach { margin: 0; }
+.upl-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 160px)); }
+.upl-head { flex-wrap: wrap; }
+.upl-head .mu-mine-btns { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; }

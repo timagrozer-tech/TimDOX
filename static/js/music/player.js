@@ -693,7 +693,10 @@ export function trackMenu(anchor, t, { inPlayer = false } = {}) {
   showMenu(anchor, [
     !inPlayer && !t.live ? { label: "Играть следующим", icon: "queueAdd", onClick: () => playNext(t) } : null,
     { label: liked ? "Убрать из «Моей музыки»" : "В «Мою музыку»", icon: "heart", onClick: () => toggleLike(t) },
+    !t.live ? { label: "Добавить в плейлист", icon: "queueAdd", onClick: () => import("./playlists.js").then((m) => m.addToPlaylist(t)) } : null,
+    { label: "Отправить другу", icon: "send", onClick: () => import("./playlists.js").then((m) => m.sendToFriend(t)) },
     { label: "Поделиться в ленте", icon: "share", onClick: () => shareTrack(t) },
+    t.source === "yarko" ? { label: "Текст песни", icon: "quote", onClick: () => import("./playlists.js").then((m) => m.showLyrics(t)) } : null,
     t.author ? { label: `Автор: ${t.author.name}`, icon: "user", onClick: () => { closeFull(); navigate(`/u/${t.author.username}`); } } : null,
     t.permalink ? { label: t.source === "audius" ? "Открыть на Audius" : "Сайт станции", icon: "external", onClick: () => openUrl(t.permalink) } : null,
     inPlayer ? "-" : null,

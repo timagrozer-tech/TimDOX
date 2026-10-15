@@ -16,6 +16,8 @@ function songMenu(anchor, t, onChange) {
   showMenu(anchor, [
     { label: "Играть следующей", icon: "queueAdd", onClick: () => playNext(t) },
     { label: isLiked(t.key) ? "Убрать из «Моей музыки»" : "В «Мою музыку»", icon: "heart", onClick: () => toggleLike(t) },
+    { label: "Добавить в плейлист", icon: "queueAdd", onClick: () => import("./playlists.js").then((m) => m.addToPlaylist(t)) },
+    { label: "Отправить другу", icon: "send", onClick: () => import("./playlists.js").then((m) => m.sendToFriend(t)) },
     { label: "Поделиться в ленте", icon: "share", onClick: () => shareTrack(t) },
     t.author ? { label: "Карточка артиста", icon: "mic", onClick: () => navigate(`/music/artist/${t.author.username}`) } : null,
     t.album_id ? { label: "Открыть альбом", icon: "list", onClick: () => navigate(`/music/album/${t.album_id}`) } : null,

@@ -14,6 +14,12 @@ import { showPackPreview } from "./stickers.js";
 import { setCleanup, navigate } from "../router.js";
 import { pickFriends } from "../components/people.js";
 import { fileCard, fileIcon, locationCard, contactCard } from "../components/attachments.js";
+// карточка песни грузится вместе с модулем «Музыки» только когда в переписке есть песня
+function trackAttachment(md) {
+  const slot = h("div.track-slot");
+  import("../music/kit.js").then((k) => slot.replaceChildren(k.musicAttachment(md))).catch(() => slot.replaceChildren(h("span", `🎵 ${md.title || "Песня"}`)));
+  return slot;
+}
 
 function convAvatar(c, size = "") {
   if (!c.is_group) return avatar(c.user, size);
@@ -84,6 +90,7 @@ export function previewOf(m) {
     case "file": return `📎 ${m.media?.name || "Файл"}${cap}`;
     case "location": return "📍 Местоположение";
     case "contact": return `👤 ${m.media?.name || "Контакт"}`;
+    case "track": return `🎵 ${[m.media?.artist, m.media?.title].filter(Boolean).join(" — ") || "Песня"}`;
     case "deleted": return "🚫 Сообщение удалено";
     case "sticker": return `${m.media?.emoji || m.text || ""} Стикер`;
     default: return m.text;
@@ -335,6 +342,9 @@ export async function messagesPage({ params }) {
       } else if (big) {
         bubble = h(`div.msg-bigemoji.e${big}${cls}`, { dataset: { id: m.id, sender: m.sender_id } }, h("span", m.text), quote, reacts, meta);
         if (quote) bubble.prepend(quote);
+      } else if (m.media && m.kind === "track") {
+        // песня из «Музыки»: карточка, которую можно сразу включить
+        bubble = h(`div.msg.media-msg.k-track${cls}`, { dataset: { id: m.id, sender: m.sender_id } }, quote, trackAttachment(m.media), reacts, meta);
       } else if (m.media && ["file", "location", "contact"].includes(m.kind)) {
         const md = m.media;
         const content = m.kind === "file" ? fileCard(md) : m.kind === "location" ? locationCard(md)

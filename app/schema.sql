@@ -979,3 +979,20 @@ CREATE TABLE IF NOT EXISTS req_log (
     pid        INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
+
+-- Свои плейлисты в «Музыке»
+CREATE TABLE IF NOT EXISTS playlists (
+    id          INTEGER PRIMARY KEY,
+    owner_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title       TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_playlists_owner ON playlists(owner_id, updated_at DESC);
+CREATE TABLE IF NOT EXISTS playlist_tracks (
+    playlist_id INTEGER NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
+    track_key   TEXT NOT NULL,
+    pos         INTEGER NOT NULL DEFAULT 0,
+    data        TEXT NOT NULL,
+    PRIMARY KEY (playlist_id, track_key)
+);
