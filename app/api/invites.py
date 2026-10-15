@@ -13,9 +13,41 @@ REJECT_TEXT = {"inactive": "не стал активным за 30 дней", "b
                "same_network": "слишком много приглашений из одной сети"}
 
 
+_BOTS = ("telegrambot", "whatsapp", "facebookexternalhit", "twitterbot", "vkshare", "slackbot", "discordbot", "skypeuripreview",
+         "viber", "linkedinbot", "yandex", "googlebot", "bingbot", "okhttp", "pinterest", "redditbot", "applebot")
+
+
+def _invite_preview(code: str) -> Response | None:
+    """Мессенджеры показывают ссылку карточкой: «Имя приглашает вас в Yarko» с фото — так приглашения открывают охотнее"""
+    import html
+    from .. import config
+    from ..seo import _abs
+    o = referrals.code_owner(code)
+    if not o:
+        return None
+    title = f"{o['name']} приглашает вас в Yarko"
+    desc = "Друзья, переписка, музыка и ваша страница в стиле старого доброго интернета. Регистрация — минута, без VPN."
+    img = _abs(o["avatar"]) if o.get("avatar") else _abs("/static/img/og.png")
+    url = f"{config.APP_URL}/i/{code}"
+    e = html.escape
+    body_ = (f"<!doctype html><html lang=ru><head><meta charset=utf-8><title>{e(title)}</title>"
+             f"<meta name=description content=\"{e(desc)}\">"
+             f"<meta property=og:type content=website><meta property=og:site_name content=Yarko>"
+             f"<meta property=og:title content=\"{e(title)}\"><meta property=og:description content=\"{e(desc)}\">"
+             f"<meta property=og:image content=\"{e(img)}\"><meta property=og:url content=\"{e(url)}\">"
+             f"<meta name=twitter:card content=summary><meta http-equiv=refresh content=\"0;url=/register?ref={e(code)}\">"
+             f"</head><body><a href=\"/register?ref={e(code)}\">{e(title)}</a></body></html>")
+    return Response(body_, media_type="text/html; charset=utf-8", headers={"Cache-Control": "public, max-age=600"})
+
+
 async def follow_link(request: Request):
     """Переход по ссылке-приглашению: учитываем визит и запоминаем код на 30 дней."""
     code = request.path_params["code"].lower()[:16]
+    ua = request.headers.get("user-agent", "").lower()
+    if any(b in ua for b in _BOTS):  # робот мессенджера пришёл за превью — не считаем как переход
+        preview = _invite_preview(code)
+        if preview:
+            return preview
     if not referrals.record_click(code, client_ip(request), request.headers.get("user-agent", ""),
                                   request.query_params.get("utm_source") or request.query_params.get("s")):
         return RedirectResponse("/register", status_code=302)

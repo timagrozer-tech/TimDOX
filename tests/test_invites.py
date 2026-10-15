@@ -49,6 +49,12 @@ class InvitesTest(unittest.TestCase):
         self.assertEqual(info["inviter"]["username"], "inv_host")
         self.assertEqual(Client().get("/api/invites/code/nope").status_code, 404)
 
+        # робот мессенджера получает карточку-превью, а переход не засчитывается
+        bot = Client().c.get(f"/i/{code}", headers={"user-agent": "TelegramBot (like TwitterBot)"}, follow_redirects=False)
+        self.assertEqual(bot.status_code, 200)
+        self.assertIn("Хозяин Приглашений приглашает вас в Yarko", bot.text)
+        self.assertIn('property=og:image', bot.text)
+        self.assertEqual(self.host.get("/api/invites/me").json()["totals"]["clicks"], 0)
         c1, u1 = self._invitee("inv_a1", code, via_cookie=True)
         self.assertTrue(db.value("SELECT 1 FROM follows WHERE follower_id=? AND followee_id=?", (u1, self.hid)), "подписка на пригласившего")
         uids = [u1] + [self._invitee(f"inv_a{i}", code)[1] for i in range(2, 4)]

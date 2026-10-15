@@ -41,6 +41,31 @@ export async function profilePage({ params, query }) {
   const tabsCard = h("div.card", tabBar);
   root.append(header, extras, tabsCard, content);
   root.dataset.mode = space.mode;
+  if (isMe) { const tips = startChecklist(); if (tips) root.insertBefore(tips, extras); }
+
+  // «Заполните страницу»: подсказки новичку — пропадают, когда всё сделано или их закрыли
+  function startChecklist() {
+    const KEY = `krug-start-hide:${u.id}`;
+    try { if (localStorage.getItem(KEY)) return null; } catch { /* приватный режим */ }
+    const steps = [
+      { done: !!data.user.avatar, label: "Загрузите фотографию", hint: "Друзьям проще вас узнать", href: "/settings" },
+      { done: !!(data.bio || data.city), label: "Расскажите о себе", hint: "Город, учёба, пара слов о себе", href: "/settings" },
+      { done: !!data.cover, label: "Добавьте обложку", hint: "Широкая картинка над фото", href: "/settings" },
+      { done: (data.counts.posts || 0) > 0, label: "Напишите первую запись", hint: "Что у вас нового?", go: () => { selectTab("posts"); setTimeout(() => content.querySelector("textarea")?.focus(), 50); } },
+      { done: (data.counts.friends || 0) >= 3, label: "Найдите трёх друзей", hint: "В том числе по номерам из контактов", href: "/friends?tab=suggestions" },
+    ];
+    const left = steps.filter((x) => !x.done).length;
+    if (!left) return null;
+    const box = h("section.card.start-card",
+      h("div.start-head", h("b", "Заполните свою страницу"), h("span.muted", `${steps.length - left} из ${steps.length}`),
+        h("button.btn.ghost.icon-only.sm", { type: "button", "aria-label": "Скрыть подсказки", title: "Скрыть",
+          onclick: () => { try { localStorage.setItem(KEY, "1"); } catch { /* ничего */ } box.remove(); } }, icon("x", "sm"))),
+      h("div.start-bar", h("i", { style: { width: `${((steps.length - left) / steps.length) * 100}%` } })),
+      h("div.start-list", [...steps].sort((a, b) => a.done - b.done).map((x) => h(x.href ? "a.start-step" : "button.start-step", {
+        ...(x.href ? { href: x.href } : { type: "button", onclick: x.go }), class: x.done ? "done" : "" },
+        h("span.start-ic", icon(x.done ? "check" : "plus", "sm")), h("span", h("b", x.label), h("small", x.hint))))));
+    return box;
+  }
   document.addEventListener("constellation:changed", (e) => { if (isMe && root.isConnected) { data.constellation = e.detail; renderHeader(); } });
 
   let renderHeader = function () {
