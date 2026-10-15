@@ -54,6 +54,7 @@ import { initLiquid } from "./liquid.js";
 import * as authPages from "./pages/auth.js";
 import { feedPage } from "./pages/feed.js";
 import { queueTour, stopTour } from "./tour.js";
+import { playNotifySound } from "./notifysound.js";
 
 // Страницы грузятся только при первом заходе в раздел: на старте браузер скачивает и разбирает
 // в несколько раз меньше кода (лента открывается быстрее, особенно на телефоне)
@@ -226,6 +227,7 @@ onRender(async (m, query, sameUrl, backKey) => {
 
 // ---------------------------------------------------------------- События реального времени
 on("notification", (n) => {
+  playNotifySound();
   if (n.type === "item" && n.extra?.item) {
     showReveal({ id: n.extra.item, name: n.extra.name, slot: n.extra.slot, rarity: n.extra.rarity });
     return;
@@ -236,7 +238,9 @@ on("notification", (n) => {
 });
 on("message", ({ message, sender }) => {
   if (!state.me || sender.id === state.me.id) return;
-  if (location.pathname === `/messages/${message.conversation_id}`) return;
+  const inChat = location.pathname === `/messages/${message.conversation_id}`;
+  if (!inChat || document.hidden) playNotifySound(); // в открытом чате звук только если вкладка свёрнута
+  if (inChat) return;
   P.messages().then(({ previewOf }) => toast(previewOf(message), { title: sender.name, avatar: avatar(sender, "sm", { presence: false }), href: `/messages/${message.conversation_id}` }));
 });
 on("logged-out", () => {

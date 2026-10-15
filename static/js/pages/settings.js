@@ -12,6 +12,7 @@ import { logout } from "../app-actions.js";
 import { linkTelegram } from "../components/tglink.js";
 import { pushSettingsBox } from "../push.js";
 import { consentsBox } from "../components/consent.js";
+import { soundEnabled, setSoundEnabled, playNotifySound } from "../notifysound.js";
 
 /** Выбор и загрузка аватара или обложки */
 export function uploadProfileImage(kind, onDone) {
@@ -254,6 +255,18 @@ function telegramBox() {
   };
   api.get("/api/telegram").then(render).catch((e) => box.replaceChildren(h("p.muted", e.message)));
   return box;
+}
+
+function soundBox() {
+  const sw = h("input", { type: "checkbox", role: "switch", checked: soundEnabled(), "aria-label": "Звук уведомлений" });
+  sw.addEventListener("change", () => {
+    setSoundEnabled(sw.checked);
+    if (sw.checked) playNotifySound({ force: true });
+    toast(sw.checked ? "Звук включён" : "Звук выключен", { icon: "check", duration: 1600 });
+  });
+  return h("div.stack",
+    settingRow("Звук уведомлений", "Действует на этом устройстве", sw),
+    h("div.row", h("button.btn.soft.sm", { type: "button", onclick: () => playNotifySound({ force: true }) }, icon("play", "sm"), "Прослушать")));
 }
 
 function settingRow(title, hint, control) {
@@ -566,6 +579,7 @@ export async function settingsPage({ query = {} } = {}) {
       section("Где выполнен вход", "Если видите незнакомое устройство — завершите сеанс и смените пароль.", sessionsBox()),
       section("Журнал входов", "Все входы и неудачные попытки за 90 дней. Мы показываем сеть, а не точный адрес.", loginsBox())]],
     ["notify", "Уведомления", "bell", () => [
+      section("Звук", "Короткий сигнал, когда приходит уведомление или сообщение, пока Yarko открыт.", soundBox()),
       section("Уведомления на этом устройстве", "Пуш-уведомления приходят, даже когда Yarko закрыт. Включаются отдельно на телефоне и на компьютере.", pushSettingsBox())]],
     ["telegram", "Telegram", "send", () => [
       section("Telegram", "Бот Yarko: уведомления, стикеры и быстрый вход.", telegramBox())]],
