@@ -132,14 +132,20 @@ def _turn_report() -> None:
 
 
 def _android_links() -> None:
-    """Android-приложение: запись Yarko в assetlinks.json хостинга (иначе в приложении видна адресная строка)"""
+    """Android-приложения: записи Yarko и Ярко Плеера в assetlinks.json хостинга (иначе в приложении видна адресная строка)"""
     site = os.environ.get("YARKO_SITE")
-    if not site:
-        return
+    if not site and os.environ.get("MEDIA_CACHE_DIR", "").rstrip("/").endswith("/uploads"):
+        site = os.path.dirname(os.environ["MEDIA_CACHE_DIR"].rstrip("/"))  # установщик кладёт кэш медиа в <сайт>/uploads
     try:
         from app import android
-        changed = android.merge_static_assetlinks(site)
-        _req_queue.append(("SYS", "/__assetlinks", 200, 0, "", "merged" if changed else "ok", os.getpid()))
+        f = os.path.join(site or "", ".well-known", "assetlinks.json")
+        if not site:
+            note = "no site dir"
+        elif not os.path.isfile(f):
+            note = "no static file in " + site[-40:]
+        else:
+            note = ("merged " if android.merge_static_assetlinks(site) else "ok ") + site[-40:]
+        _req_queue.append(("SYS", "/__assetlinks", 200, 0, "", note, os.getpid()))
     except Exception as e:  # noqa: BLE001
         _req_queue.append(("SYS", "/__assetlinks", 500, 0, "", repr(e)[:120], os.getpid()))
 
