@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { TwaGenerator, TwaManifest, ConsoleLog } from "@bubblewrap/core";
+import Color from "color";
 
 const out = path.resolve(process.argv[2] || "android/project");
 const cfg = JSON.parse(fs.readFileSync(new URL("./app.json", import.meta.url), "utf8"));
@@ -14,9 +15,8 @@ web.icons = web.icons.map((i) => ({ ...i, src: RAW + i.src }));
 web.shortcuts = (web.shortcuts || []).map((s) => ({ ...s, icons: (s.icons || []).map((i) => ({ ...i, src: RAW + i.src })) }));
 
 const m = TwaManifest.fromWebManifestJson(new URL(`https://${cfg.host}/static/manifest.webmanifest`), web);
-// цвета в bubblewrap — объекты Color; строку превращаем тем же конструктором
-const C = m.themeColor?.constructor;
-const col = (v) => (C && C !== String ? new C(v) : v);
+// цвета в bubblewrap — объекты из библиотеки color
+const col = (v) => Color(v);
 Object.assign(m, {
   packageId: cfg.packageId,
   host: cfg.host,

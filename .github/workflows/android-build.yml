@@ -35,7 +35,7 @@ jobs:
           set -o pipefail
           mkdir -p out
           npm init -y > /dev/null
-          npm install --no-audit --no-fund @bubblewrap/core@1 2>&1 | tail -5 | tee out/build-log.txt
+          npm install --no-audit --no-fund @bubblewrap/core@1 color@4 2>&1 | tail -5 | tee out/build-log.txt
           node android/generate.mjs build/project 2>&1 | tee -a out/build-log.txt
 
       - name: Gradle assembleRelease
