@@ -1,0 +1,14 @@
+== static/downloads/*.apk
+Exception in thread "main" java.io.FileNotFoundException: static/downloads/*.apk (No such file or directory)
+	at java.base/java.io.RandomAccessFile.open0(Native Method)
+	at java.base/java.io.RandomAccessFile.open(RandomAccessFile.java:344)
+	at java.base/java.io.RandomAccessFile.<init>(RandomAccessFile.java:259)
+	at java.base/java.io.RandomAccessFile.<init>(RandomAccessFile.java:213)
+	at com.android.apksig.ApkVerifier.verify(ApkVerifier.java:160)
+	at com.android.apksigner.ApkSignerTool.verify(ApkSignerTool.java:678)
+	at com.android.apksigner.ApkSignerTool.main(ApkSignerTool.java:97)
+RESULT: FAIL
+Unable to open 'static/downloads/*.apk' for verification
+ALIGN: FAIL
+10-15 11:02:12.773  2344  2344 W ziparchive: Unable to open 'static/downloads/*.apk': No such file or directory
+static/downloads/*.apk: error: failed opening zip: I/O error.
