@@ -305,7 +305,7 @@ async def by_phones(request: Request):
     if not nums:
         return JSONResponse({"items": [], "checked": 0})
     rows = db.all(f"""SELECT p.user_id AS id, p.username, p.name, p.avatar, p.city FROM users u JOIN profiles p ON p.user_id=u.id
-                      WHERE u.phone IN ({db.placeholders(nums)}) AND u.id != ? AND p.find_by_phone = 1
+                      WHERE u.phone IN ({db.placeholders(nums)}) AND u.id != ? AND p.find_by_phone = 1 AND u.is_banned = 0
                         AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id=? AND b.blocked_id=u.id) OR (b.blocker_id=u.id AND b.blocked_id=?))
                       LIMIT 200""", (*nums, v, v, v))
     items = _people(rows, v)
