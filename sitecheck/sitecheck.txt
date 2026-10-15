@@ -1,7 +1,7 @@
 == assetlinks
 HTTP/2 200 
 server: nginx
-date: Thu, 15 Oct 2026 11:14:57 GMT
+date: Thu, 15 Oct 2026 11:23:39 GMT
 content-type: application/json
 content-length: 337
 last-modified: Sun, 11 Oct 2026 23:02:53 GMT
@@ -26,11 +26,11 @@ vary: Accept-Encoding
 == apk headers
 HTTP/2 200 
 server: nginx
-date: Thu, 15 Oct 2026 11:14:58 GMT
+date: Thu, 15 Oct 2026 11:23:40 GMT
 content-type: application/vnd.android.package-archive
 content-length: 2377835
-last-modified: Thu, 15 Oct 2026 11:09:33 GMT
-etag: "24486b-65ddf15143540"
+last-modified: Thu, 15 Oct 2026 11:18:40 GMT
+etag: "24486b-65ddf35aec400"
 accept-ranges: bytes
 
 == google digital asset links
@@ -53,5 +53,5 @@ accept-ranges: bytes
       }
     }
   ],
-  "maxAge": "3599.998903348s"
+  "maxAge": "3599.998579752s"
 }
