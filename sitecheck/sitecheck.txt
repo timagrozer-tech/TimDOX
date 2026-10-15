@@ -1,7 +1,7 @@
 == assetlinks
 HTTP/2 200 
 server: nginx
-date: Thu, 15 Oct 2026 14:47:18 GMT
+date: Thu, 15 Oct 2026 14:51:33 GMT
 content-type: application/json
 content-length: 1004
 last-modified: Thu, 15 Oct 2026 14:43:19 GMT
@@ -33,13 +33,19 @@ vary: Accept-Encoding
 == apk headers
 HTTP/2 200 
 server: nginx
-date: Thu, 15 Oct 2026 14:47:19 GMT
+date: Thu, 15 Oct 2026 14:51:34 GMT
 content-type: application/vnd.android.package-archive
 content-length: 2377835
-last-modified: Thu, 15 Oct 2026 14:45:11 GMT
-etag: "24486b-65de2183e6bc0"
+last-modified: Thu, 15 Oct 2026 14:47:08 GMT
+etag: "24486b-65de21f37b300"
 accept-ranges: bytes
 
+== player
+player 302  0 https://xn--j1aie3d.space/static/player/index.html
+static/player/index.html 200 text/html 5190 
+static/player/player.js 200 application/javascript 40464 
+static/player/sw.js 200 application/javascript 1364 
+static/downloads/yarko-player.apk 200 application/vnd.android.package-archive 1124455 
 == google digital asset links
 {
   "statements": [
@@ -92,5 +98,5 @@ accept-ranges: bytes
       }
     }
   ],
-  "maxAge": "3482.510020458s"
+  "maxAge": "3599.998275776s"
 }
