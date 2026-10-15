@@ -451,3 +451,13 @@
 :root[data-skin="retro"] .upl-pick-row:hover { background: #f0f3f7; }
 :root[data-skin="retro"] .upl-pick-row b { font-size: 13px; color: #2b587a; }
 :root[data-skin="retro"] .upl-head > .upl-art { width: 96px; height: 96px; }
+
+/* все переключатели-«пилюли» (настройки, гости) — такие же флажки, как раньше */
+:root[data-skin="retro"] .setting-row input[type="checkbox"], :root[data-skin="retro"] .switch, :root[data-skin="retro"] .guest-toggle input[type="checkbox"], :root[data-skin="retro"] label.check.switchy input[type="checkbox"] {
+  -webkit-appearance: none; appearance: none; position: relative; flex: none; width: 15px !important; min-width: 15px !important; height: 15px !important; min-height: 0 !important;
+  margin: 0; padding: 0; border: 1px solid #a9b8c8 !important; border-radius: 2px !important; background: #fff !important; box-shadow: none !important; cursor: pointer; }
+:root[data-skin="retro"] .setting-row input[type="checkbox"]::after, :root[data-skin="retro"] .switch::after, :root[data-skin="retro"] .guest-toggle input[type="checkbox"]::after, :root[data-skin="retro"] label.check.switchy input[type="checkbox"]::after {
+  content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg) !important;
+  background: none !important; box-shadow: none !important; border-radius: 0 !important; opacity: 0; }
+:root[data-skin="retro"] .setting-row input[type="checkbox"]:checked, :root[data-skin="retro"] .switch:checked, :root[data-skin="retro"] .guest-toggle input[type="checkbox"]:checked, :root[data-skin="retro"] label.check.switchy input[type="checkbox"]:checked { background: #5b7da3 !important; border-color: #4a6d93 !important; }
+:root[data-skin="retro"] .setting-row input[type="checkbox"]:checked::after, :root[data-skin="retro"] .switch:checked::after, :root[data-skin="retro"] .guest-toggle input[type="checkbox"]:checked::after, :root[data-skin="retro"] label.check.switchy input[type="checkbox"]:checked::after { opacity: 1; }
