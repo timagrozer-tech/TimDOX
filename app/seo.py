@@ -160,7 +160,7 @@ def _module_preloads() -> str:
 def render(path: str) -> str:
     import json
     html = _index()
-    html = re.sub(r'/static/(js/app\.js|css/app\.css|css/orbit\.css)\?v=[\w.]+', lambda m_: f"/static/v/{BUILD}/{m_.group(1)}", html)
+    html = re.sub(r'/static/(js/app\.js|css/app\.css|css/orbit\.css|css/retro\.css)\?v=[\w.]+', lambda m_: f"/static/v/{BUILD}/{m_.group(1)}", html)
     html = html.replace("</head>", "  " + _module_preloads() + "\n</head>", 1)
     m = meta_for(path)
     url = f"{config.APP_URL}{path}"

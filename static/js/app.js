@@ -23,11 +23,13 @@ function initPullToRefresh() {
   addEventListener("touchmove", (e) => {
     if (y0 == null) return;
     dist = Math.max(0, e.touches[0].clientY - y0);
-    if (window.scrollY > 0) { y0 = null; dist = 0; }
+    if (window.scrollY > 0) { y0 = null; dist = 0; ind.style.transform = ""; ind.classList.remove("ready"); return; }
     const d = Math.min(90, dist * .5);
     ind.style.transform = `translate(-50%, ${d - 50}px) rotate(${d * 4}deg)`;
     ind.classList.toggle("ready", d >= 60);
   }, { passive: true });
+  // жест прервался (браузер забрал прокрутку) — индикатор прячем, иначе он оставался торчать из-под шапки
+  addEventListener("touchcancel", () => { if (busyNow) return; y0 = null; dist = 0; ind.style.transform = ""; ind.classList.remove("ready"); }, { passive: true });
   addEventListener("touchend", async () => {
     if (y0 == null) return;
     const go = Math.min(90, dist * .5) >= 60;

@@ -1,0 +1,343 @@
+/* ==========================================================================
+   «Ретро 2010» — итоговые правила оформления (подключается после orbit.css).
+   Всё здесь действует только при html[data-skin="retro"]. Строго, плоско, синие ссылки,
+   серые плашки и тонкие рамки — но аккуратно выровнено и без «поломанных» эффектов.
+   ========================================================================== */
+
+/* ---------- поля ввода: ползунки и флажки не превращаются в белые прямоугольники ---------- */
+:root[data-skin="retro"] input[type="range"] { background: transparent !important; border: 0 !important; }
+:root[data-skin="retro"] input[type="checkbox"], :root[data-skin="retro"] input[type="radio"] { border-color: #b2bdc8 !important; }
+
+/* переключатели (настройки, «Настроить пространство») — флажки, как на старых страницах */
+:root[data-skin="retro"] .set-switch input, :root[data-skin="retro"] input[role="switch"] {
+  -webkit-appearance: none; appearance: none; position: relative; flex: none; width: 15px !important; height: 15px !important; min-height: 0 !important;
+  margin: 0; padding: 0; border: 1px solid #a9b8c8 !important; border-radius: 2px !important; background: #fff !important; box-shadow: none !important; cursor: pointer; }
+:root[data-skin="retro"] .set-switch input::after, :root[data-skin="retro"] input[role="switch"]::after {
+  content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0;
+  transform: rotate(45deg) !important; background: none !important; box-shadow: none !important; border-radius: 0 !important; opacity: 0; }
+:root[data-skin="retro"] .set-switch input:checked, :root[data-skin="retro"] input[role="switch"]:checked { background: #5b7da3 !important; border-color: #4a6d93 !important; }
+:root[data-skin="retro"] .set-switch input:checked::after, :root[data-skin="retro"] input[role="switch"]:checked::after { opacity: 1; }
+:root[data-skin="retro"] .set-switch input:focus-visible, :root[data-skin="retro"] input[role="switch"]:focus-visible { outline: 2px solid #9fb6cf; outline-offset: 1px; }
+
+/* ---------- рамки аватаров: тонкая цветная окантовка без кругов и белых «дуг» ---------- */
+:root[data-skin="retro"] .avatar[data-frame]::before { -webkit-mask: none !important; mask: none !important; inset: -2px !important; border-radius: 2px !important; animation: none !important; }
+:root[data-skin="retro"] .avatar.xl[data-frame]::before, :root[data-skin="retro"] .profile-top .avatar[data-frame]::before { inset: -4px !important; }
+:root[data-skin="retro"] .avatar[data-frame]::after { display: none !important; }
+:root[data-skin="retro"] .avatar.xl[data-frame] { box-shadow: none !important; }
+:root[data-skin="retro"] .cos-wrap .halo, :root[data-skin="retro"] .cos-wrap .sat { display: none !important; }
+:root[data-skin="retro"] .cos-wrap > .avatar { animation: none !important; }
+:root[data-skin="retro"] .avatar-slot.has-frame::before, :root[data-skin="retro"] .avatar-slot.has-frame::after { display: none !important; }
+/* «в сети» — маленький зелёный квадратик в углу, не наезжает на рамку */
+:root[data-skin="retro"] .avatar .presence, :root[data-skin="retro"] .avatar .online-dot { border-radius: 1px !important; }
+
+/* ---------- компьютер: одинаковая сетка на всех страницах ---------- */
+@media (min-width: 900px) {
+  :root[data-skin="retro"] .layout { max-width: 1040px !important; gap: 18px !important; padding-top: 56px !important;
+    grid-template-columns: 150px minmax(0, 1fr) 240px !important; }
+  :root[data-skin="retro"] .layout.no-aside, :root[data-skin="retro"] .layout.wide, :root[data-skin="retro"] body.wide .layout {
+    grid-template-columns: 150px minmax(0, 1fr) !important; }
+  :root[data-skin="retro"] .sidebar { position: sticky !important; top: 56px !important; align-self: start; margin-top: 0 !important; padding-top: 2px !important;
+    width: 150px; max-height: calc(100vh - 66px) !important; overflow-y: auto; scrollbar-width: none; }
+  :root[data-skin="retro"] .sidebar::-webkit-scrollbar { display: none; }
+  :root[data-skin="retro"] .sidebar .create-btn { padding: 6px 8px !important; font-size: 12.5px; min-height: 0 !important; }
+  :root[data-skin="retro"] .sidebar .me-card, :root[data-skin="retro"] .sidebar .side-me { font-size: 12px; }
+  /* профиль: колонка с фото и кнопками ровно по ширине фото */
+  :root[data-skin="retro"] .profile-card .profile-top { width: 200px; min-width: 0; }
+  :root[data-skin="retro"] .profile-card .profile-top .avatar-slot, :root[data-skin="retro"] .profile-card .profile-top .cos-wrap { margin: 0 auto 4px; }
+  :root[data-skin="retro"] .profile-card .profile-top .btn { width: 100% !important; max-width: 200px; box-sizing: border-box; padding: 6px 8px !important;
+    font-size: 12.5px; min-height: 0 !important; height: auto !important; }
+  :root[data-skin="retro"] .profile-card .profile-top .profile-actions, :root[data-skin="retro"] .profile-card .profile-top .row {
+    display: grid !important; grid-template-columns: 1fr; gap: 4px; width: 100%; }
+}
+
+/* ---------- музыка: карточки песен ---------- */
+:root[data-skin="retro"] .mu-logo { display: none !important; }
+:root[data-skin="retro"] .tc { width: 152px; gap: 2px; padding: 6px; border: 1px solid transparent; background: transparent; }
+:root[data-skin="retro"] .tc:hover, :root[data-skin="retro"] .tc.is-current { background: #f0f3f7; border-color: #dae1e8; }
+:root[data-skin="retro"] .tc-art { width: 138px; height: 138px; margin: 0 0 6px; border: 1px solid #c5d0db; box-shadow: none !important; background: #eef2f6; }
+:root[data-skin="retro"] .tc-art img, :root[data-skin="retro"] .tc-art .mu-cover { width: 100%; height: 100%; object-fit: cover; }
+:root[data-skin="retro"] .tc-by { display: none !important; }
+:root[data-skin="retro"] .tc .mu-eq { display: none !important; }
+:root[data-skin="retro"] .tc-fab { right: 6px; bottom: 6px; width: 30px; height: 30px; background: #5b7da3 !important; border: 1px solid #4a6d93;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .25) !important; opacity: 0; transform: none !important; }
+:root[data-skin="retro"] .tc-fab .icon { width: 14px; height: 14px; }
+:root[data-skin="retro"] .tc:hover .tc-fab, :root[data-skin="retro"] .tc.is-current .tc-fab, :root[data-skin="retro"] .touch .tc .tc-fab { opacity: 1; }
+:root[data-skin="retro"] .tc.is-current .tc-art { outline: 2px solid #5b7da3; outline-offset: -1px; }
+:root[data-skin="retro"] .tc-title { font-size: 12.5px; color: #2b587a; font-weight: 700; -webkit-line-clamp: 2; }
+:root[data-skin="retro"] .tc-sub { font-size: 11.5px; color: #828a99; }
+:root[data-skin="retro"] .tc.is-current .tc-title { color: #000; }
+/* плейлисты, альбомы и строки треков — тоже строгие */
+:root[data-skin="retro"] .pc-art { border: 1px solid #c5d0db; box-shadow: none !important; }
+:root[data-skin="retro"] .mu-eq { background: rgb(69 104 142 / .55) !important; padding: 34% 30% !important; }
+:root[data-skin="retro"] .mu-eq i { background: #fff !important; height: 50% !important; border-radius: 0 !important; }
+:root[data-skin="retro"] .mu-eq i:nth-child(2) { height: 80% !important; } :root[data-skin="retro"] .mu-eq i:nth-child(3) { height: 35% !important; } :root[data-skin="retro"] .mu-eq i:nth-child(4) { height: 65% !important; }
+:root[data-skin="retro"] .mu-cover { border-radius: 2px !important; animation: none !important; }
+/* «Волна Yarko» — спокойная синяя плашка */
+:root[data-skin="retro"] .mw { border-radius: 2px !important; min-height: 150px; background: linear-gradient(#5f82a8, #4a6d93) !important; border: 1px solid #44668b; }
+:root[data-skin="retro"] .mw::before { display: none !important; }
+:root[data-skin="retro"] .mw h2, :root[data-skin="retro"] .mw h1, :root[data-skin="retro"] .mw b { color: #fff !important; -webkit-text-fill-color: #fff !important; background: none !important; }
+:root[data-skin="retro"] .mw-waves { opacity: .35; }
+:root[data-skin="retro"] .mw .btn { background: #fff !important; color: #2b587a !important; border: 1px solid #c5d0db !important; }
+
+/* ---------- мини-плеер ---------- */
+:root[data-skin="retro"] .mp { border-radius: 2px !important; padding: 6px 8px !important; gap: 8px; }
+:root[data-skin="retro"] .mp-art { width: 36px !important; height: 36px !important; padding: 0 !important; background: none !important; border-radius: 2px !important; }
+:root[data-skin="retro"] .mp-art::before, :root[data-skin="retro"] .mp-art::after { display: none !important; }
+:root[data-skin="retro"] .mp-art .mu-cover { width: 100%; height: 100%; border-radius: 2px !important; animation: none !important; }
+:root[data-skin="retro"] .mp-title { color: #2b587a; font-size: 12.5px; font-weight: 700; }
+:root[data-skin="retro"] .mp-artist { font-size: 11.5px; color: #828a99; }
+:root[data-skin="retro"] .mp-btn { width: 30px !important; height: 30px !important; color: #45688e; background: transparent; border-radius: 2px !important; }
+:root[data-skin="retro"] .mp-btn:hover { background: #e1e7ef; }
+:root[data-skin="retro"] .mp-btn .icon { width: 16px; height: 16px; }
+:root[data-skin="retro"] .mp-play { background: #5b7da3 !important; color: #fff !important; border: 1px solid #4a6d93 !important; box-shadow: none !important; }
+:root[data-skin="retro"] .mp-progress { left: 0 !important; right: 0 !important; height: 2px !important; border-radius: 0 !important; background: #e1e7ef !important; }
+:root[data-skin="retro"] .mp-progress i { background: #5b7da3 !important; }
+/* телефон: плеер — полоса над нижним меню во всю ширину, содержимое под ним не прячется */
+@media (max-width: 899px) {
+  :root[data-skin="retro"] .mp { left: 0 !important; right: 0 !important; width: auto !important; transform: none !important;
+    bottom: calc(52px + env(safe-area-inset-bottom)) !important; border-left: 0 !important; border-right: 0 !important; border-bottom: 0 !important;
+    box-shadow: 0 -1px 0 #dae1e8 !important; }
+  :root[data-skin="retro"] body.has-player main, :root[data-skin="retro"] body.has-player .main { padding-bottom: 64px !important; }
+}
+/* компьютер: плеер в синей шапке, как раньше — кнопки, название и тонкая полоска прогресса */
+@media (min-width: 900px) {
+  :root[data-skin="retro"] .mp { position: fixed !important; top: 0 !important; bottom: auto !important; z-index: 40 !important;
+    left: max(110px, calc(50% - 360px)) !important; width: min(560px, calc(100vw - 260px)) !important; transform: none !important;
+    height: 42px; padding: 0 6px !important; background: transparent !important; border: 0 !important; box-shadow: none !important; color: #fff; }
+  :root[data-skin="retro"] .mp-ctrls { order: -1; gap: 2px; }
+  :root[data-skin="retro"] .mp .mp-btn { color: #fff !important; width: 26px !important; height: 26px !important; }
+  :root[data-skin="retro"] .mp .mp-btn:hover { background: rgb(255 255 255 / .15) !important; }
+  :root[data-skin="retro"] .mp .mp-play { background: rgb(255 255 255 / .2) !important; border: 1px solid rgb(255 255 255 / .45) !important; }
+  :root[data-skin="retro"] .mp .mp-close { order: 9; opacity: .7; }
+  :root[data-skin="retro"] .mp .mu-like { color: #dbe5ef !important; }
+  :root[data-skin="retro"] .mp .mu-like.on { color: #fff !important; }
+  :root[data-skin="retro"] .mp-art { width: 28px !important; height: 28px !important; border: 1px solid rgb(255 255 255 / .4); }
+  :root[data-skin="retro"] .mp-meta { flex-direction: row; align-items: baseline; gap: 6px; }
+  :root[data-skin="retro"] .mp .mp-title { color: #fff !important; font-size: 12px; }
+  :root[data-skin="retro"] .mp .mp-artist { color: #d3dfeb !important; font-size: 11.5px; }
+  :root[data-skin="retro"] .mp .mp-artist::before { content: "— "; }
+  :root[data-skin="retro"] .mp-progress { top: auto !important; bottom: 5px !important; left: 92px !important; right: 40px !important; background: rgb(255 255 255 / .25) !important; }
+  :root[data-skin="retro"] .mp-progress i { background: #fff !important; }
+}
+
+/* ---------- большой плеер: белое окно, квадратная обложка, синие полоски ---------- */
+:root[data-skin="retro"] .fp { background: rgb(0 0 0 / .45) !important; color: #000 !important; }
+:root[data-skin="retro"] .fp-bg { display: none !important; }
+:root[data-skin="retro"] .fp-inner { align-items: flex-start; }
+:root[data-skin="retro"] .fp-main { background: #fff; border: 1px solid #b9c4d0; max-width: 420px; min-height: 0 !important; height: auto; gap: 12px;
+  margin: 40px auto; padding: 0 0 16px; box-shadow: 0 2px 10px rgb(0 0 0 / .3); justify-content: flex-start; }
+:root[data-skin="retro"] .fp-top { background: #5b7fa6; color: #fff; padding: 2px 4px; border-bottom: 1px solid #4a6d93; }
+:root[data-skin="retro"] .fp-ctx small { opacity: .85; letter-spacing: 0; text-transform: none; font-weight: 400; font-size: 11px; }
+:root[data-skin="retro"] .fp-ctx b { font-size: 13px; }
+:root[data-skin="retro"] .fp-icon { color: #45688e; border-radius: 2px !important; opacity: 1; }
+:root[data-skin="retro"] .fp-top .fp-icon { color: #fff; width: 34px; height: 34px; }
+:root[data-skin="retro"] .fp-icon:hover { background: #e1e7ef; }
+:root[data-skin="retro"] .fp-top .fp-icon:hover { background: rgb(255 255 255 / .15); }
+:root[data-skin="retro"] .fp-stage { width: min(280px, 70vw) !important; margin: 6px auto 0; }
+:root[data-skin="retro"] .fp-orbit, :root[data-skin="retro"] .fp-waves, :root[data-skin="retro"] .fp-hole { display: none !important; }
+:root[data-skin="retro"] .fp-disc { inset: 0 !important; border-radius: 2px !important; border: 1px solid #c5d0db; box-shadow: none !important; animation: none !important; transform: none !important; }
+:root[data-skin="retro"] .fp-disc::after { display: none !important; }
+:root[data-skin="retro"] .fp-info, :root[data-skin="retro"] .fp-seek, :root[data-skin="retro"] .fp-ctrls, :root[data-skin="retro"] .fp-extra, :root[data-skin="retro"] .fp-live { padding: 0 20px; }
+:root[data-skin="retro"] .fp-title { font-family: var(--font); font-size: 16px; color: #2b587a; }
+:root[data-skin="retro"] .fp-artist { color: #4c5a6a; font-size: 13px; opacity: 1; }
+:root[data-skin="retro"] .fp-like { color: #8aa0b8; }
+:root[data-skin="retro"] .fp-like.on { color: #c4405b; }
+:root[data-skin="retro"] .fp-range { height: 16px; }
+:root[data-skin="retro"] .fp-range::-webkit-slider-runnable-track { height: 5px; border-radius: 0; background: linear-gradient(90deg, #5b7da3 var(--p), #dde3ea var(--p)); border: 1px solid #c5d0db; }
+:root[data-skin="retro"] .fp-range::-moz-range-track { height: 5px; border-radius: 0; background: linear-gradient(90deg, #5b7da3 var(--p), #dde3ea var(--p)); border: 1px solid #c5d0db; }
+:root[data-skin="retro"] .fp-range::-webkit-slider-thumb { width: 9px; height: 13px; margin-top: -5px; border-radius: 1px; background: #fff; border: 1px solid #5b7da3; box-shadow: none; }
+:root[data-skin="retro"] .fp-range::-moz-range-thumb { width: 9px; height: 13px; border-radius: 1px; background: #fff; border: 1px solid #5b7da3; }
+:root[data-skin="retro"] .fp-times { color: #828a99; opacity: 1; font-size: 11.5px; }
+:root[data-skin="retro"] .fp-ctrls { justify-content: center; gap: 10px; }
+:root[data-skin="retro"] .fp-big .icon { width: 22px; height: 22px; }
+:root[data-skin="retro"] .fp-play { width: 52px; height: 40px; border-radius: 2px !important; background: linear-gradient(#6d8fb3, #5b7da3) !important; color: #fff !important;
+  border: 1px solid #4a6d93 !important; box-shadow: none !important; }
+:root[data-skin="retro"] .fp-play .icon { width: 20px; height: 20px; }
+:root[data-skin="retro"] .fp-shuffle, :root[data-skin="retro"] .fp-repeat { opacity: .6; }
+:root[data-skin="retro"] .fp.shuffle-on .fp-shuffle, :root[data-skin="retro"] .fp[data-repeat="all"] .fp-repeat, :root[data-skin="retro"] .fp[data-repeat="one"] .fp-repeat { color: #2b587a; opacity: 1; background: #e1e7ef; }
+:root[data-skin="retro"] .fp-volume { color: #45688e; opacity: 1; }
+:root[data-skin="retro"] .fp-chip { background: #dfe6ed !important; color: #45688e !important; border: 1px solid #cdd8e3 !important; border-radius: 2px !important; font-weight: 400; padding: 6px 10px; }
+:root[data-skin="retro"] .fp.queue-open .fp-queue-btn { background: #5b7da3 !important; color: #fff !important; }
+:root[data-skin="retro"] .fp-queue { background: #fff !important; border: 1px solid #b9c4d0 !important; border-radius: 2px !important; color: #000; margin-top: 40px; max-height: calc(100vh - 80px); }
+:root[data-skin="retro"] .fp-q { color: #000; border-radius: 0 !important; }
+:root[data-skin="retro"] .fp-q:hover { background: #f0f3f7; }
+:root[data-skin="retro"] .fp-q.now { background: #e1e7ef; }
+:root[data-skin="retro"] .fp-q.now b { color: #2b587a; }
+:root[data-skin="retro"] .fp-qbtn { color: #2b587a; }
+@media (max-width: 899px) {
+  :root[data-skin="retro"] .fp { background: #fff !important; }
+  :root[data-skin="retro"] .fp-inner { padding: 0 !important; }
+  :root[data-skin="retro"] .fp-main { margin: 0; max-width: none; border: 0; box-shadow: none; min-height: 100% !important; padding-bottom: max(16px, env(safe-area-inset-bottom)); gap: 14px; }
+  :root[data-skin="retro"] .fp-top { padding-top: max(4px, env(safe-area-inset-top)); }
+  :root[data-skin="retro"] .fp-stage { width: min(78vw, 40vh) !important; margin-top: 14px; }
+  :root[data-skin="retro"] .fp-queue { background: #fff !important; margin: 0; }
+}
+
+/* ---------- чат как раньше: список сообщений с фото и именем, без «пузырей» ---------- */
+:root[data-skin="retro"] .chat-body { background: #fff !important; padding: 8px 14px 12px !important; gap: 0 !important; }
+:root[data-skin="retro"] .msg-sender { display: flex; align-items: flex-start; gap: 8px; line-height: 16px; margin: 10px 0 0 !important; padding: 4px 0 0; font-size: 12px; border-top: 1px solid #eef1f4; }
+:root[data-skin="retro"] .day-sep + .msg-sender, :root[data-skin="retro"] .chat-body > .msg-sender:first-child { border-top: 0; }
+:root[data-skin="retro"] .msg-sender .avatar { width: 32px !important; height: 32px !important; font-size: 12px; align-self: flex-start; }
+:root[data-skin="retro"] .msg-sender b { color: #2b587a; font-weight: 700; }
+:root[data-skin="retro"] .msg-sender + .msg, :root[data-skin="retro"] .msg-sender + .msg-sticker, :root[data-skin="retro"] .msg-sender + .msg-bigemoji { margin-top: -16px !important; }
+:root[data-skin="retro"] .msg, :root[data-skin="retro"] .msg.mine, :root[data-skin="retro"] .msg.out {
+  align-self: stretch !important; max-width: none !important; margin: 0 0 0 40px !important; padding: 2px 60px 2px 0 !important;
+  background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; color: #000 !important;
+  font-size: 13px; line-height: 1.4; position: relative; animation: none !important; }
+:root[data-skin="retro"] .msg:hover { background: #f5f7fa !important; }
+:root[data-skin="retro"] .msg .m-meta { position: absolute; right: 4px; top: 3px; float: none; margin: 0; color: #a0a9b4; opacity: 1; font-size: 11px; background: none !important; padding: 0 !important; }
+:root[data-skin="retro"] .msg.mine .m-meta .icon { color: #8fa6bf !important; }
+:root[data-skin="retro"] .msg.mine a, :root[data-skin="retro"] .msg a { color: #2b587a !important; }
+:root[data-skin="retro"] .msg.media-msg { padding: 4px 60px 4px 0 !important; overflow: visible; }
+:root[data-skin="retro"] .msg.media-msg .chat-photo img, :root[data-skin="retro"] .msg.media-msg video { max-width: 320px; border: 1px solid #dae1e8; border-radius: 0 !important; }
+:root[data-skin="retro"] .msg-sticker, :root[data-skin="retro"] .msg-sticker.mine, :root[data-skin="retro"] .msg-bigemoji, :root[data-skin="retro"] .msg-bigemoji.mine {
+  align-self: flex-start !important; margin-left: 40px !important; }
+:root[data-skin="retro"] .msg-sticker .m-meta, :root[data-skin="retro"] .msg-bigemoji .m-meta { background: #fff !important; color: #a0a9b4; border: 1px solid #e3e8ee; }
+:root[data-skin="retro"] .msg.unread, :root[data-skin="retro"] .msg.mine.unread { background: #edf1f5 !important; }
+:root[data-skin="retro"] .msg-quote { border-left: 2px solid #c5d0db !important; background: #f5f7fa !important; color: #000 !important; border-radius: 0 !important; }
+:root[data-skin="retro"] .msg-quote b { color: #2b587a !important; }
+:root[data-skin="retro"] .msg-reacts button { background: #f0f3f7 !important; border: 1px solid #dae1e8 !important; color: #2b587a !important; }
+:root[data-skin="retro"] .msg-reacts button.mine { background: #dfe6ed !important; border-color: #b9c8d8 !important; }
+:root[data-skin="retro"] .msg-system { background: #f5f7fa !important; border: 1px solid #e3e8ee !important; color: #828a99; border-radius: 0 !important; font-size: 11.5px; }
+:root[data-skin="retro"] .day-sep { color: #828a99 !important; font-size: 11px !important; background: none !important; border: 0 !important; margin: 10px 0 2px !important; }
+:root[data-skin="retro"] .day-sep::before, :root[data-skin="retro"] .day-sep::after { background: #e3e8ee !important; }
+:root[data-skin="retro"] .day-float { display: none !important; }
+:root[data-skin="retro"] .msg-more { color: #8fa6bf !important; }
+:root[data-skin="retro"] .chat-head { background: #f5f7fa !important; border-bottom: 1px solid #dae1e8 !important; min-height: 0; padding: 8px 12px !important; }
+:root[data-skin="retro"] .chat-head .avatar { width: 34px !important; height: 34px !important; }
+:root[data-skin="retro"] .chat-head .name { font-family: var(--font); font-size: 13px; color: #2b587a !important; }
+/* поле ввода: белое поле в рамке и синяя кнопка */
+:root[data-skin="retro"] .chat-form { background: #f5f7fa !important; border-top: 1px solid #dae1e8 !important; padding: 8px 12px !important; }
+:root[data-skin="retro"] .chat-input { background: #fff !important; border: 1px solid #c0cad5 !important; padding: 2px !important; }
+:root[data-skin="retro"] .chat-input:focus-within { border-color: #8aa4c0 !important; box-shadow: none !important; }
+:root[data-skin="retro"] .chat-input .btn.icon-only { width: 32px !important; height: 32px !important; }
+:root[data-skin="retro"] .chat-input textarea { font-size: 13px !important; min-height: 32px !important; padding: 7px 6px !important; }
+:root[data-skin="retro"] .chat-input button[type="submit"], :root[data-skin="retro"] .chat-input .mic-btn { background: #5b7da3 !important; color: #fff !important; box-shadow: none !important; transform: none !important; }
+/* список диалогов */
+:root[data-skin="retro"] .conv { border-radius: 0 !important; border-bottom: 1px solid #eef1f4 !important; }
+:root[data-skin="retro"] .conv.active, :root[data-skin="retro"] .conv[aria-current="page"] { background: #e1e7ef !important; color: #000 !important; }
+:root[data-skin="retro"] .conv.active *, :root[data-skin="retro"] .conv[aria-current="page"] * { color: inherit; }
+:root[data-skin="retro"] .conv.active b, :root[data-skin="retro"] .conv[aria-current="page"] b, :root[data-skin="retro"] .conv.active .name { color: #2b587a !important; }
+
+/* первая строка сообщения — сразу под именем автора, справа от фото */
+:root[data-skin="retro"] .chat-body .msg-sender + .msg, :root[data-skin="retro"] .chat-body .msg-sender + .msg.mine,
+:root[data-skin="retro"] .chat-body .msg-sender + .msg-sticker, :root[data-skin="retro"] .chat-body .msg-sender + .msg-bigemoji { margin-top: -15px !important; }
+
+/* ---------- всплывающие сообщения: тёмно-синие с белым текстом везде (в клипах были белым по белому) ---------- */
+:root[data-skin="retro"] .toast, :root[data-skin="retro"] .reels-mode .toast { border-radius: 2px !important; background: #3e5d82 !important; color: #fff !important;
+  border: 1px solid #33506f !important; box-shadow: 0 2px 6px rgb(0 0 0 / .3) !important; font-size: 13px; }
+:root[data-skin="retro"] .toast * { color: inherit; }
+:root[data-skin="retro"] .toast.error { background: #a33 !important; border-color: #8a2a2a !important; }
+
+/* ---------- клипы: тёмная страница в ретро не ломается ---------- */
+:root[data-skin="retro"] .rl-tabs { background: rgb(0 0 0 / .45) !important; border: 1px solid rgb(255 255 255 / .2) !important; padding: 2px !important; }
+:root[data-skin="retro"] .rl-tabs button { color: rgb(255 255 255 / .8) !important; background: transparent !important; box-shadow: none !important; font-weight: 700; padding: 5px 12px !important; }
+:root[data-skin="retro"] .rl-tabs button.on { background: #fff !important; color: #2b587a !important; }
+
+/* ==========================================================================
+   Вторая волна правок (скриншоты 15.10): шапка, сетка, музыка, мобильная шапка
+   ========================================================================== */
+
+/* ---------- компьютер: надпись в шапке ровно над левым меню; страницы без правой колонки — на всю ширину ---------- */
+@media (min-width: 900px) {
+  :root[data-skin="retro"] body::after { left: max(16px, calc(50% - 514px)) !important; }
+  :root[data-skin="retro"] body.no-aside .layout { grid-template-columns: 150px minmax(0, 1fr) !important; }
+  :root[data-skin="retro"] body.no-aside .main { max-width: none !important; }
+}
+
+/* ---------- телефон: шапка как на компьютере — надпись «yarko», без значка-планеты ---------- */
+@media (max-width: 899px) {
+  :root[data-skin="retro"] .topbar .logo .brand-mark, :root[data-skin="retro"] .topbar .logo .brand-word { display: none !important; }
+  :root[data-skin="retro"] .topbar .logo::after { content: "yarko"; color: #fff; font: 700 22px/1 Tahoma, Verdana, sans-serif; letter-spacing: -1px; }
+  :root[data-skin="retro"] .topbar .logo { text-decoration: none !important; padding-left: 4px; }
+}
+
+/* ---------- музыка: вкладки, фильтры, шапки разделов ---------- */
+:root[data-skin="retro"] .mu-tabs a { border-radius: 2px !important; background: #f0f3f7 !important; border: 1px solid #dae1e8 !important; color: #2b587a !important;
+  font-size: 12.5px; padding: 6px 12px; box-shadow: none !important; }
+:root[data-skin="retro"] .mu-tabs a:hover { background: #e1e7ef !important; }
+:root[data-skin="retro"] .mu-tabs a.on { background: #5b7da3 !important; border-color: #4a6d93 !important; color: #fff !important; }
+:root[data-skin="retro"] .mu-chips button { border-radius: 2px !important; background: #f0f3f7 !important; border: 1px solid #dae1e8 !important; color: #2b587a !important;
+  font-size: 12px; padding: 6px 10px; }
+:root[data-skin="retro"] .mu-chips button:hover { background: #e1e7ef !important; }
+:root[data-skin="retro"] .mu-chips button.on { background: #5b7da3 !important; border-color: #4a6d93 !important; color: #fff !important; }
+:root[data-skin="retro"] .mu-cover-head, :root[data-skin="retro"] .mu-mine { background: #f0f3f7 !important; border: 1px solid #dae1e8 !important; color: #000 !important;
+  box-shadow: none !important; padding: 14px 16px !important; gap: 14px; }
+:root[data-skin="retro"] .mu-cover-head small, :root[data-skin="retro"] .mu-mine small { color: #828a99 !important; opacity: 1; letter-spacing: 0; text-transform: none; font-weight: 400; font-size: 11.5px; }
+:root[data-skin="retro"] .mu-cover-head h1, :root[data-skin="retro"] .mu-mine h1, :root[data-skin="retro"] .mu-cover-head h2 { font-family: var(--font) !important; font-size: 17px !important;
+  color: #2b587a !important; -webkit-text-fill-color: #2b587a !important; background: none !important; margin: 0 0 2px; }
+:root[data-skin="retro"] .mu-cover-head p, :root[data-skin="retro"] .mu-mine p { color: #4c5a6a !important; opacity: 1; font-size: 12.5px; }
+:root[data-skin="retro"] .mu-cover-head .mu-cover-emoji, :root[data-skin="retro"] .mu-cover-head > .mu-cover, :root[data-skin="retro"] .mu-cover-head > .tc-art {
+  width: 64px !important; height: 64px !important; font-size: 34px; background: #fff !important; border: 1px solid #dae1e8; box-shadow: none !important; }
+:root[data-skin="retro"] .mu-cover-head .btn, :root[data-skin="retro"] .mu-mine .btn { font-size: 12.5px !important; padding: 5px 10px !important; min-height: 0 !important; background: #fff !important; color: #2b587a !important; border: 1px solid #c5d0db !important; box-shadow: none !important; }
+:root[data-skin="retro"] .mu-cover-head .btn.primary, :root[data-skin="retro"] .mu-mine .btn.primary { background: #5b7da3 !important; color: #fff !important; border-color: #4a6d93 !important; }
+:root[data-skin="retro"] .mu-shelf-head { border-bottom: 1px solid #dae1e8; padding-bottom: 5px; margin-bottom: 8px; align-items: flex-end !important; }
+:root[data-skin="retro"] .mu-shelf-head h2 { font-size: 13px !important; color: #2b587a; }
+:root[data-skin="retro"] .mu-shelf-head p, :root[data-skin="retro"] .mu-shelf-head small { font-size: 11.5px; color: #828a99; }
+:root[data-skin="retro"] .mw h1, :root[data-skin="retro"] .mw h2 { font-family: var(--font) !important; font-size: 20px !important; }
+
+/* ---------- музыка: строки треков — плотный список, как аудиозаписи раньше ---------- */
+:root[data-skin="retro"] .tr { gap: 10px; padding: 5px 8px !important; border-bottom: 1px solid #f0f2f5; }
+:root[data-skin="retro"] .tr:last-child { border-bottom: 0; }
+:root[data-skin="retro"] .tr:hover, :root[data-skin="retro"] .tr:focus-visible { background: #f0f3f7 !important; }
+:root[data-skin="retro"] .tr.is-current { background: #e8edf3 !important; }
+:root[data-skin="retro"] .tr-cover { width: 38px !important; height: 38px !important; border: 1px solid #dae1e8; box-shadow: none !important; }
+:root[data-skin="retro"] .tr-over { background: rgb(69 104 142 / .7) !important; }
+:root[data-skin="retro"] .tr-title { font-size: 13px !important; color: #2b587a !important; }
+:root[data-skin="retro"] .tr.is-current .tr-title { color: #000 !important; }
+:root[data-skin="retro"] .tr-sub { font-size: 12px !important; color: #828a99 !important; }
+:root[data-skin="retro"] .tr-dur { font-size: 12px; color: #828a99; }
+:root[data-skin="retro"] .tr-more { width: 28px; height: 28px; color: #8fa6bf; }
+:root[data-skin="retro"] .tr-more:hover { background: #e1e7ef; color: #2b587a; }
+:root[data-skin="retro"] .tr-rank { color: #8fa6bf; font-size: 12px; }
+
+/* ---------- музыка: карточки песен и подборок — светлая рамка, обложка с тенью, синяя кнопка ---------- */
+:root[data-skin="retro"] .tc, :root[data-skin="retro"] .pc { width: 150px; padding: 6px 6px 8px !important; border: 1px solid #e3e8ee !important; background: #fff !important;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .06) !important; gap: 3px; }
+:root[data-skin="retro"] .tc:hover, :root[data-skin="retro"] .pc:hover { border-color: #c5d0db !important; background: #f7f9fb !important; }
+:root[data-skin="retro"] .tc.is-current { border-color: #8fa6bf !important; background: #eef2f7 !important; }
+:root[data-skin="retro"] .tc-art, :root[data-skin="retro"] .pc-art { width: 136px !important; height: 136px !important; margin: 0 0 5px !important;
+  border: 1px solid #d3dbe4 !important; box-shadow: 0 1px 3px rgb(0 0 0 / .12) !important; }
+:root[data-skin="retro"] .tc.is-current .tc-art { outline: 0 !important; }
+:root[data-skin="retro"] .tc-fab { left: 6px !important; right: auto !important; bottom: 6px !important; width: 28px !important; height: 28px !important; }
+:root[data-skin="retro"] .tc-title, :root[data-skin="retro"] .pc b, :root[data-skin="retro"] .pc .tc-title { font-size: 12.5px !important; color: #2b587a !important; font-weight: 700; line-height: 1.3; }
+:root[data-skin="retro"] .tc-sub, :root[data-skin="retro"] .pc small, :root[data-skin="retro"] .pc .tc-sub { font-size: 11.5px !important; color: #828a99 !important; }
+:root[data-skin="retro"] .pc { padding-top: 10px !important; }
+:root[data-skin="retro"] .pc-art img, :root[data-skin="retro"] .pc-art > .mu-cover { box-shadow: none !important; }
+:root[data-skin="retro"] .pc-back { left: 6px !important; right: 6px !important; top: -4px !important; height: 20px !important; background: #dae1e8 !important; border: 1px solid #c5d0db; }
+:root[data-skin="retro"] .pc-back2 { left: 12px !important; right: 12px !important; top: -8px !important; height: 20px !important; background: #edf1f5 !important; border: 1px solid #dae1e8; }
+
+/* ---------- жанры — аккуратные плитки-ссылки ---------- */
+:root[data-skin="retro"] .gt-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; gap: 6px !important; }
+:root[data-skin="retro"] .gt { height: 46px !important; padding: 0 10px !important; display: flex !important; align-items: center; justify-content: flex-start; gap: 8px;
+  background: linear-gradient(#fff, #f1f4f7) !important; border: 1px solid #dae1e8 !important; color: #2b587a !important; font-size: 12.5px !important; transform: none !important; box-shadow: none !important; }
+:root[data-skin="retro"] .gt:hover { background: #e9eef4 !important; border-color: #c5d0db !important; }
+:root[data-skin="retro"] .gt b { text-shadow: none !important; }
+:root[data-skin="retro"] .gt-emoji { position: static !important; font-size: 22px !important; transform: none !important; filter: none !important; }
+
+/* статистика: главная плашка была белым текстом на белом */
+:root[data-skin="retro"] .card.st-hero { background: #f0f3f7 !important; color: #000 !important; border: 1px solid #dae1e8 !important; }
+:root[data-skin="retro"] .st-hero-label { color: #2b587a; opacity: 1; font-size: 13px; }
+:root[data-skin="retro"] .st-hero-value { color: #2b587a; font-size: 40px; }
+:root[data-skin="retro"] .st-hero-sub { color: #4c5a6a; opacity: 1; }
+:root[data-skin="retro"] .st-hero .st-delta { background: #e1e7ef !important; color: #2b587a !important; }
+
+/* выбранный диалог: тёмный текст на светло-синем (был белый на светлом) */
+:root[data-skin="retro"] .conv.active .time, :root[data-skin="retro"] .conv.active .preview-text, :root[data-skin="retro"] .conv.active .grow,
+:root[data-skin="retro"] .conv.active span { color: #4c5a6a !important; }
+:root[data-skin="retro"] .conv.active .name, :root[data-skin="retro"] .conv.active b { color: #2b587a !important; }
+:root[data-skin="retro"] .conv.active .badge { background: #5b7da3 !important; color: #fff !important; }
+/* ссылка «Перейти к содержимому» (видна при навигации с клавиатуры) */
+:root[data-skin="retro"] .skip-link { color: #fff !important; }
+:root[data-skin="retro"] .rarity-chip.legendary { color: #a5640b !important; }
+
+/* телефон: мелкие вкладки магазина и рынка — читаемым размером, точка «новое» рядом с названием */
+@media (max-width: 899px) {
+  :root[data-skin="retro"] .shop-tabs, :root[data-skin="retro"] .card[role="tablist"], :root[data-skin="retro"] .card > [role="tablist"], :root[data-skin="retro"] [role="tablist"].tabs {
+    display: flex !important; flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; }
+  :root[data-skin="retro"] .shop-tabs [role="tab"], :root[data-skin="retro"] [role="tablist"] > button[role="tab"] { font-size: 13px !important; padding: 8px 10px !important;
+    white-space: nowrap !important; flex: 1 0 auto !important; display: inline-flex !important; align-items: center; justify-content: center; }
+  :root[data-skin="retro"] .shop-tabs .tab-dot { width: 5px; height: 5px; margin-left: 4px; vertical-align: 2px; }
+  :root[data-skin="retro"] .shop-tabs [role="tab"] { flex-direction: row !important; gap: 0; }
+  :root[data-skin="retro"] .st-tile-label { white-space: normal; font-size: 12px; }
+}

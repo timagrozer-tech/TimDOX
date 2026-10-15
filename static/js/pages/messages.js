@@ -294,9 +294,11 @@ export async function messagesPage({ params }) {
         return nodes;
       }
       const first = !prev || prev.sender_id !== m.sender_id || ["system", "nudge"].includes(prev.kind) || nodes.length;
-      if (isGroup && !mine && first) {
-        const snd = chat.senders[m.sender_id];
-        nodes.push(h("div.msg-sender", snd ? avatar(snd, "xs", { presence: false }) : null, snd ? snd.name : "Участник"));
+      // в оформлении «Ретро 2010» переписка — списком, как раньше: у каждой группы сообщений фото и имя автора
+      const retro = document.documentElement.dataset.skin === "retro";
+      if (first && (retro || (isGroup && !mine))) {
+        const snd = mine ? state.me : (chat.senders[m.sender_id] || (!isGroup ? conv.user : null));
+        nodes.push(h(`div.msg-sender${mine ? ".mine" : ""}`, snd ? avatar(snd, "xs", { presence: false }) : null, h("b", snd ? snd.name : "Участник")));
       }
       const meta = h("span.m-meta", m.edited_at && m.kind !== "deleted" ? h("i.edited", "изм.") : null, hm(new Date(m.created_at)),
         mine ? icon(m.pending ? "check" : (m.id <= chat.otherRead ? "checks" : "check")) : null);
