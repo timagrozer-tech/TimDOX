@@ -16,6 +16,20 @@ class AndroidTest(unittest.TestCase):
         self.assertRegex(t["sha256_cert_fingerprints"][0], r"^([0-9A-F]{2}:){31}[0-9A-F]{2}$")
         self.assertIn("delegate_permission/common.handle_all_urls", r.json()[0]["relation"])
 
+    def test_merge_existing_static_file(self):
+        """Чужая запись в уже существующем файле на хостинге сохраняется, запись Yarko добавляется один раз"""
+        import json, os, tempfile
+        from app import android
+        d = tempfile.mkdtemp()
+        os.makedirs(os.path.join(d, ".well-known"))
+        path = os.path.join(d, ".well-known", "assetlinks.json")
+        json.dump([{"relation": ["x"], "target": {"namespace": "android_app", "package_name": "other.app", "sha256_cert_fingerprints": ["AA"]}}], open(path, "w"))
+        self.assertTrue(android.merge_static_assetlinks(d))
+        self.assertFalse(android.merge_static_assetlinks(d))
+        names = [x["target"]["package_name"] for x in json.load(open(path))]
+        self.assertEqual(names, ["other.app", "space.yarko.app"])
+        self.assertFalse(android.merge_static_assetlinks(tempfile.mkdtemp()))  # файла нет — ничего не создаём
+
 
 if __name__ == "__main__":
     unittest.main()

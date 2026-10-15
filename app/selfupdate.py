@@ -158,6 +158,11 @@ def activate(home: Path, target: Path) -> None:
             tmp = Path(site) / ".htaccess.new"
             shutil.copyfile(tpl, tmp)
             os.replace(tmp, Path(site) / ".htaccess")
+        try:  # Android-приложение: запись Yarko в уже существующий на хостинге assetlinks.json (без удаления чужих)
+            from . import android
+            android.merge_static_assetlinks(site)
+        except Exception:  # noqa: BLE001
+            pass
         (Path(site) / ".restart-app").touch()        # так перезапуск просит Рег.ру
         (Path(site) / "tmp").mkdir(exist_ok=True)
         (Path(site) / "tmp" / "restart.txt").touch()  # и так — стандартный Passenger
