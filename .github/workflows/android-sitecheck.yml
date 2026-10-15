@@ -1,0 +1,41 @@
+# Проверка с внешнего сервера: сайт отдаёт assetlinks.json и APK, Google подтверждает связь сайта с приложением.
+name: Android app — site check
+
+on:
+  push:
+    branches: [krug-site]
+    paths: ["android/sitecheck.txt", ".github/workflows/android-sitecheck.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check site
+        shell: bash
+        run: |
+          H=xn--j1aie3d.space
+          mkdir -p out
+          {
+            echo "== assetlinks"; curl -sS -m 30 -D - "https://$H/.well-known/assetlinks.json" | head -30
+            echo; echo "== apk headers"; curl -sS -m 60 -I "https://$H/static/downloads/yarko.apk" | head -15
+            echo "== google digital asset links"
+            curl -sS -m 30 "https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://$H&relation=delegate_permission/common.handle_all_urls"
+          } > out/sitecheck.txt 2>&1 || true
+          cat out/sitecheck.txt
+
+      - name: Publish result
+        if: always()
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd "$RUNNER_TEMP"
+          git clone -q --branch android-build --single-branch "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ab
+          cd ab && mkdir -p sitecheck && cp -f "$GITHUB_WORKSPACE"/out/sitecheck.txt sitecheck/ 2>/dev/null || cp -f ../out/sitecheck.txt sitecheck/ 2>/dev/null || true
+          cp -f "$RUNNER_TEMP"/../work/*/*/out/sitecheck.txt sitecheck/ 2>/dev/null || true
+          date -u +%FT%TZ > sitecheck/info.txt
+          git config user.name "yarko-ci"; git config user.email "yarko-ci@users.noreply.github.com"
+          git add -A; git commit -q -m "Site check" || true; git push -q origin android-build
