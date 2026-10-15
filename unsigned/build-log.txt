@@ -2,7 +2,7 @@ npm warn deprecated google-p12-pem@3.1.4: Package is no longer maintained
 npm warn deprecated @types/gapi.client.androidpublisher@3.0.2: use @types/gapi.client.androidpublisher-v3 instead; see https://github.com/Maxim-Mazurok/google-api-typings-generator/issues/652 for details
 npm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
 
-added 266 packages in 11s
+added 266 packages in 10s
 == android/app.json -> yarko-unsigned.apk
   "features": {},
   "alphaDependencies": {
@@ -28,9 +28,9 @@ Recommendation: remove package="space.yarko.app" from the source AndroidManifest
 
 > Task :app:processReleaseManifest
 > Task :app:processReleaseManifestForPackage
+> Task :app:mergeReleaseArtProfile
 > Task :app:extractProguardFiles
 > Task :app:processReleaseJavaRes NO-SOURCE
-> Task :app:mergeReleaseArtProfile
 > Task :app:mergeReleaseStartupProfile
 > Task :app:mergeReleaseShaders
 > Task :app:compileReleaseShaders NO-SOURCE
@@ -62,9 +62,20 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 59s
+BUILD SUCCESSFUL in 1m 13s
 36 actionable tasks: 36 executed
 == android/player.json -> yarko-player-unsigned.apk
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://xn--j1aie3d.space/static/player/",
+  "minSdkVersion": 24,
+  "orientation": "portrait",
+  "fingerprints": [],
   "additionalTrustedOrigins": [],
   "retainedBundles": [],
   "protocolHandlers": [],
@@ -73,15 +84,50 @@ BUILD SUCCESSFUL in 59s
   "displayOverride": [],
   "appVersion": "1.0.0"
 }
-<anonymous_script>:1
-<!doctype html>
-^
+project ready: /home/runner/work/TimDOX/TimDOX/build/player
+Recommendation: remove package="space.yarko.player" from the source AndroidManifest.xml: /home/runner/work/TimDOX/TimDOX/build/player/app/src/main/AndroidManifest.xml.
 
-SyntaxError: Unexpected token '<', "<!doctype "... is not valid JSON
-    at JSON.parse (<anonymous>)
-    at TwaGenerator.writeWebManifest (/home/runner/work/TimDOX/TimDOX/node_modules/@bubblewrap/core/dist/lib/TwaGenerator.js:225:38)
-    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
-    at async TwaGenerator.createTwaProject (/home/runner/work/TimDOX/TimDOX/node_modules/@bubblewrap/core/dist/lib/TwaGenerator.js:352:13)
-    at async file:///home/runner/work/TimDOX/TimDOX/android/generate.mjs:45:1
+> Task :app:mergeReleaseResources
+> Task :app:processReleaseManifest
+> Task :app:processReleaseManifestForPackage
+> Task :app:mergeReleaseArtProfile
+> Task :app:extractProguardFiles
+> Task :app:processReleaseJavaRes NO-SOURCE
+> Task :app:mergeReleaseStartupProfile
+> Task :app:mergeReleaseShaders
+> Task :app:compileReleaseShaders NO-SOURCE
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :app:mergeReleaseAssets
+> Task :app:compressReleaseAssets
+> Task :app:extractReleaseVersionControlInfo
+> Task :app:processReleaseResources
+> Task :app:mergeReleaseJavaResource
+> Task :app:collectReleaseDependencies
+> Task :app:compileReleaseJavaWithJavac
+> Task :app:mergeReleaseGeneratedProguardFiles
+> Task :app:sdkReleaseDependencyData
+> Task :app:writeReleaseAppMetadata
+> Task :app:optimizeReleaseResources
+> Task :app:writeReleaseSigningConfigVersions
+> Task :app:expandReleaseArtProfileWildcards
+> Task :app:minifyReleaseWithR8
+> Task :app:compileReleaseArtProfile
+> Task :app:packageRelease
+> Task :app:createReleaseApkListingFileRedirect
+> Task :app:assembleRelease
+[Incubating] Problems report is available at: file:///home/runner/work/TimDOX/TimDOX/build/player/build/reports/problems/problems-report.html
 
-Node.js v20.20.2
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 32s
+36 actionable tasks: 36 executed
+total 3432
+drwxr-xr-x  2 runner runner    4096 Oct 15 14:44 .
+drwxr-xr-x 14 runner runner    4096 Oct 15 14:43 ..
+-rw-r--r--  1 runner runner    5339 Oct 15 14:44 build-log.txt
+-rw-r--r--  1 runner runner 1120359 Oct 15 14:44 yarko-player-unsigned.apk
+-rw-r--r--  1 runner runner 2373779 Oct 15 14:44 yarko-unsigned.apk
