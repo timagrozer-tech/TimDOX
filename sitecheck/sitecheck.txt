@@ -1,0 +1,57 @@
+== assetlinks
+HTTP/2 200 
+server: nginx
+date: Thu, 15 Oct 2026 11:14:57 GMT
+content-type: application/json
+content-length: 337
+last-modified: Sun, 11 Oct 2026 23:02:53 GMT
+etag: "151-65d9894cba73d"
+accept-ranges: bytes
+vary: Accept-Encoding
+
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "space.yarko.derzky",
+      "sha256_cert_fingerprints": [
+        "25:B6:8A:A9:69:B2:C7:BB:3A:8C:BC:3A:98:6F:C7:D7:4D:EA:E6:56:21:C0:34:F7:95:0B:A3:69:E2:81:74:92"
+      ]
+    }
+  }
+]
+== apk headers
+HTTP/2 200 
+server: nginx
+date: Thu, 15 Oct 2026 11:14:58 GMT
+content-type: application/vnd.android.package-archive
+content-length: 2377835
+last-modified: Thu, 15 Oct 2026 11:09:33 GMT
+etag: "24486b-65ddf15143540"
+accept-ranges: bytes
+
+== google digital asset links
+{
+  "statements": [
+    {
+      "source": {
+        "web": {
+          "site": "https://xn--j1aie3d.space."
+        }
+      },
+      "relation": "delegate_permission/common.handle_all_urls",
+      "target": {
+        "androidApp": {
+          "packageName": "space.yarko.derzky",
+          "certificate": {
+            "sha256Fingerprint": "25:B6:8A:A9:69:B2:C7:BB:3A:8C:BC:3A:98:6F:C7:D7:4D:EA:E6:56:21:C0:34:F7:95:0B:A3:69:E2:81:74:92"
+          }
+        }
+      }
+    }
+  ],
+  "maxAge": "3599.998903348s"
+}
