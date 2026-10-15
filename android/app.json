@@ -1,0 +1,17 @@
+{
+  "packageId": "space.yarko.app",
+  "host": "xn--j1aie3d.space",
+  "name": "Yarko",
+  "launcherName": "Yarko",
+  "startUrl": "/?source=android",
+  "themeColor": "#4a6d93",
+  "navigationColor": "#ffffff",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#dae1e8",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#ffffff",
+  "versionName": "1.0.0",
+  "versionCode": 1,
+  "minSdkVersion": 24,
+  "rawBase": "https://raw.githubusercontent.com/timagrozer-tech/TimDOX/krug-site"
+}

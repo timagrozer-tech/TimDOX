@@ -1,0 +1,79 @@
+# Сборка Android-приложения Yarko (TWA). Готовый неподписанный APK и журнал сборки кладутся в ветку android-build;
+# подпись делается отдельно ключом владельца, который не хранится в репозитории.
+name: Android app — build
+
+on:
+  push:
+    branches: [krug-site]
+    paths:
+      - "android/**"
+      - ".github/workflows/android-build.yml"
+      - "static/manifest.webmanifest"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Generate Android project
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund @bubblewrap/core@1 2>&1 | tail -5 | tee out/build-log.txt
+          node android/generate.mjs build/project 2>&1 | tee -a out/build-log.txt
+
+      - name: Gradle assembleRelease
+        shell: bash
+        working-directory: build/project
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tail -80 | tee -a ../../out/build-log.txt
+
+      - name: Align APK
+        shell: bash
+        run: |
+          set -o pipefail
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          APK=$(find build/project -name "*release*unsigned*.apk" | head -1)
+          echo "build-tools: $BT, apk: $APK" | tee -a out/build-log.txt
+          "$BT/zipalign" -f -p 4 "$APK" out/yarko-unsigned.apk
+          "$BT/zipalign" -c -p 4 out/yarko-unsigned.apk | tail -1 | tee -a out/build-log.txt
+          ls -la out | tee -a out/build-log.txt
+
+      - name: Publish to branch android-build
+        if: always()
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd "$RUNNER_TEMP"
+          URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git clone -q --branch android-build --single-branch "$URL" ab; then :; else
+            mkdir ab && cd ab && git init -q -b android-build && git remote add origin "$URL" && cd ..
+          fi
+          cd ab
+          mkdir -p unsigned
+          cp -f "$GITHUB_WORKSPACE"/out/* unsigned/ 2>/dev/null || true
+          echo "commit ${GITHUB_SHA} run ${GITHUB_RUN_ID} at $(date -u +%FT%TZ) status ${{ job.status }}" > unsigned/info.txt
+          git config user.name "yarko-ci"
+          git config user.email "yarko-ci@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Android build ${GITHUB_SHA::8}" || true
+          git push -q origin android-build

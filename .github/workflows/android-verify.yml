@@ -1,0 +1,53 @@
+# Проверка подписи готового APK официальным apksigner — результат кладётся в ветку android-build (verify.txt).
+name: Android app — verify signature
+
+on:
+  push:
+    branches: [krug-site]
+    paths:
+      - "static/downloads/*.apk"
+      - ".github/workflows/android-verify.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: apksigner verify
+        shell: bash
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          mkdir -p out
+          for f in static/downloads/*.apk; do
+            echo "== $f" >> out/verify.txt
+            "$BT/apksigner" verify --verbose --print-certs "$f" >> out/verify.txt 2>&1 && echo "RESULT: OK" >> out/verify.txt || echo "RESULT: FAIL" >> out/verify.txt
+            "$BT/zipalign" -c -p 4 "$f" >> out/verify.txt 2>&1 && echo "ALIGN: OK" >> out/verify.txt || echo "ALIGN: FAIL" >> out/verify.txt
+            "$BT/aapt2" dump badging "$f" 2>&1 | head -8 >> out/verify.txt || true
+          done
+          cat out/verify.txt
+
+      - name: Publish result to branch android-build
+        if: always()
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd "$RUNNER_TEMP"
+          URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git clone -q --branch android-build --single-branch "$URL" ab; then :; else
+            mkdir ab && cd ab && git init -q -b android-build && git remote add origin "$URL" && cd ..
+          fi
+          cd ab
+          mkdir -p verify
+          cp -f "$GITHUB_WORKSPACE"/out/verify.txt verify/ 2>/dev/null || echo "no output" > verify/verify.txt
+          echo "commit ${GITHUB_SHA} at $(date -u +%FT%TZ) status ${{ job.status }}" > verify/info.txt
+          git config user.name "yarko-ci"
+          git config user.email "yarko-ci@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Verify ${GITHUB_SHA::8}" || true
+          git push -q origin android-build
