@@ -44,6 +44,20 @@ def enabled() -> bool:
     return bool(providers())
 
 
+def healthy() -> bool:
+    """Ключи есть и нейросеть недавно отвечала: если последние полчаса все провайдеры падали (например, сервис
+    закрыт для страны хостинга) — кнопки ИИ прячем, чтобы люди не жали на неработающее"""
+    if not enabled():
+        return False
+    down = _state("llm:down")
+    if not down:
+        return True
+    ok_at = (_state("llm:last").split(" ", 1) + [""])[1]
+    if ok_at and ok_at > down:
+        return True
+    return down < db.future(minutes=-30)
+
+
 def _state(key: str, default: str = "") -> str:
     return db.value("SELECT value FROM ai_state WHERE key=?", (key,)) or default
 
@@ -130,6 +144,11 @@ def complete(system: str, user: str, max_tokens: int = 1500, want_json: bool = F
         _set_state("llm:last", f"{p['name']} {db.now()}")
         if text.strip():
             return text
+    if providers():
+        try:
+            _set_state("llm:down", db.now())
+        except Exception:  # noqa: BLE001
+            pass
     return None
 
 

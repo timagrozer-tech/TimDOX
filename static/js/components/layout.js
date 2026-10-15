@@ -22,7 +22,8 @@ const NAV = [
   { href: "/music", icon: "music", label: "Музыка", cls: "nav-music", match: (p) => p.startsWith("/music") },
   { href: "/communities", icon: "community", label: "Сообщества", match: (p) => p.startsWith("/communities") || p.startsWith("/c/") },
   { href: "/invite", icon: "userAdd", label: "Пригласить", cls: "nav-invite", match: (p) => p === "/invite" },
-  { href: () => `/u/${state.me.username}`, icon: "user", label: "Моя страница", match: (p) => p === `/u/${state.me.username}` },
+  { href: () => `/u/${state.me.username}`, icon: "user", label: "Моя страница", match: (p) => p === `/u/${state.me.username}` && !location.search.includes("tab=photos") },
+  { href: () => `/u/${state.me.username}?tab=photos`, icon: "image", label: "Фотографии", retroOnly: true, match: (p) => p === `/u/${state.me.username}` && location.search.includes("tab=photos") },
   { href: "/wallet", icon: "coin", label: "Кошелёк", cls: "nav-wallet", more: true, match: (p) => p === "/wallet" },
   { href: "/shop", icon: "gift", label: "Магазин", more: true, match: (p) => p === "/shop" },
   { href: "/market", icon: "repeat", label: "Рынок", more: true, match: (p) => p === "/market" },
@@ -32,15 +33,18 @@ const NAV = [
   { href: "/admin", icon: "shield", label: "Модерация", badge: "reports", admin: true, more: true, match: (p) => p.startsWith("/admin") },
 ];
 // стиль «Ретро 2010»: меню по-старому — «Моя Страница», «Мои Друзья»… и в привычном порядке
-const RETRO = { "Моя страница": "Моя Страница", "Друзья": "Мои Друзья", "Клипы": "Мои Видеозаписи", "Музыка": "Мои Аудиозаписи",
+const RETRO = { "Фотографии": "Мои Фотографии", "Моя страница": "Моя Страница", "Друзья": "Мои Друзья", "Клипы": "Мои Видеозаписи", "Музыка": "Мои Аудиозаписи",
   "Сообщения": "Мои Сообщения", "Сообщества": "Мои Группы", "Уведомления": "Мои Ответы", "Лента": "Мои Новости", "Закладки": "Мои Закладки", "Настройки": "Мои Настройки" };
-const RETRO_ORDER = ["Моя страница", "Друзья", "Клипы", "Музыка", "Сообщения", "Сообщества", "Уведомления", "Лента"];
+const RETRO_ORDER = ["Моя страница", "Друзья", "Фотографии", "Клипы", "Музыка", "Сообщения", "Сообщества", "Уведомления", "Лента", "Настройки"];
+// в «Ретро» главное меню — как раньше: только «Мои …»; всё игровое и редкое — в «Ещё»
+const RETRO_MAIN = new Set(RETRO_ORDER);
 const isRetro = () => document.documentElement.dataset.skin === "retro";
 const navItems = () => {
-  const list = NAV.filter((n) => !n.admin || state.me?.is_admin);
-  if (!isRetro()) return list;
+  const retro = isRetro();
+  const list = NAV.filter((n) => (!n.admin || state.me?.is_admin) && (!n.retroOnly || retro));
+  if (!retro) return list;
   const rank = (n) => (RETRO_ORDER.includes(n.label) ? RETRO_ORDER.indexOf(n.label) : 50);
-  return [...list].sort((a, b) => rank(a) - rank(b));
+  return [...list].sort((a, b) => rank(a) - rank(b)).map((n) => ({ ...n, more: !RETRO_MAIN.has(n.label) }));
 };
 
 const hrefOf = (item) => (typeof item.href === "function" ? item.href() : item.href);

@@ -305,6 +305,11 @@ export async function profilePage({ params, query }) {
     { id: "stickers", label: "Коллекции", icon: "sticker" },
     { id: "friends", label: "Друзья", icon: "users" },
   ];
+  // «Ретро 2010»: сначала то, что было на странице раньше, — записи, фото, друзья; игровые вкладки в конце
+  if (document.documentElement.dataset.skin === "retro") {
+    const order = ["posts", "photos", "friends", "stickers", "city"];
+    TABS.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  }
   let current = null;
 
   function locked(text) {

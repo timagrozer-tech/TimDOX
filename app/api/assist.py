@@ -131,7 +131,7 @@ async def rewrite(request: Request):
 
 @auth()
 async def status(request: Request):
-    return JSONResponse({"enabled": llm.enabled()})
+    return JSONResponse({"enabled": llm.healthy()})
 
 
 routes = [
