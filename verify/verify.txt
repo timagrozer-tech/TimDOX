@@ -19,14 +19,14 @@ V2 Signer: public key SHA-1 digest: 84d00808bdd36cb8bef5a87d096388be91cac0b5
 V2 Signer: public key MD5 digest: 6e7692f347d4a764f2afba04384b9393
 RESULT: OK
 ALIGN: OK
-package: name='space.yarko.player' versionCode='1' versionName='1.0.0' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
+package: name='space.yarko.player' versionCode='2' versionName='1.0.1' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
 minSdkVersion:'24'
 targetSdkVersion:'36'
+uses-permission: name='android.permission.INTERNET'
 uses-permission: name='android.permission.POST_NOTIFICATIONS'
 uses-permission: name='space.yarko.player.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'
 application-label:'Ярко Плеер'
 application-label-af:'Ярко Плеер'
-application-label-am:'Ярко Плеер'
 == static/downloads/yarko.apk
 Verifies
 Verified using v1 scheme (JAR signing): false
@@ -48,11 +48,11 @@ V2 Signer: public key SHA-1 digest: 84d00808bdd36cb8bef5a87d096388be91cac0b5
 V2 Signer: public key MD5 digest: 6e7692f347d4a764f2afba04384b9393
 RESULT: OK
 ALIGN: OK
-package: name='space.yarko.app' versionCode='1' versionName='1.0.0' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
+package: name='space.yarko.app' versionCode='2' versionName='1.0.1' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
 minSdkVersion:'24'
 targetSdkVersion:'36'
+uses-permission: name='android.permission.INTERNET'
 uses-permission: name='android.permission.POST_NOTIFICATIONS'
 uses-permission: name='space.yarko.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'
 application-label:'Yarko'
 application-label-af:'Yarko'
-application-label-am:'Yarko'
