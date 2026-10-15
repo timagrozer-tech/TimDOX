@@ -119,7 +119,7 @@ export async function myPlaylistPage({ params }) {
       if (!await confirmDialog({ title: "Удалить плейлист?", text: "Сами песни останутся в «Музыке».", confirm: "Удалить", danger: true })) return;
       try { await api.del(`/api/music/my-playlists/${p.id}`); navigate("/music?tab=my"); } catch (e) { toastError(e); }
     } }, icon("trash", "sm"), "Удалить") : null);
-  const head = h("section.mu-cover-head.upl-head",
+  const head = h("section.mu-cover-head.upl-head", { style: { "--hue": String(hue(String(p.id))) } },
     mosaic(p.covers, p.id),
     h("div", h("small", p.mine ? "Мой плейлист" : `Плейлист · ${p.owner?.name || ""}`), h("h1", p.title), h("p", trackWord(p.tracks.length))),
     actions);
