@@ -35,6 +35,8 @@ Object.assign(m, {
   maskableIconUrl: RAW + (cfg.maskableIconPath || "/static/img/icon-maskable-512.png"),
   signingKey: { path: "./unused.keystore", alias: "unused" },
   generatorApp: "yarko-ci",
+  // bubblewrap скачивает манифест при сборке — берём из репозитория, сайт мог ещё не обновиться
+  webManifestUrl: new URL(RAW + "/" + (cfg.webManifest || "static/manifest.webmanifest")),
 });
 for (const key of ["navigationColor", "navigationColorDark", "navigationDividerColor", "navigationDividerColorDark", "backgroundColor", "themeColorDark"]) {
   if (cfg[key]) m[key] = col(cfg[key]);
