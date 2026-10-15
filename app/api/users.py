@@ -293,6 +293,28 @@ async def requests_list(request: Request):
 
 
 @auth()
+async def by_phones(request: Request):
+    """«Найти друзей по контактам»: номера из телефонной книги (до 500) сравниваются с номерами людей Yarko,
+    которые разрешили находить себя по номеру. Номера не сохраняются и не возвращаются — только найденные люди."""
+    limit(request, "contacts")
+    v = request.state.user["id"]
+    d = await body(request)
+    raw = d.get("phones") if isinstance(d.get("phones"), list) else []
+    from .. import phones
+    nums = sorted({n for n in (phones.normalize(x) for x in raw[:500]) if n})
+    if not nums:
+        return JSONResponse({"items": [], "checked": 0})
+    rows = db.all(f"""SELECT p.user_id AS id, p.username, p.name, p.avatar, p.city FROM users u JOIN profiles p ON p.user_id=u.id
+                      WHERE u.phone IN ({db.placeholders(nums)}) AND u.id != ? AND p.find_by_phone = 1
+                        AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id=? AND b.blocked_id=u.id) OR (b.blocker_id=u.id AND b.blocked_id=?))
+                      LIMIT 200""", (*nums, v, v, v))
+    items = _people(rows, v)
+    for it in items:
+        it["relation"] = social.relation(v, it["id"])
+    return JSONResponse({"items": items, "checked": len(nums)})
+
+
+@auth()
 async def suggestions(request: Request):
     """«Возможно, вы знакомы»: друзья друзей, затем люди из того же города, затем новички."""
     v = request.state.user["id"]
@@ -884,6 +906,7 @@ routes = [
     Route("/api/people/{id:int}/block", block, methods=["POST", "DELETE"]),
     Route("/api/friends/requests", requests_list, methods=["GET"]),
     Route("/api/friends/suggestions", suggestions, methods=["GET"]),
+    Route("/api/friends/by-phones", by_phones, methods=["POST"]),
     Route("/api/friends/online", online_friends, methods=["GET"]),
     Route("/api/featured", featured, methods=["GET"]),
     Route("/api/admin/users/{id:int}/verify", admin_verify, methods=["POST", "DELETE"]),

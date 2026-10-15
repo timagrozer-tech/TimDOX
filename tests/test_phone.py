@@ -28,6 +28,22 @@ class PhoneTest(unittest.TestCase):
         data = {"password": "secret123", "name": "Телефон Тест", "consent": True, **kw}
         return c.post("/api/auth/register", data)
 
+    def test_find_by_contacts(self):
+        a = Client(); self._reg(a, username="contact_a", phone="+7 901 000 00 01"); a.refresh()
+        b = Client(); self._reg(b, username="contact_b", phone="8 901 000 00 02"); b.refresh()
+        hidden = Client(); self._reg(hidden, username="contact_hidden", phone="8 901 000 00 03"); hidden.refresh()
+        hidden.patch("/api/me/settings", {"find_by_phone": False})
+        r = a.post("/api/friends/by-phones", {"phones": ["8 (901) 000-00-02", "+79010000003", "+79010000001", "мусор", 123]})
+        self.assertEqual(r.status_code, 200, r.text)
+        found = [x["username"] for x in r.json()["items"]]
+        self.assertEqual(found, ["contact_b"])  # себя не находим, скрытого — тоже
+        self.assertNotIn("phone", r.json()["items"][0])
+        self.assertEqual(r.json()["items"][0]["relation"]["status"], "none")
+        # перебор номеров ограничен
+        for _ in range(5):
+            a.post("/api/friends/by-phones", {"phones": ["+79010000002"]})
+        self.assertEqual(a.post("/api/friends/by-phones", {"phones": ["+79010000002"]}).status_code, 429)
+
     def test_phone_only_then_login_by_phone(self):
         c = Client()
         r = self._reg(c, username="phone_only", phone="8 (900) 111-22-33")

@@ -80,7 +80,7 @@ export async function friendsPage({ query }) {
         if (school.value || uni.value) run();
       } else if (current === "suggestions") {
         const { items, featured } = await api.get("/api/friends/suggestions");
-        content.replaceChildren(h("div.stack", featuredStrip({ items: featured || [] }), card(h("div.card-pad", { style: { paddingBottom: 0 } }, h("div.card-title", "Возможно, вы знакомы"),
+        content.replaceChildren(h("div.stack", contactsCard(), featuredStrip({ items: featured || [] }), card(h("div.card-pad", { style: { paddingBottom: 0 } }, h("div.card-title", "Возможно, вы знакомы"),
           h("p.muted", { style: { fontSize: "14px", marginTop: "-6px" } }, "Друзья ваших друзей и люди из вашего города. Ищете кого-то конкретного? ", h("a", { href: "/search" }, "Воспользуйтесь поиском"), ".")),
           items.length ? h("div.people", items.map((p) => personRow(p, defaultPersonActions))) : empty("users", "Пока некого предложить", "Приглашайте друзей в Yarko!"))));
       } else {
@@ -93,6 +93,45 @@ export async function friendsPage({ query }) {
           }, "Разблокировать")))) : empty("block", "Список пуст", "Здесь будут люди, которых вы заблокировали.")));
       }
     } catch (e) { content.replaceChildren(card(empty("x", "Ошибка", e.message))); }
+  }
+
+  // «Найти друзей по контактам»: на телефоне — из телефонной книги (с разрешения), на компьютере — вставить номера
+  function contactsCard() {
+    const results = h("div.people");
+    const status = h("p.muted.fc-status", { style: { fontSize: "13px" } });
+    const canPick = "contacts" in navigator && "select" in (navigator.contacts || {});
+    const show = (items, checked) => {
+      status.textContent = items.length ? `Нашлись в Yarko: ${items.length} из ${checked} номеров` : `Из ${checked} номеров пока никого нет в Yarko — пригласите их!`;
+      results.replaceChildren(...items.map((p) => { p._relation = p.relation; return personRow(p, defaultPersonActions); }));
+      if (!items.length) results.append(h("a.btn.soft.sm", { href: "/invite" }, icon("userAdd", "sm"), "Пригласить друзей"));
+    };
+    const search = async (list, btn) => {
+      try {
+        const r = await api.post("/api/friends/by-phones", { phones: list });
+        show(r.items, r.checked);
+      } catch (e) { toastError(e); }
+    };
+    const pickBtn = h("button.btn.primary", { type: "button", onclick: async (e) => {
+      const btn = e.currentTarget;
+      try {
+        const picked = await navigator.contacts.select(["tel"], { multiple: true });
+        const list = picked.flatMap((c) => c.tel || []).slice(0, 500);
+        if (!list.length) return;
+        btn.disabled = true; await search(list, btn); btn.disabled = false;
+      } catch { /* человек закрыл окно выбора */ }
+    } }, icon("users", "sm"), "Выбрать из контактов");
+    const ta = h("textarea.textarea", { rows: 2, placeholder: "+7 912 345-67-89, 8 900 …", "aria-label": "Номера телефонов через запятую" });
+    const pasteBtn = h("button.btn.soft", { type: "button", onclick: () => {
+      const list = ta.value.split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean).slice(0, 500);
+      if (!list.length) { toast("Впишите хотя бы один номер", { icon: "alert" }); return; }
+      search(list);
+    } }, icon("search", "sm"), "Найти");
+    return card(h("div.card-pad.fc-card",
+      h("div.card-title", icon("smartphone", "sm"), "Найти друзей по контактам"),
+      h("p.muted", { style: { fontSize: "13.5px", marginTop: "-6px" } },
+        "Покажем, кто из ваших знакомых уже в Yarko. Номера только сравниваются и нигде не сохраняются."),
+      canPick ? h("div.row", pickBtn) : h("div.stack", { style: { gap: "6px" } }, ta, h("div.row", pasteBtn)),
+      status, results));
   }
 
   tabBar.append(...tabs.map((t) => {
