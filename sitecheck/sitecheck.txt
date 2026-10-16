@@ -1,7 +1,7 @@
 == assetlinks
 HTTP/2 200 
 server: nginx
-date: Fri, 16 Oct 2026 11:17:30 GMT
+date: Fri, 16 Oct 2026 11:21:39 GMT
 content-type: application/json
 content-length: 1004
 last-modified: Thu, 15 Oct 2026 14:43:19 GMT
@@ -33,11 +33,11 @@ vary: Accept-Encoding
 == apk headers
 HTTP/2 200 
 server: nginx
-date: Fri, 16 Oct 2026 11:17:31 GMT
+date: Fri, 16 Oct 2026 11:21:40 GMT
 content-type: application/vnd.android.package-archive
 content-length: 2377899
-last-modified: Fri, 16 Oct 2026 11:13:51 GMT
-etag: "2448ab-65df3424c59c0"
+last-modified: Fri, 16 Oct 2026 11:17:23 GMT
+etag: "2448ab-65df34eef36c0"
 accept-ranges: bytes
 
 == player
@@ -111,5 +111,5 @@ static/downloads/yarko-player.apk 200 application/vnd.android.package-archive 11
       }
     }
   ],
-  "maxAge": "3599.998234813s"
+  "maxAge": "3352.712241315s"
 }
