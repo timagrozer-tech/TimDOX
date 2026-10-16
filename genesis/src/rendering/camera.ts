@@ -10,7 +10,8 @@ export class Camera {
     this.minZoom = Math.min(this.vw / mapW, this.vh / mapH) * 0.9;
     const fit = Math.min(this.vw / mapW, this.vh / mapH) * 0.98;
     // на вертикальном экране телефона карта занимает больше высоты (её можно двигать пальцем)
-    this.zoom = this.tzoom = this.vh > this.vw * 1.2 ? Math.max(fit, (this.vh * 0.55) / mapH) : fit;
+    this.zoom = this.tzoom = this.vh > this.vw * 1.2 ? Math.max(fit, (this.vh * 0.82) / mapH) : Math.max(this.vw / mapW, this.vh / mapH);
+    this.minZoom = Math.min(this.vw / mapW, this.vh / mapH) * 0.98;
     this.x = this.tx = mapW / 2; this.y = this.ty = mapH / 2;
   }
   /** экран → клетки */
@@ -29,7 +30,8 @@ export class Camera {
   clamp(mapW: number, mapH: number): void {
     const mx = this.vw / this.zoom / 2, my = this.vh / this.zoom / 2;
     const cx = (a: number, lo: number, hi: number) => (lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, a)));
-    this.x = cx(this.x, mx * 0.3, mapW - mx * 0.3); this.y = cx(this.y, my * 0.3, mapH - my * 0.3);
+    this.x = cx(this.x, mx, mapW - mx); this.y = cx(this.y, my, mapH - my);
+    this.tx = cx(this.tx, mx, mapW - mx); this.ty = cx(this.ty, my, mapH - my);
   }
   /** плавное приближение к цели; true — если ещё двигаемся */
   update(dt: number): boolean {

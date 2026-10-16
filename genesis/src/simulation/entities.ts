@@ -12,7 +12,7 @@ export function rngOf(st: WorldState): Rng { return new Rng(st.rng); }
 /** Цвет по номеру (золотое сечение по кругу оттенков) — соседние номера сильно различаются, и цвет не зависит от загрузки сохранения */
 export function civColor(rng: Rng, idx: number): [number, number, number] {
   const hue = (idx * 0.61803398875 + 0.13 + rng.range(-0.04, 0.04) + 10) % 1;
-  return hslToRgb(hue, rng.range(0.5, 0.72), rng.range(0.44, 0.56));
+  return hslToRgb(hue, rng.range(0.42, 0.6), rng.range(0.48, 0.58));
 }
 export function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   const f = (n: number) => { const k = (n + h * 12) % 12; const a = s * Math.min(l, 1 - l); return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); };

@@ -457,7 +457,7 @@ export class App {
   // ---------------------------------------------------------------- уведомления
   private toast(icon: string, text: string, imp: number, ev?: SnapEvent): void {
     const box = $("toasts");
-    const max = innerWidth < 720 ? 2 : 4;
+    const max = innerWidth < 720 ? 1 : 4;
     while (box.children.length >= max) box.firstElementChild!.remove();
     const el = h(`div.toast.imp${imp}`, { onclick: () => { if (ev) { if (ev.x >= 0) this.r.cam.flyTo(ev.x + 0.5, ev.py + 0.5, Math.max(this.r.cam.zoom, 9)); this.openArticle("event", ev.id); } el.remove(); } },
       h("span.ic", icon), h("div", ev ? h("b", `${ev.y} г. `) : null, text));

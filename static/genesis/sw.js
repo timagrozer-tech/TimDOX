@@ -1,6 +1,6 @@
 // GENESIS: офлайн-режим. Файлы игры кэшируются при установке; при обновлении сайта кэш меняется целиком.
-const CACHE = "genesis-777f89da";
-const FILES = ["./","./assets/app.css?v=129e79807a","./assets/app.js?v=12f759ebe9","./assets/worker.js?v=5e7e3014f7","./icon-192.png","./icon-512.png","./icon-maskable-512.png","./index.html","./manifest.webmanifest"];
+const CACHE = "genesis-93ded83e";
+const FILES = ["./","./assets/app.css?v=240975de7a","./assets/app.js?v=86f4907297","./assets/worker.js?v=cf1f0b47c8","./icon-192.png","./icon-512.png","./icon-maskable-512.png","./index.html","./manifest.webmanifest"];
 self.addEventListener("install", (e) => e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())));
 self.addEventListener("activate", (e) => e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith("genesis-") && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener("fetch", (e) => {
