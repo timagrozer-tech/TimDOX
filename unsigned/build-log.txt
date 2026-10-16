@@ -27,10 +27,11 @@ project ready: /home/runner/work/TimDOX/TimDOX/build/app
 Recommendation: remove package="space.yarko.app" from the source AndroidManifest.xml: /home/runner/work/TimDOX/TimDOX/build/app/app/src/main/AndroidManifest.xml.
 
 > Task :app:processReleaseManifest
+> Task :app:mergeReleaseArtProfile
 > Task :app:extractProguardFiles
 > Task :app:processReleaseJavaRes NO-SOURCE
-> Task :app:mergeReleaseArtProfile
 > Task :app:mergeReleaseStartupProfile
+> Task :app:processReleaseManifestForPackage
 > Task :app:mergeReleaseShaders
 > Task :app:compileReleaseShaders NO-SOURCE
 > Task :app:generateReleaseAssets UP-TO-DATE
@@ -40,7 +41,6 @@ Recommendation: remove package="space.yarko.app" from the source AndroidManifest
 > Task :app:collectReleaseDependencies
 > Task :app:sdkReleaseDependencyData
 > Task :app:writeReleaseAppMetadata
-> Task :app:processReleaseManifestForPackage
 > Task :app:writeReleaseSigningConfigVersions
 > Task :app:mergeReleaseJavaResource
 > Task :app:mergeReleaseResources
@@ -62,7 +62,7 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 53s
+BUILD SUCCESSFUL in 1m 2s
 36 actionable tasks: 36 executed
 == android/player.json -> yarko-player-unsigned.apk
   "features": {},
@@ -92,8 +92,8 @@ Recommendation: remove package="space.yarko.player" from the source AndroidManif
 > Task :app:mergeReleaseArtProfile
 > Task :app:extractProguardFiles
 > Task :app:processReleaseJavaRes NO-SOURCE
-> Task :app:mergeReleaseStartupProfile
 > Task :app:processReleaseManifestForPackage
+> Task :app:mergeReleaseStartupProfile
 > Task :app:mergeReleaseShaders
 > Task :app:compileReleaseShaders NO-SOURCE
 > Task :app:generateReleaseAssets UP-TO-DATE
@@ -104,8 +104,8 @@ Recommendation: remove package="space.yarko.player" from the source AndroidManif
 > Task :app:collectReleaseDependencies
 > Task :app:sdkReleaseDependencyData
 > Task :app:writeReleaseAppMetadata
-> Task :app:processReleaseResources
 > Task :app:writeReleaseSigningConfigVersions
+> Task :app:processReleaseResources
 > Task :app:compileReleaseJavaWithJavac
 > Task :app:mergeReleaseGeneratedProguardFiles
 > Task :app:optimizeReleaseResources
@@ -123,11 +123,11 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 20s
+BUILD SUCCESSFUL in 25s
 36 actionable tasks: 36 executed
 total 3432
-drwxr-xr-x  2 runner runner    4096 Oct 15 14:57 .
-drwxr-xr-x 14 runner runner    4096 Oct 15 14:56 ..
--rw-r--r--  1 runner runner    5335 Oct 15 14:57 build-log.txt
--rw-r--r--  1 runner runner 1120391 Oct 15 14:57 yarko-player-unsigned.apk
--rw-r--r--  1 runner runner 2373803 Oct 15 14:57 yarko-unsigned.apk
+drwxr-xr-x  2 runner runner    4096 Oct 16 09:00 .
+drwxr-xr-x 14 runner runner    4096 Oct 16 08:59 ..
+-rw-r--r--  1 runner runner    5337 Oct 16 09:00 build-log.txt
+-rw-r--r--  1 runner runner 1120391 Oct 16 09:00 yarko-player-unsigned.apk
+-rw-r--r--  1 runner runner 2373803 Oct 16 09:00 yarko-unsigned.apk
