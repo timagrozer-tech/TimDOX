@@ -1,0 +1,38 @@
+/* «Звуковое рукопожатие» */
+.snd-card { padding: 18px 16px 16px; }
+.snd-lead { margin: 0 0 6px; line-height: 1.5; }
+.snd-stage { display: grid; place-items: center; padding: 18px 0 10px; }
+.snd-main {
+  position: relative; width: 190px; height: 190px; border-radius: 50% !important; border: 0; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  background: radial-gradient(circle at 35% 30%, #6f93b8, #3b5a7d); color: #fff; font: inherit;
+  box-shadow: 0 14px 34px rgba(59, 90, 125, .35);
+}
+.snd-main b { font-size: 20px; position: relative; z-index: 1; }
+.snd-main small { font-size: 12px; opacity: .85; position: relative; z-index: 1; max-width: 130px; line-height: 1.3; }
+.snd-main:disabled { opacity: .5; cursor: not-allowed; }
+.snd-ring { position: absolute; inset: 0; pointer-events: none; }
+.snd-ring span { position: absolute; inset: 0; border-radius: 50% !important; border: 2px solid rgba(111, 147, 184, .7); opacity: 0; }
+.snd[data-mode="both"] .snd-ring span, .snd[data-mode="send"] .snd-ring span, .snd[data-mode="listen"] .snd-ring span { animation: snd-wave 2.4s ease-out infinite; }
+.snd-ring span:nth-child(2) { animation-delay: .8s !important; }
+.snd-ring span:nth-child(3) { animation-delay: 1.6s !important; }
+.snd.sending .snd-main { background: radial-gradient(circle at 35% 30%, #ff9a6b, #e2462f); }
+@keyframes snd-wave { 0% { transform: scale(1); opacity: .8; } 100% { transform: scale(1.7); opacity: 0; } }
+.snd-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.snd-row .btn.on { background: var(--accent, #4a6d93); color: #fff; }
+.snd-status { text-align: center; margin: 12px 0 6px; font-weight: 600; min-height: 22px; }
+.snd-meter { height: 6px; border-radius: 3px; background: rgba(127, 127, 127, .18); overflow: hidden; margin: 0 auto 10px; max-width: 320px; }
+.snd-meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #4a6d93, #36c2b4); transition: width .1s linear; }
+.snd-spec { display: block; width: 100%; height: 110px; border-radius: 8px; background: #0e1726; }
+.snd[data-mode=""] .snd-spec { opacity: .55; }
+.snd-hint { font-size: 12px; color: var(--muted, #7a8794); margin: 10px 0 0; text-align: center; }
+.snd-found { display: grid; gap: 10px; }
+.snd-person { display: flex; gap: 14px; padding: 14px; align-items: flex-start; animation: snd-pop .45s cubic-bezier(.2, 1.4, .4, 1); }
+.snd-who { min-width: 0; flex: 1; }
+.snd-name { font-weight: 800; font-size: 17px; }
+.snd-sub { font-size: 13px; color: var(--muted, #7a8794); margin-top: 2px; }
+.snd-bio { font-size: 13px; margin-top: 6px; }
+.snd-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+.snd-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: #2e8b57; }
+@keyframes snd-pop { from { transform: scale(.85) translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .snd-ring span, .snd-person { animation: none !important; } }

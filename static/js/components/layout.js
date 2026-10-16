@@ -24,6 +24,7 @@ const NAV = [
   { href: "/invite", icon: "userAdd", label: "Пригласить", cls: "nav-invite", match: (p) => p === "/invite" },
   { href: () => `/u/${state.me.username}`, icon: "user", label: "Моя страница", match: (p) => p === `/u/${state.me.username}` && !location.search.includes("tab=photos") },
   { href: () => `/u/${state.me.username}?tab=photos`, icon: "image", label: "Фотографии", retroOnly: true, match: (p) => p === `/u/${state.me.username}` && location.search.includes("tab=photos") },
+  { href: "/sound", icon: "radio", label: "Звуковое рукопожатие", more: true, match: (p) => p === "/sound" },
   { href: "/film", icon: "film", label: "Фильм о вас", more: true, match: (p) => p === "/film" },
   { href: "/wallet", icon: "coin", label: "Кошелёк", cls: "nav-wallet", more: true, match: (p) => p === "/wallet" },
   { href: "/shop", icon: "gift", label: "Магазин", more: true, match: (p) => p === "/shop" },

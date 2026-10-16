@@ -26,6 +26,7 @@ from .api import market_routes
 from . import consents, migrate, tgbot, webpush
 from . import android as android_app
 from .api import film as film_api
+from .api import soundlink as soundlink_api
 from .api import accounts, admin, auth_routes, calls, collection_routes, invites, reels, stickers, communities, events, messages, misc, music as music_api, songs as songs_api, artists as artists_api, playlists as playlists_api, people_extra, posts, stats, stories, users
 from .security import load_extra_banned
 from .world import api as world_api, engine as world_engine
@@ -534,7 +535,7 @@ routes = [
     Route("/llms.txt", llms_txt),
     Route("/manifest.webmanifest", manifest),
     *wallet_api.routes, *city_api.routes, *shop_routes.routes, *market_routes.routes, *invites.routes, *accounts.routes, *calls.routes, *admin.routes, *world_api.routes, *auth_routes.routes, *posts.routes, *users.routes, *messages.routes, *misc.routes,
-    *android_app.routes, *film_api.routes, *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *stats.routes, *songs_api.routes, *artists_api.routes, *playlists_api.routes, *music_api.routes, *collection_routes.routes, *reels.routes, *stickers.routes, *tgbot.routes, *webpush.routes, *assist.routes, *chatplus.routes, *consents.routes, *migrate.routes,
+    *android_app.routes, *film_api.routes, *soundlink_api.routes, *stories.routes, *communities.routes, *events.routes, *people_extra.routes, *stats.routes, *songs_api.routes, *artists_api.routes, *playlists_api.routes, *music_api.routes, *collection_routes.routes, *reels.routes, *stickers.routes, *tgbot.routes, *webpush.routes, *assist.routes, *chatplus.routes, *consents.routes, *migrate.routes,
     Route("/static/v/{ver}/{path:path}", versioned_static, methods=["GET", "HEAD"]),
     Mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static"),
     Route("/uploads/{path:path}", uploads, methods=["GET", "HEAD"]),

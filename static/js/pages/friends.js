@@ -80,7 +80,7 @@ export async function friendsPage({ query }) {
         if (school.value || uni.value) run();
       } else if (current === "suggestions") {
         const { items, featured } = await api.get("/api/friends/suggestions");
-        content.replaceChildren(h("div.stack", contactsCard(), featuredStrip({ items: featured || [] }), card(h("div.card-pad", { style: { paddingBottom: 0 } }, h("div.card-title", "Возможно, вы знакомы"),
+        content.replaceChildren(h("div.stack", soundCard(), contactsCard(), featuredStrip({ items: featured || [] }), card(h("div.card-pad", { style: { paddingBottom: 0 } }, h("div.card-title", "Возможно, вы знакомы"),
           h("p.muted", { style: { fontSize: "14px", marginTop: "-6px" } }, "Друзья ваших друзей и люди из вашего города. Ищете кого-то конкретного? ", h("a", { href: "/search" }, "Воспользуйтесь поиском"), ".")),
           items.length ? h("div.people", items.map((p) => personRow(p, defaultPersonActions))) : empty("users", "Пока некого предложить", "Приглашайте друзей в Yarko!"))));
       } else {
@@ -96,6 +96,12 @@ export async function friendsPage({ query }) {
   }
 
   // «Найти друзей по контактам»: на телефоне — из телефонной книги (с разрешения), на компьютере — вставить номера
+  function soundCard() {
+    return h("div.card.card-pad",
+      h("div.card-title", "Друг рядом?"),
+      h("p.muted", { style: { fontSize: "13px", margin: "4px 0 10px" } }, "Поднесите телефоны друг к другу — они обменяются страницами звуком за пару секунд."),
+      h("a.btn.soft", { href: "/sound" }, icon("radio", "sm"), "Звуковое рукопожатие"));
+  }
   function contactsCard() {
     const results = h("div.people");
     const status = h("p.muted.fc-status", { style: { fontSize: "13px" } });
