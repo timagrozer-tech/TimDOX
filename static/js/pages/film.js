@@ -6,7 +6,14 @@ import { h, icon, thumb } from "../dom.js";
 import { setTitle, toast, toastError } from "../ui.js";
 import { setCleanup, navigate } from "../router.js";
 
-const W = 720, H = 1280, BPM = 112, SPB = 60 / BPM; // секунд на долю
+const W = 720, H = 1280, FPS = 30;
+// настроение фильма: темп и звучание. SPB — секунд на долю (от него зависит весь монтаж)
+const MOODS = {
+  energy: { name: "Энергия", icon: "⚡", bpm: 112 },
+  lyric: { name: "Лирика", icon: "🌙", bpm: 84 },
+  chip: { name: "8-бит", icon: "👾", bpm: 128 },
+};
+let SPB = 60 / MOODS.energy.bpm;
 const FONT_T = "Unbounded, Manrope, system-ui, sans-serif";
 const FONT_B = "Manrope, system-ui, sans-serif";
 
@@ -38,8 +45,9 @@ function loadImg(src, timeout = 7000) {
   });
 }
 function cover(g, im, x, y, w, hh, zoom = 1, px = 0, py = 0) {
-  const s = Math.max(w / im.naturalWidth, hh / im.naturalHeight) * zoom;
-  const iw = im.naturalWidth * s, ih = im.naturalHeight * s;
+  const nw = im.naturalWidth || im.width, nh = im.naturalHeight || im.height;
+  const s = Math.max(w / nw, hh / nh) * zoom;
+  const iw = nw * s, ih = nh * s;
   g.drawImage(im, x + (w - iw) / 2 + px * (iw - w) / 2, y + (hh - ih) / 2 + py * (ih - hh) / 2, iw, ih);
 }
 function circleImg(g, im, cx, cy, r, fallbackText, color) {
@@ -71,7 +79,8 @@ function wrap(g, text, maxW, maxLines = 8) {
 }
 
 /* ------------------------------------------------------------ сценарий */
-function buildScript(d, assets) {
+function buildScript(d, assets, mood = "energy") {
+  SPB = 60 / MOODS[mood].bpm;
   const c = d.counts, r = rng((d.me.id || 7) * 2654435761);
   const S = [];
   const add = (beats, draw, extra = {}) => S.push({ beats, draw, ...extra });
@@ -103,39 +112,53 @@ function buildScript(d, assets) {
 
   let beat = 0;
   for (const s of S) { s.start = beat; beat += s.beats; }
-  return { scenes: S, beats: beat, dur: beat * SPB + 1.2, seed: r };
+  return { scenes: S, beats: beat, dur: beat * SPB + 1.2, seed: (d.me.id || 7) * 2654435761, mood };
 }
 
 /* фон сцены: две краски, мягкие пятна, зерно плёнки */
-let grain;
+let grain, grainPat;
 function makeGrain() {
   grain = document.createElement("canvas"); grain.width = grain.height = 256;
   const gg = grain.getContext("2d"), im = gg.createImageData(256, 256);
   for (let i = 0; i < im.data.length; i += 4) { const v = Math.random() * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 26; }
   gg.putImageData(im, 0, 0);
 }
+// фон считаем в маленьком холсте и растягиваем: пятна размытые, разницы не видно, а рисовать в десятки раз быстрее
+const BG_K = 8;
+let bgc, bgg, vign;
 function bg(g, pal, t, seed = 0) {
-  const gr = g.createLinearGradient(0, 0, W * .3, H);
+  if (!bgc) { bgc = document.createElement("canvas"); bgc.width = W / BG_K; bgc.height = H / BG_K; bgg = bgc.getContext("2d"); }
+  const w = bgc.width, hh = bgc.height, q = bgg;
+  const gr = q.createLinearGradient(0, 0, w * .3, hh);
   gr.addColorStop(0, pal[0]); gr.addColorStop(1, pal[1]);
-  g.fillStyle = gr; g.fillRect(0, 0, W, H);
-  g.save(); g.globalCompositeOperation = "soft-light";
+  q.globalCompositeOperation = "source-over"; q.fillStyle = gr; q.fillRect(0, 0, w, hh);
+  q.globalCompositeOperation = "soft-light";
   for (let i = 0; i < 3; i++) {
-    const x = W * (.5 + .45 * Math.sin(t * .35 + i * 2.1 + seed)), y = H * (.5 + .4 * Math.cos(t * .27 + i * 1.7 + seed));
-    const rg = g.createRadialGradient(x, y, 0, x, y, 520);
+    const x = w * (.5 + .45 * Math.sin(t * .35 + i * 2.1 + seed)), y = hh * (.5 + .4 * Math.cos(t * .27 + i * 1.7 + seed));
+    const rg = q.createRadialGradient(x, y, 0, x, y, 520 / BG_K);
     rg.addColorStop(0, "rgba(255,255,255,.55)"); rg.addColorStop(1, "rgba(255,255,255,0)");
-    g.fillStyle = rg; g.fillRect(0, 0, W, H);
+    q.fillStyle = rg; q.fillRect(0, 0, w, hh);
   }
-  g.restore();
+  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = "high";
+  g.drawImage(bgc, 0, 0, W, H);
 }
 function finish(g, t, pulse) {
-  // зерно и виньетка — «киношность»
-  g.save(); g.globalAlpha = .9;
-  const ox = Math.floor(Math.random() * 256), oy = Math.floor(Math.random() * 256);
-  g.translate(-ox, -oy); g.fillStyle = g.createPattern(grain, "repeat"); g.fillRect(ox, oy, W, H);
+  // зерно и виньетка — «киношность». Зерно меняется 12 раз в секунду, как у плёнки, а не в каждом кадре:
+  // так видео лучше сжимается и файл меньше
+  if (!grainPat) grainPat = g.createPattern(grain, "repeat");
+  const f = Math.floor(t * 12), ox = (f * 97) % 256, oy = (f * 61) % 256;
+  g.save(); g.globalAlpha = .7;
+  g.translate(-ox, -oy); g.fillStyle = grainPat; g.fillRect(ox, oy, W, H);
   g.restore();
-  const v = g.createRadialGradient(W / 2, H / 2, H * .35, W / 2, H / 2, H * .75);
-  v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, `rgba(0,0,0,${.38 + pulse * .05})`);
-  g.fillStyle = v; g.fillRect(0, 0, W, H);
+  if (!vign) {
+    vign = document.createElement("canvas"); vign.width = W / 4; vign.height = H / 4;
+    const vg = vign.getContext("2d"), v = vg.createRadialGradient(W / 8, H / 8, H * .35 / 4, W / 8, H / 8, H * .75 / 4);
+    v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.4)");
+    vg.fillStyle = v; vg.fillRect(0, 0, W / 4, H / 4);
+  }
+  g.drawImage(vign, 0, 0, W, H);
+  if (pulse > .3) { g.globalAlpha = (pulse - .3) * .25; g.drawImage(vign, 0, 0, W, H); } // виньетка «дышит» в такт
+  g.globalAlpha = 1;
 }
 function wipe(g, lt, color) {
   // смена сцены: цветные полосы уезжают вверх по очереди
@@ -433,26 +456,30 @@ function sFinale(g, F, lt, b, pulse) {
   if (fade > 0) { g.fillStyle = `rgba(0,0,0,${fade})`; g.fillRect(0, 0, W, H); }
 }
 
+
 /* ------------------------------------------------------------ музыка: своя для каждого, в ритм монтажа */
 const KEYS = [57, 60, 62, 64, 55]; // ля, до, ре, ми, соль — минор
 const PROG = [[0, 3, 7], [-4, 0, 3], [3, 7, 10], [-2, 2, 5]]; // i–VI–III–VII
 const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
-function soundtrack(ac, out, script, t0) {
-  const r = script.seed, root = KEYS[Math.floor(r() * KEYS.length)];
+/** Расписывает всю музыку фильма в аудиоконтекст (обычно — OfflineAudioContext: считается быстрее реального времени) */
+function soundtrack(ac, out, script) {
+  const r = rng(script.seed), root = KEYS[Math.floor(r() * KEYS.length)];
+  const mood = script.mood, chip = mood === "chip", lyric = mood === "lyric";
   const noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
   const nd = noise.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
-  // простая «комната»
-  const rev = ac.createConvolver(), ir = ac.createBuffer(2, ac.sampleRate * 2.2, ac.sampleRate);
+  // «комната» (в 8-бит — почти сухо, в лирике — просторно)
+  const rev = ac.createConvolver(), ir = ac.createBuffer(2, ac.sampleRate * (lyric ? 3.2 : 2.2), ac.sampleRate);
   for (let ch = 0; ch < 2; ch++) { const x = ir.getChannelData(ch); for (let i = 0; i < x.length; i++) x[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / x.length, 3); }
-  rev.buffer = ir; const revG = ac.createGain(); revG.gain.value = .22; rev.connect(revG).connect(out);
+  rev.buffer = ir; const revG = ac.createGain(); revG.gain.value = chip ? .06 : lyric ? .38 : .22; rev.connect(revG).connect(out);
 
   const env = (node, t, a, peak, d) => { node.gain.setValueAtTime(0.0001, t); node.gain.linearRampToValueAtTime(peak, t + a); node.gain.exponentialRampToValueAtTime(0.0001, t + a + d); };
   const kick = (t, v = 1) => {
     if (!v) return;
     const o = ac.createOscillator(), gn = ac.createGain();
-    o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + .14);
-    env(gn, t, .003, .9 * v, .32); o.connect(gn).connect(out); o.start(t); o.stop(t + .4);
+    if (chip) o.type = "square";
+    o.frequency.setValueAtTime(chip ? 220 : 150, t); o.frequency.exponentialRampToValueAtTime(chip ? 55 : 42, t + (chip ? .08 : .14));
+    env(gn, t, .003, (chip ? .35 : .9) * v, chip ? .12 : .32); o.connect(gn).connect(out); o.start(t); o.stop(t + .4);
   };
   const nz = (t, f, type, q, peak, d, wet = 0) => {
     const s = ac.createBufferSource(); s.buffer = noise;
@@ -461,59 +488,140 @@ function soundtrack(ac, out, script, t0) {
     s.connect(fl).connect(gn).connect(out); if (wet) gn.connect(rev);
     s.start(t, Math.random() * .5); s.stop(t + d + .05);
   };
-  const tone = (t, m, type, peak, a, d, cutoff, wet = .0, detune = 0) => {
+  const tone = (t, m, type, peak, a, d, cutoff, wet = 0, detune = 0) => {
     const o = ac.createOscillator(); o.type = type; o.frequency.value = hz(m); o.detune.value = detune;
     const fl = ac.createBiquadFilter(); fl.type = "lowpass"; fl.frequency.value = cutoff;
     const gn = ac.createGain(); env(gn, t, a, peak, d);
     o.connect(fl).connect(gn).connect(out); if (wet) { const w = ac.createGain(); w.gain.value = wet; gn.connect(w).connect(rev); }
     o.start(t); o.stop(t + a + d + .05);
   };
-  // секции: какая сцена — такая аранжировка
   const sceneAt = (beat) => script.scenes.find((s) => beat >= s.start && beat < s.start + s.beats) || script.scenes[script.scenes.length - 1];
-  let next = 0; // следующая доля к планированию
-  const total = script.beats;
-  const plan = () => {
-    const horizon = ac.currentTime + 1.4;
-    while (next < total && t0 + next * SPB < horizon) {
-      const beat = next, t = t0 + beat * SPB, sc = sceneAt(beat), lb = beat - sc.start;
-      const bar = Math.floor(beat / 4), chord = PROG[bar % 4], inBar = beat % 4;
-      const intro = sc.draw === sIntro && lb < 4, outro = sc.draw === sFinale && lb >= sc.beats - 4;
-      const calm = sc.draw === sPost || sc.draw === sTime;
-      // смена сцены — удар
-      if (lb === 0 && beat > 0) { kick(t, 1.1); nz(t, 900, "lowpass", .5, .35, 1.4, 1); }
-      if (!intro && !outro) {
-        kick(t, calm && inBar % 2 ? .0 : 1);
-        if (inBar === 1 || inBar === 3) nz(t, 1800, "bandpass", .8, calm ? .18 : .32, .18, .6);
-        for (const off of [.5]) nz(t + off * SPB, 8500, "highpass", 1, calm ? .05 : .09, .05);
+  const fin = script.scenes[script.scenes.length - 1];
+  for (let beat = 0; beat < script.beats; beat++) {
+    const t = .05 + beat * SPB, sc = sceneAt(beat), lb = beat - sc.start;
+    const bar = Math.floor(beat / 4), chord = PROG[bar % 4], inBar = beat % 4;
+    const intro = sc.draw === sIntro && lb < 4, outro = sc.draw === sFinale && lb >= sc.beats - 4;
+    const calm = sc.draw === sPost || sc.draw === sTime;
+    if (lb === 0 && beat > 0) { kick(t, 1.1); if (!chip) nz(t, 900, "lowpass", .5, .35, 1.4, 1); }
+    if (!intro && !outro) {
+      if (lyric) {
+        if (inBar === 0 || inBar === 2) kick(t, calm ? .5 : .7);
+        if (inBar === 2 && !calm) nz(t, 2500, "bandpass", 2, .1, .12, .8);
+        tone(t, root - 24 + chord[0], "sine", .22, .01, SPB * .9, 400);
+        tone(t, root + 12 + chord[(inBar + bar) % 3], "sine", .07, .004, SPB * 1.8, 5000, .7); // «колокольчик»
+      } else {
+        kick(t, calm && inBar % 2 ? 0 : 1);
+        if (inBar === 1 || inBar === 3) nz(t, chip ? 3000 : 1800, chip ? "highpass" : "bandpass", .8, calm ? .18 : chip ? .2 : .32, chip ? .08 : .18, chip ? 0 : .6);
+        nz(t + .5 * SPB, 8500, "highpass", 1, calm ? .05 : .09, .05);
         if (!calm) nz(t + .75 * SPB, 9500, "highpass", 1, .04, .03);
-        // бас восьмыми
-        for (const off of [0, .5]) tone(t + off * SPB, root - 24 + chord[0] + (off && inBar === 3 ? 7 : 0), "sawtooth", .16, .005, SPB * .42, 520);
+        for (const off of [0, .5]) tone(t + off * SPB, root - 24 + chord[0] + (off && inBar === 3 ? 7 : 0), chip ? "square" : "sawtooth", chip ? .1 : .16, .005, SPB * .42, chip ? 1800 : 520);
       }
-      // аккорд-подложка раз в такт
-      if (inBar === 0 && !outro) chord.forEach((iv, i) => tone(t, root - 12 + iv + (i === 0 ? 12 : 0), "sawtooth", .045, SPB * 1.2, SPB * 3.2, 1400, .35, (i - 1) * 7));
-      if (outro && lb === sc.beats - 4) chord.forEach((iv) => tone(t, root - 12 + iv, "triangle", .07, .05, SPB * 6, 2200, .6));
-      // арпеджио шестнадцатыми — в «ярких» сценах
-      if (!intro && !outro && !calm) {
-        const notes = [chord[0], chord[1], chord[2], chord[1] + 12];
-        for (let s = 0; s < 4; s++) tone(t + s * SPB / 4, root + notes[(s + inBar) % 4], "square", .035, .002, SPB * .22, 3200, .25);
-      } else if (calm && !outro) {
-        tone(t, root + 12 + chord[inBar % 3], "triangle", .06, .005, SPB * 1.6, 2600, .5);
-      }
-      if (intro && inBar === 0) tone(t, root + chord[0], "triangle", .06, .01, SPB * 3.5, 2000, .6);
-      // подъём перед финалом
-      const fin = script.scenes[script.scenes.length - 1];
-      if (beat === fin.start - 4) {
-        const s = ac.createBufferSource(); s.buffer = noise; s.loop = true;
-        const fl = ac.createBiquadFilter(); fl.type = "bandpass"; fl.Q.value = 2; fl.frequency.setValueAtTime(400, t); fl.frequency.exponentialRampToValueAtTime(7000, t + SPB * 4);
-        const gn = ac.createGain(); gn.gain.setValueAtTime(.0001, t); gn.gain.exponentialRampToValueAtTime(.25, t + SPB * 4); gn.gain.setValueAtTime(.0001, t + SPB * 4 + .01);
-        s.connect(fl).connect(gn).connect(out); s.start(t); s.stop(t + SPB * 4 + .05);
-      }
-      next++;
     }
-  };
-  plan();
-  const iv = setInterval(plan, 200);
-  return () => clearInterval(iv);
+    if (inBar === 0 && !outro) chord.forEach((iv, i) => tone(t, root - 12 + iv + (i === 0 ? 12 : 0), lyric ? "triangle" : chip ? "square" : "sawtooth",
+      lyric ? .07 : chip ? .025 : .045, lyric ? SPB * 1.8 : SPB * 1.2, SPB * 3.2, lyric ? 1800 : 1400, lyric ? .5 : .35, (i - 1) * 7));
+    if (outro && lb === sc.beats - 4) chord.forEach((iv) => tone(t, root - 12 + iv, "triangle", .07, .05, SPB * 6, 2200, .6));
+    if (!intro && !outro && !calm && !lyric) {
+      const notes = [chord[0], chord[1], chord[2], chord[1] + 12];
+      for (let k = 0; k < 4; k++) tone(t + k * SPB / 4, root + notes[(k + inBar) % 4] + (chip ? 12 : 0), "square", chip ? .045 : .035, .002, SPB * (chip ? .18 : .22), chip ? 9000 : 3200, chip ? 0 : .25);
+    } else if (calm && !outro && !lyric) {
+      tone(t, root + 12 + chord[inBar % 3], "triangle", .06, .005, SPB * 1.6, 2600, .5);
+    }
+    if (intro && inBar === 0) tone(t, root + chord[0], "triangle", .06, .01, SPB * 3.5, 2000, .6);
+    if (beat === fin.start - 4) { // подъём перед финалом
+      const s = ac.createBufferSource(); s.buffer = noise; s.loop = true;
+      const fl = ac.createBiquadFilter(); fl.type = "bandpass"; fl.Q.value = 2; fl.frequency.setValueAtTime(400, t); fl.frequency.exponentialRampToValueAtTime(7000, t + SPB * 4);
+      const gn = ac.createGain(); gn.gain.setValueAtTime(.0001, t); gn.gain.exponentialRampToValueAtTime(.25, t + SPB * 4); gn.gain.setValueAtTime(.0001, t + SPB * 4 + .01);
+      s.connect(fl).connect(gn).connect(out); s.start(t); s.stop(t + SPB * 4 + .05);
+    }
+  }
+}
+
+/** Музыка всего фильма заранее, одним файлом в памяти: показ потом идёт ровно, без нагрузки на телефон */
+async function renderMusic(script) {
+  const sr = 48000, len = Math.ceil((script.dur + .5) * sr);
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const ac = new OAC(2, len, sr);
+  const master = ac.createGain(); master.gain.value = .85;
+  const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+  master.connect(comp).connect(ac.destination);
+  soundtrack(ac, master, script);
+  return ac.startRendering();
+}
+
+/* ------------------------------------------------------------ быстрый экспорт в MP4 (WebCodecs + свой упаковщик) */
+async function pickCodecs(dur = 45) {
+  if (typeof VideoEncoder === "undefined" || typeof AudioEncoder === "undefined") return null;
+  // realtime — кодер не «думает» над каждым кадром: в разы быстрее и точнее держит размер файла
+  const vbase = { width: W, height: H, bitrate: Math.min(2_500_000, Math.round(80_000_000 / dur)), // клип укладывается в ~20 МБ
+    framerate: FPS, latencyMode: "realtime" };
+  let video = null;
+  outer: for (const hw of ["prefer-hardware", "no-preference"]) {
+    for (const codec of ["avc1.42002a", "avc1.4d002a", "avc1.42001f", "vp09.00.40.08", "vp8"]) {
+      const cfg = { ...vbase, codec, hardwareAcceleration: hw, ...(codec.startsWith("avc") ? { avc: { format: "avc" } } : {}) };
+      try { if ((await VideoEncoder.isConfigSupported(cfg)).supported) { video = cfg; break outer; } } catch { /* следующий */ }
+    }
+  }
+  if (video?.codec === "vp8") return null; // VP8 в MP4 не кладётся — тогда запись во время показа
+  let audio = null;
+  for (const codec of ["mp4a.40.2", "opus"]) {
+    const cfg = { codec, sampleRate: 48000, numberOfChannels: 2, bitrate: 160_000 };
+    try { if ((await AudioEncoder.isConfigSupported(cfg)).supported) { audio = cfg; break; } } catch { /* следующий */ }
+  }
+  return video && audio ? { video, audio } : null;
+}
+
+async function exportMp4(F, music, codecs, drawFrame, onProgress, isStopped) {
+  const { muxMp4 } = await import("../film/mp4mux.js");
+  const vt = { kind: "video", codec: codecs.video.codec, timescale: 90000, width: W, height: H, samples: [] };
+  const at = { kind: "audio", codec: codecs.audio.codec, timescale: 48000, sampleRate: 48000, channels: 2, bitrate: codecs.audio.bitrate, samples: [] };
+  let fail = null;
+  const ve = new VideoEncoder({
+    output: (chunk, meta) => {
+      if (meta?.decoderConfig?.description && !vt.description) vt.description = new Uint8Array(meta.decoderConfig.description.slice ? meta.decoderConfig.description.slice(0) : meta.decoderConfig.description);
+      const data = new Uint8Array(chunk.byteLength); chunk.copyTo(data);
+      vt.samples.push({ data, time: Math.round(chunk.timestamp * .09), dur: Math.round(90000 / FPS), key: chunk.type === "key" });
+    },
+    error: (e) => { fail = e; },
+  });
+  ve.configure(codecs.video);
+  const ae = new AudioEncoder({
+    output: (chunk, meta) => {
+      if (meta?.decoderConfig?.description && !at.description) at.description = new Uint8Array(meta.decoderConfig.description.slice ? meta.decoderConfig.description.slice(0) : meta.decoderConfig.description);
+      const data = new Uint8Array(chunk.byteLength); chunk.copyTo(data);
+      at.samples.push({ data, time: Math.round(chunk.timestamp * .048), dur: Math.round((chunk.duration || 0) * .048) || (codecs.audio.codec === "opus" ? 960 : 1024) });
+    },
+    error: (e) => { fail = e; },
+  });
+  ae.configure(codecs.audio);
+  // звук — кусками по 0,1 с
+  const len = Math.min(music.length, Math.ceil(F.script.dur * 48000));
+  const L = music.getChannelData(0), R = music.getChannelData(1), step = 4800;
+  for (let i = 0; i < len; i += step) {
+    const n = Math.min(step, len - i), buf = new Float32Array(n * 2);
+    buf.set(L.subarray(i, i + n), 0); buf.set(R.subarray(i, i + n), n);
+    const ad = new AudioData({ format: "f32-planar", sampleRate: 48000, numberOfFrames: n, numberOfChannels: 2, timestamp: Math.round(i / 48 * 1000), data: buf });
+    ae.encode(ad); ad.close();
+  }
+  // картинка — кадр за кадром, быстрее реального времени
+  const frames = Math.ceil(F.script.dur * FPS);
+  const canvas = F.canvas;
+  for (let i = 0; i < frames; i++) {
+    if (fail) throw fail;
+    if (isStopped()) { try { ve.close(); ae.close(); } catch { /* */ } return null; }
+    drawFrame(F, i / FPS);
+    const vf = new VideoFrame(canvas, { timestamp: Math.round(i * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
+    ve.encode(vf, { keyFrame: i % (FPS * 2) === 0 });
+    vf.close();
+    if (ve.encodeQueueSize > 6) await new Promise((res) => { const chk = () => (ve.encodeQueueSize > 2 ? setTimeout(chk, 4) : res()); chk(); });
+    if (i % 15 === 0) { onProgress(i / frames); await new Promise((res) => setTimeout(res, 0)); }
+  }
+  await ve.flush(); await ae.flush();
+  ve.close(); ae.close();
+  if (fail) throw fail;
+  if (!vt.description && vt.codec.startsWith("avc")) throw new Error("no avcC");
+  if (!at.description && at.codec.startsWith("mp4a")) at.description = Uint8Array.of(0x11, 0x90); // AAC-LC, 48 кГц, стерео
+  onProgress(1);
+  return muxMp4([vt, at]);
 }
 
 /* ------------------------------------------------------------ страница */
@@ -523,105 +631,149 @@ function pickMime() {
   return c.find((m) => { try { return MediaRecorder.isTypeSupported(m); } catch { return false; } }) || null;
 }
 
+async function prepImage(src, max = 1100) {
+  const im = await loadImg(src);
+  if (!im || !window.createImageBitmap) return im;
+  // большие фото уменьшаем один раз — иначе телефон пересчитывает их в каждом кадре
+  const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+  if (k >= 1) return im;
+  try { return await createImageBitmap(im, { resizeWidth: Math.round(im.naturalWidth * k), resizeHeight: Math.round(im.naturalHeight * k), resizeQuality: "high" }); } catch { return im; }
+}
+
 export async function filmPage() {
   setTitle("Фильм о вас");
   if (!document.querySelector('link[data-film]')) {
-    document.head.append(h("link", { rel: "stylesheet", href: "/static/css/film.css?v=1", dataset: { film: "1" } }));
+    document.head.append(h("link", { rel: "stylesheet", href: "/static/css/film.css?v=2", dataset: { film: "1" } }));
   }
   const canvas = h("canvas.film-canvas", { width: W, height: H, "aria-label": "Фильм о вас" });
-  const g = canvas.getContext("2d");
-  const status = h("div.film-status", "Собираю материалы для фильма…");
+  const g = canvas.getContext("2d", { alpha: false }) || canvas.getContext("2d");
+  const status = h("div.film-status", { role: "status" }, "Собираю материалы для фильма…");
   const bar = h("div.film-bar", h("i"));
   const actions = h("div.film-actions");
+  const moods = h("div.film-moods", { role: "radiogroup", "aria-label": "Настроение музыки" });
   const playBtn = h("button.film-play", { type: "button", disabled: true, "aria-label": "Смотреть фильм" }, h("span", "▶"), h("b", "Смотреть фильм"));
-  const startCard = h("div.film-start", playBtn, h("p", "Сайт сам смонтирует ролик о вас и сочинит к нему музыку. Включите звук 🔊"));
+  const quickBtn = h("button.film-quick", { type: "button", hidden: true }, "или сразу смонтировать видео ⚡");
+  const startCard = h("div.film-start", playBtn, moods, quickBtn, h("p", "Сайт сам смонтирует ролик о вас и сочинит к нему музыку. Включите звук 🔊"));
+  const pauseMark = h("div.film-paused", { hidden: true }, "❚❚");
+  const stage = h("div.film-stage", canvas, startCard, pauseMark);
   const root = h("div.film",
     h("div.film-top",
       h("button.film-back", { type: "button", onclick: () => (history.length > 1 ? history.back() : navigate("/")) }, "← Назад"),
       h("span.film-title", "Фильм о вас")),
-    h("div.film-stage", canvas, startCard),
-    bar, status, actions);
+    stage, bar, status, actions);
 
-  let stopped = false, raf = 0, stopMusic = null, ac = null, rec = null, chunks = [], video = null;
+  let stopped = false, raf = 0, ac = null, src = null, rec = null, chunks = [], video = null, busy = false;
+  let F = null, mood = "energy";
+  const music = {}; // настроение → готовая музыка
   setCleanup(() => {
-    stopped = true; cancelAnimationFrame(raf); stopMusic?.();
+    stopped = true; cancelAnimationFrame(raf);
+    try { src?.stop(); } catch { /* */ }
     try { rec?.state === "recording" && rec.stop(); } catch { /* */ }
     ac?.close().catch(() => {});
   });
+
+  function drawFrame(Fr, t) {
+    const { script } = Fr;
+    Fr.t = t;
+    const beat = t / SPB;
+    const sc = script.scenes.find((s) => beat >= s.start && beat < s.start + s.beats) || script.scenes[script.scenes.length - 1];
+    const lt = t - sc.start * SPB, b = beat - sc.start;
+    const pulse = Math.exp(-((beat % 1 + 1) % 1) * 5);
+    g.save();
+    sc.draw.call(sc, g, Fr, lt, b, pulse);
+    g.restore();
+    g.textAlign = "left"; g.globalAlpha = 1;
+    finish(g, t, pulse);
+    if (script.scenes.indexOf(sc) > 0) wipe(g, lt, sc.pal[0]);
+    g.fillStyle = "#000"; g.fillRect(0, 0, W, 18); g.fillRect(0, H - 18, W, 18);
+  }
+  const poster = () => drawFrame(F, SPB * 6.5);
+
+  async function musicFor(m) {
+    if (!music[m]) music[m] = renderMusic(F.script);
+    return music[m];
+  }
+  function setMood(m) {
+    if (busy) return;
+    mood = m;
+    F.script = buildScript(F.d, F.A, m);
+    video = null; actions.replaceChildren();
+    paintMoods(); poster();
+    status.textContent = `Фильм готов: ${Math.round(F.script.dur)} с · музыка «${MOODS[m].name}»`;
+    musicFor(m).catch(() => {}); // считаем музыку заранее, пока человек думает
+  }
+  function paintMoods() {
+    moods.replaceChildren(...Object.entries(MOODS).map(([k, v]) => h(`button.film-mood${k === mood ? ".on" : ""}`,
+      { type: "button", role: "radio", "aria-checked": String(k === mood), onclick: () => setMood(k) }, v.icon, " ", v.name)));
+  }
 
   (async () => {
     try {
       if (!grain) makeGrain();
       const d = await api.fresh("/api/film");
       status.textContent = "Подбираю кадры…";
-      await Promise.all([document.fonts?.load(`700 80px Unbounded`), document.fonts?.load(`800 30px Manrope`), document.fonts?.load(`600 30px Manrope`)].map((p) => p?.catch?.(() => {})));
+      await Promise.all([document.fonts?.load("700 80px Unbounded"), document.fonts?.load("800 30px Manrope"), document.fonts?.load("600 30px Manrope")].map((p) => p?.catch?.(() => {})));
       const [avatar, post, ...rest] = await Promise.all([
-        loadImg(d.me.avatar), loadImg(d.top_post?.image),
-        ...d.photos.map((p) => loadImg(p)), ...d.friends.map((f) => loadImg(thumb(f.avatar))),
+        prepImage(d.me.avatar, 600), prepImage(d.top_post?.image, 900),
+        ...d.photos.map((p) => prepImage(p)), ...d.friends.map((f) => loadImg(thumb(f.avatar))),
       ]);
-      const photos = rest.slice(0, d.photos.length).filter(Boolean);
-      const friends = rest.slice(d.photos.length);
-      const A = { avatar, post, photos, friends };
-      const script = buildScript(d, A);
+      const A = { avatar, post, photos: rest.slice(0, d.photos.length).filter(Boolean), friends: rest.slice(d.photos.length) };
       if (stopped) return;
-      // постер — первый кадр финала
-      drawFrame({ d, A, script, t: 0 }, script.scenes[0].start * SPB + SPB * 6);
-      status.textContent = `Фильм готов: ${Math.round(script.dur)} секунд, ${script.scenes.length} ${plural(script.scenes.length, "сцена", "сцены", "сцен")}`;
+      F = { d, A, canvas, script: null, t: 0 };
+      setMood(mood);
       playBtn.disabled = false;
-      playBtn.onclick = () => play({ d, A, script });
+      playBtn.onclick = () => play();
+      const codecs = await pickCodecs(F.script.dur);
+      if (codecs) {
+        quickBtn.hidden = false;
+        quickBtn.onclick = async () => {
+          startCard.hidden = true;
+          try { await makeVideo(codecs); showActions(codecs); } catch (e) { startCard.hidden = false; status.textContent = "Не получилось смонтировать видео"; toastError(e); }
+        };
+      }
     } catch (e) {
       status.textContent = "Не удалось собрать фильм";
       toastError(e);
     }
   })();
 
-  function drawFrame(F, t) {
-    const { script } = F;
-    F.t = t;
-    const beat = t / SPB;
-    const sc = script.scenes.find((s) => beat >= s.start && beat < s.start + s.beats) || script.scenes[script.scenes.length - 1];
-    const lt = t - sc.start * SPB, b = beat - sc.start;
-    const pulse = Math.exp(-((beat % 1 + 1) % 1) * 5);
-    g.save();
-    sc.draw.call(sc, g, F, lt, b, pulse);
-    g.restore();
-    g.textAlign = "left"; g.globalAlpha = 1;
-    finish(g, t, pulse);
-    const prev = script.scenes[script.scenes.indexOf(sc) - 1];
-    if (prev) wipe(g, lt, sc.pal[0]);
-    // полосы «широкого экрана»
-    g.fillStyle = "#000"; g.fillRect(0, 0, W, 18); g.fillRect(0, H - 18, W, 18);
-  }
+  // пауза по нажатию на экран
+  canvas.addEventListener("click", () => {
+    if (!ac || !src || busy) return;
+    if (ac.state === "running") { ac.suspend(); pauseMark.hidden = false; } else { ac.resume(); pauseMark.hidden = true; }
+  });
 
-  async function play(F) {
-    startCard.hidden = true;
+  async function play() {
+    if (busy) return;
+    startCard.hidden = true; pauseMark.hidden = true;
     actions.replaceChildren();
-    video = null;
+    status.textContent = "Сочиняю музыку…";
+    const buf = await musicFor(mood);
+    if (stopped) return;
     const AC = window.AudioContext || window.webkitAudioContext;
+    try { src?.stop(); } catch { /* */ }
     ac?.close().catch(() => {});
-    ac = new AC();
+    ac = new AC({ latencyHint: "playback" });
     await ac.resume().catch(() => {});
-    const master = ac.createGain(); master.gain.value = .85;
-    const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
-    master.connect(comp); comp.connect(ac.destination);
-    const dest = ac.createMediaStreamDestination ? ac.createMediaStreamDestination() : null;
-    if (dest) comp.connect(dest);
-    const t0 = ac.currentTime + .25;
-    stopMusic?.();
-    stopMusic = soundtrack(ac, master, F.script, t0);
-    // запись: картинка с холста + звук
-    const mime = pickMime();
+    src = ac.createBufferSource(); src.buffer = buf;
+    src.connect(ac.destination);
+    const codecs = await pickCodecs(F.script.dur);
+    // запись во время показа — только если браузер не умеет быстрый экспорт
     rec = null; chunks = [];
-    if (mime && canvas.captureStream && dest) {
+    const mime = !codecs && pickMime();
+    if (mime && canvas.captureStream && ac.createMediaStreamDestination) {
       try {
-        const stream = new MediaStream([...canvas.captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
+        const dest = ac.createMediaStreamDestination(); src.connect(dest);
+        const stream = new MediaStream([...canvas.captureStream(FPS).getVideoTracks(), ...dest.stream.getAudioTracks()]);
         rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 3_000_000, audioBitsPerSecond: 128_000 });
         rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
-        rec.onstop = () => { video = new Blob(chunks, { type: mime.split(";")[0] }); showActions(F); };
-        setTimeout(() => { try { rec.start(1000); } catch { rec = null; } }, 200);
+        rec.onstop = () => { video = new Blob(chunks, { type: mime.split(";")[0] }); showActions(codecs); };
       } catch { rec = null; }
     }
-    status.textContent = rec ? "Идёт показ и запись фильма — не сворачивайте страницу" : "Идёт показ фильма";
+    const t0 = ac.currentTime + .15;
+    src.start(t0);
+    try { rec?.start(1000); } catch { rec = null; }
+    status.textContent = rec ? "Идёт показ и запись — не сворачивайте страницу" : "Нажмите на экран, чтобы поставить на паузу";
     cancelAnimationFrame(raf);
     const loop = () => {
       if (stopped) return;
@@ -629,54 +781,72 @@ export async function filmPage() {
       drawFrame(F, Math.max(0, t));
       bar.firstChild.style.width = `${clamp(t / F.script.dur) * 100}%`;
       if (t < F.script.dur) raf = requestAnimationFrame(loop);
-      else {
-        stopMusic?.();
-        if (rec && rec.state === "recording") { status.textContent = "Сохраняю видео…"; rec.stop(); } else showActions(F);
-      }
+      else if (rec && rec.state === "recording") { status.textContent = "Сохраняю видео…"; rec.stop(); }
+      else showActions(codecs);
     };
     raf = requestAnimationFrame(loop);
   }
 
-  function showActions(F) {
+  async function makeVideo(codecs) {
+    if (video) return video;
+    busy = true;
+    const was = actions.querySelectorAll("button"); was.forEach((b) => { b.disabled = true; });
+    const t1 = performance.now();
+    try {
+      const buf = await musicFor(mood);
+      video = await exportMp4(F, buf, (await pickCodecs(F.script.dur)) || codecs, drawFrame, (p) => {
+        bar.firstChild.style.width = `${p * 100}%`;
+        status.textContent = `Монтирую видео… ${Math.round(p * 100)}%`;
+      }, () => stopped);
+      if (video) status.textContent = `Видео смонтировано за ${((performance.now() - t1) / 1000).toFixed(1)} с · ${(video.size / 1048576).toFixed(1)} МБ`;
+      return video;
+    } finally {
+      busy = false; was.forEach((b) => { b.disabled = false; });
+      if (!stopped && F) poster();
+    }
+  }
+
+  function showActions(codecs) {
     if (stopped) return;
-    drawFrame(F, SPB * 6.5); // на экране остаётся «обложка» — она же постер клипа
-    status.textContent = video ? `Видео готово · ${(video.size / 1048576).toFixed(1)} МБ` : "Фильм закончился";
-    const ext = video && video.type.includes("mp4") ? "mp4" : "webm";
-    const file = video ? new File([video], `yarko-film.${ext}`, { type: video.type }) : null;
-    const btns = [h("button.btn.soft", { type: "button", onclick: () => play(F) }, icon("repeat", "sm"), "Смотреть снова")];
-    if (file) {
-      btns.push(h("button.btn.soft", { type: "button", onclick: () => {
-        const a = h("a", { href: URL.createObjectURL(file), download: file.name });
-        document.body.append(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-      } }, icon("download", "sm"), "Скачать видео"));
-      if (navigator.canShare?.({ files: [file] })) {
-        btns.push(h("button.btn.soft", { type: "button", onclick: () => navigator.share({ files: [file], title: "Мой фильм в Ярко" }).catch(() => {}) }, icon("share", "sm"), "Отправить"));
-      }
-      const pub = h("button.btn.primary", { type: "button", onclick: async () => {
-        pub.disabled = true;
+    poster(); // на экране — «обложка»: она же постер клипа
+    const canSave = !!(codecs || video);
+    const fileOf = (v) => new File([v], `yarko-film.${v.type.includes("mp4") ? "mp4" : "webm"}`, { type: v.type });
+    const withVideo = (fn) => async () => {
+      try { const v = video || await makeVideo(codecs); if (v) await fn(fileOf(v)); } catch (e) { status.textContent = "Не получилось смонтировать видео"; toastError(e); }
+    };
+    if (!video) status.textContent = canSave ? "Фильм закончился. Видео смонтируется за несколько секунд" : "Фильм закончился. Этот браузер не умеет сохранять видео — откройте сайт в Chrome";
+    else if (!status.textContent.startsWith("Видео смонтировано")) status.textContent = `Видео готово · ${(video.size / 1048576).toFixed(1)} МБ`;
+    const btns = [h("button.btn.soft", { type: "button", onclick: () => play() }, icon("repeat", "sm"), "Смотреть снова")];
+    if (canSave) {
+      btns.unshift(h("button.btn.primary", { type: "button", onclick: withVideo(async (file) => {
+        const posterBlob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", .86));
+        const fd = new FormData();
+        fd.append("caption", "Мой фильм в Ярко 🎬 #фильмовас");
+        fd.append("duration", String(Math.round(F.script.dur)));
+        fd.append("visibility", "public");
+        fd.append("width", String(W)); fd.append("height", String(H));
+        if (posterBlob) fd.append("poster", posterBlob, "poster.jpg");
+        fd.append("video", file, file.name);
+        busy = true;
         try {
-          const poster = await new Promise((res) => canvas.toBlob(res, "image/jpeg", .86));
-          const fd = new FormData();
-          fd.append("caption", "Мой фильм в Ярко 🎬 #фильмовас");
-          fd.append("duration", String(Math.round(F.script.dur)));
-          fd.append("visibility", "public");
-          fd.append("width", String(W)); fd.append("height", String(H));
-          if (poster) fd.append("poster", poster, "poster.jpg");
-          fd.append("video", file, file.name);
           const up = api.upload("/api/reels", fd, (p) => { status.textContent = p < 1 ? `Публикую… ${Math.round(p * 100)}%` : "Сохраняю…"; });
           const r = await up.promise;
           toast("Фильм опубликован в Клипы 🎬", { icon: "check" });
           navigate(`/reels/${r.id}`);
-        } catch (e) { pub.disabled = false; status.textContent = "Не получилось опубликовать"; toastError(e); }
-      } }, icon("film", "sm"), "Опубликовать в Клипы");
-      btns.unshift(pub);
-    } else {
-      status.textContent = "Фильм закончился. Этот браузер не умеет записывать видео — откройте сайт в Chrome, чтобы сохранить ролик.";
+        } finally { busy = false; }
+      }) }, icon("film", "sm"), "Опубликовать в Клипы"));
+      btns.push(h("button.btn.soft", { type: "button", onclick: withVideo(async (file) => {
+        const a = h("a", { href: URL.createObjectURL(file), download: file.name });
+        document.body.append(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+      }) }, icon("download", "sm"), "Скачать видео"));
+      if (navigator.canShare?.({ files: [new File([new Blob()], "x.mp4", { type: "video/mp4" })] })) {
+        btns.push(h("button.btn.soft", { type: "button", onclick: withVideo((file) => navigator.share({ files: [file], title: "Мой фильм в Ярко" }).catch(() => {})) }, icon("share", "sm"), "Отправить"));
+      }
     }
+    btns.push(h("button.btn.ghost", { type: "button", onclick: () => { startCard.hidden = false; actions.replaceChildren(); poster(); } }, "Другая музыка"));
     actions.replaceChildren(...btns);
   }
 
   return root;
 }
-

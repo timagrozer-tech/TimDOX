@@ -38,3 +38,17 @@
 .film-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 12px; max-width: 520px; }
 .film-actions .btn { min-height: 42px; }
 @media (prefers-reduced-motion: reduce) { .film-play:hover { transform: none; } }
+.film-moods { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.film-mood {
+  border: 1px solid rgba(255,255,255,.35); background: rgba(0,0,0,.35); color: #fff; font: inherit; font-size: 14px; font-weight: 700;
+  padding: 8px 14px; border-radius: 999px; cursor: pointer; min-height: 38px; backdrop-filter: blur(6px);
+}
+.film-mood.on { background: #fff; color: #111; border-color: #fff; }
+.film-paused {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+  font-size: 54px; color: #fff; background: rgba(0,0,0,.35); text-shadow: 0 4px 20px rgba(0,0,0,.5);
+}
+.film-paused[hidden] { display: none; }
+.film-canvas { cursor: pointer; }
+.film-quick { background: none; border: 0; color: rgba(255,255,255,.9); font: inherit; font-size: 14px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 6px; }
+.film-quick[hidden] { display: none; }
