@@ -20,7 +20,7 @@ jobs:
           mkdir -p out
           {
             echo "== assetlinks"; curl -sS -m 30 -D - "https://$H/.well-known/assetlinks.json" | head -30
-            echo; echo "== apk headers"; curl -sS -m 60 -I "https://$H/static/downloads/yarko.apk" | head -15; echo "== player"; for u in film static/js/pages/film.js static/css/film.css player static/player/index.html static/player/player.js static/player/sw.js static/downloads/yarko-player.apk; do echo "$u $(curl -sS -m 30 -o /dev/null -w "%{http_code} %{content_type} %{size_download} %{redirect_url}" "https://$H/$u")"; done
+            echo; echo "== apk headers"; curl -sS -m 60 -I "https://$H/static/downloads/yarko.apk" | head -15; echo "== player"; for u in sound static/js/pages/sound.js static/js/sound/modem.js static/js/sound/mic-worklet.js static/js/film/mp4mux.js film static/js/pages/film.js static/css/film.css player static/player/index.html static/player/player.js static/player/sw.js static/downloads/yarko-player.apk; do echo "$u $(curl -sS -m 30 -o /dev/null -w "%{http_code} %{content_type} %{size_download} %{redirect_url}" "https://$H/$u")"; done
             echo "== google digital asset links"
             curl -sS -m 30 "https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://$H&relation=delegate_permission/common.handle_all_urls"
           } > out/sitecheck.txt 2>&1 || true
