@@ -69,7 +69,7 @@ const P = {
   world: () => import("./pages/world.js"), stats: () => import("./pages/stats.js"), invite: () => import("./pages/invite.js"),
   wallet: () => import("./pages/wallet.js"), shop: () => import("./pages/shop.js"), market: () => import("./pages/market.js"),
   welcome: () => import("./pages/welcome.js"), music: () => import("./pages/music.js"), artists: () => import("./music/artists.js"),
-  playlists: () => import("./music/playlists.js"),
+  playlists: () => import("./music/playlists.js"), film: () => import("./pages/film.js"),
 };
 const legalPage = (kind) => (...args) => P.legal().then((m) => m.legalPage(kind)(...args));
 const profilePage = lazy(P.profile, "profilePage"), postPage = lazy(P.post, "postPage"), friendsPage = lazy(P.friends, "friendsPage");
@@ -133,6 +133,7 @@ route("/wallet", walletPage);
 route("/shop", shopPage);
 route("/market", marketPage);
 route("/welcome", welcomePage, { bare: true });
+route("/film", lazy(P.film, "filmPage"), { bare: true });
 route("/settings", settingsPage);
 route("/communities", communitiesPage);
 route("/c/:slug", communityPage);

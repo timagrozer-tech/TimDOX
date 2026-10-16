@@ -1,0 +1,40 @@
+/* «Фильм о вас» — тёмный кинозал во весь экран */
+.film {
+  position: fixed; inset: 0; z-index: 300; overflow-y: auto;
+  background: radial-gradient(120% 80% at 50% 0%, #2a2320 0%, #0c0b0a 60%);
+  color: #f3eee6; font-family: Manrope, system-ui, sans-serif;
+  display: flex; flex-direction: column; align-items: center;
+  padding: calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + 20px);
+}
+.film-top { width: 100%; max-width: 520px; display: flex; align-items: center; gap: 12px; min-height: 44px; }
+.film-back { background: none; border: 0; color: #f3eee6; font: inherit; font-weight: 700; padding: 10px 4px; cursor: pointer; }
+.film-title { font-family: Unbounded, Manrope, sans-serif; font-weight: 700; letter-spacing: .02em; }
+.film-stage {
+  position: relative; margin-top: 6px;
+  height: min(calc(100dvh - 210px), 860px); aspect-ratio: 9 / 16; max-width: 100%;
+  border-radius: 18px; overflow: hidden; background: #000;
+  box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.06);
+}
+@supports not (height: 100dvh) { .film-stage { height: min(calc(100vh - 210px), 860px); } }
+.film-canvas { display: block; width: 100%; height: 100%; }
+.film-start {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  gap: 14px; padding: 0 24px 40px; text-align: center;
+  background: linear-gradient(transparent 45%, rgba(0,0,0,.75));
+}
+.film-start[hidden] { display: none; }
+.film-start p { margin: 0; color: rgba(255,255,255,.85); font-size: 14px; line-height: 1.45; max-width: 300px; }
+.film-play {
+  display: flex; align-items: center; gap: 12px; border: 0; cursor: pointer;
+  padding: 14px 26px 14px 16px; border-radius: 999px; font: inherit; font-size: 17px;
+  background: #fff; color: #111; box-shadow: 0 10px 30px rgba(0,0,0,.4);
+}
+.film-play span { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: #ff3d2e; color: #fff; font-size: 16px; }
+.film-play:disabled { opacity: .55; cursor: progress; }
+.film-play:not(:disabled):hover { transform: translateY(-1px); }
+.film-bar { width: 100%; max-width: 520px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.12); margin-top: 14px; overflow: hidden; }
+.film-bar i { display: block; height: 100%; width: 0; background: #ff3d2e; }
+.film-status { margin-top: 10px; font-size: 13px; color: rgba(243,238,230,.75); text-align: center; max-width: 520px; min-height: 18px; }
+.film-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 12px; max-width: 520px; }
+.film-actions .btn { min-height: 42px; }
+@media (prefers-reduced-motion: reduce) { .film-play:hover { transform: none; } }

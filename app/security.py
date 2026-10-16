@@ -83,6 +83,7 @@ rate_limiter = RateLimiter()
 
 # Лимиты: (кол-во запросов, окно в секундах)
 LIMITS = {
+    "film": (30, 3600),       # «Фильм о вас»
     "constellation": (30, 3600),
     "steam_world": (60, 600),
     "transcribe": (40, 3600),
