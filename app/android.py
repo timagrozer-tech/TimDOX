@@ -61,5 +61,10 @@ async def player(request: Request):
     return RedirectResponse("/static/player/index.html" + (("?" + request.url.query) if request.url.query else ""), status_code=302)
 
 
+async def genesis(request: Request):
+    return RedirectResponse("/static/genesis/index.html", status_code=302)
+
+
 routes = [Route("/.well-known/assetlinks.json", assetlinks, methods=["GET"]),
+          Route("/genesis", genesis, methods=["GET", "HEAD"]), Route("/genesis/", genesis, methods=["GET", "HEAD"]),
           Route("/player", player, methods=["GET", "HEAD"]), Route("/player/", player, methods=["GET", "HEAD"])]
