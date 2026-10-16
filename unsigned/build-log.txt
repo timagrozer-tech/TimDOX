@@ -2,7 +2,7 @@ npm warn deprecated google-p12-pem@3.1.4: Package is no longer maintained
 npm warn deprecated @types/gapi.client.androidpublisher@3.0.2: use @types/gapi.client.androidpublisher-v3 instead; see https://github.com/Maxim-Mazurok/google-api-typings-generator/issues/652 for details
 npm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
 
-added 266 packages in 8s
+added 266 packages in 9s
 == android/app.json -> yarko-unsigned.apk
   "features": {},
   "alphaDependencies": {
@@ -27,10 +27,10 @@ project ready: /home/runner/work/TimDOX/TimDOX/build/app
 Recommendation: remove package="space.yarko.app" from the source AndroidManifest.xml: /home/runner/work/TimDOX/TimDOX/build/app/app/src/main/AndroidManifest.xml.
 
 > Task :app:processReleaseManifest
+> Task :app:processReleaseManifestForPackage
 > Task :app:mergeReleaseArtProfile
 > Task :app:extractProguardFiles
 > Task :app:processReleaseJavaRes NO-SOURCE
-> Task :app:processReleaseManifestForPackage
 > Task :app:mergeReleaseStartupProfile
 > Task :app:mergeReleaseShaders
 > Task :app:compileReleaseShaders NO-SOURCE
@@ -62,7 +62,7 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 55s
+BUILD SUCCESSFUL in 1m 9s
 36 actionable tasks: 36 executed
 == android/player.json -> yarko-player-unsigned.apk
   "features": {},
@@ -89,6 +89,7 @@ Recommendation: remove package="space.yarko.player" from the source AndroidManif
 
 > Task :app:mergeReleaseResources
 > Task :app:processReleaseManifest
+> Task :app:processReleaseManifestForPackage
 > Task :app:mergeReleaseArtProfile
 > Task :app:extractProguardFiles
 > Task :app:processReleaseJavaRes NO-SOURCE
@@ -100,12 +101,11 @@ Recommendation: remove package="space.yarko.player" from the source AndroidManif
 > Task :app:compressReleaseAssets
 > Task :app:extractReleaseVersionControlInfo
 > Task :app:collectReleaseDependencies
-> Task :app:processReleaseManifestForPackage
-> Task :app:mergeReleaseJavaResource
 > Task :app:sdkReleaseDependencyData
 > Task :app:writeReleaseAppMetadata
 > Task :app:writeReleaseSigningConfigVersions
 > Task :app:processReleaseResources
+> Task :app:mergeReleaseJavaResource
 > Task :app:compileReleaseJavaWithJavac
 > Task :app:mergeReleaseGeneratedProguardFiles
 > Task :app:optimizeReleaseResources
@@ -123,11 +123,11 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 21s
+BUILD SUCCESSFUL in 32s
 36 actionable tasks: 36 executed
 total 3432
-drwxr-xr-x  2 runner runner    4096 Oct 16 11:19 .
-drwxr-xr-x 15 runner runner    4096 Oct 16 11:17 ..
--rw-r--r--  1 runner runner    5335 Oct 16 11:19 build-log.txt
--rw-r--r--  1 runner runner 1120391 Oct 16 11:19 yarko-player-unsigned.apk
--rw-r--r--  1 runner runner 2373803 Oct 16 11:18 yarko-unsigned.apk
+drwxr-xr-x  2 runner runner    4096 Oct 16 11:23 .
+drwxr-xr-x 15 runner runner    4096 Oct 16 11:21 ..
+-rw-r--r--  1 runner runner    5337 Oct 16 11:23 build-log.txt
+-rw-r--r--  1 runner runner 1120391 Oct 16 11:23 yarko-player-unsigned.apk
+-rw-r--r--  1 runner runner 2373803 Oct 16 11:23 yarko-unsigned.apk
