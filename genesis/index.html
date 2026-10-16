@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>GENESIS — живой мир</title>
+<meta name="description" content="GENESIS — браузерная симуляция цивилизаций: создайте мир и наблюдайте, как в нём рождаются народы, войны, веры, легенды и руины.">
+<meta name="theme-color" content="#0b1622">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="stylesheet" href="./src/ui/styles.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="map" aria-label="Карта мира"></canvas>
+  <header class="hud">
+    <div class="hud-world">
+      <div class="hud-name" id="worldName">GENESIS</div>
+      <div class="hud-era" id="era">—</div>
+    </div>
+    <div class="hud-year"><span id="year">0</span><small>год</small></div>
+    <div class="hud-speed" role="group" aria-label="Скорость времени">
+      <button data-speed="0" title="Пауза (пробел)">❚❚</button>
+      <button data-speed="1" title="1 год в секунду">▶</button>
+      <button data-speed="6" title="6 лет в секунду">▶▶</button>
+      <button data-speed="25" title="25 лет в секунду">▶▶▶</button>
+      <button data-speed="100" title="век в секунду">⏩</button>
+    </div>
+  </header>
+  <div class="stats" id="stats"></div>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <div class="card" id="card" hidden></div>
+  <aside class="panel" id="panel" hidden>
+    <div class="panel-head"><button class="icon" id="panelBack" aria-label="Назад" hidden>←</button><h2 id="panelTitle"></h2><button class="icon" id="panelClose" aria-label="Закрыть">✕</button></div>
+    <div class="panel-body" id="panelBody"></div>
+  </aside>
+  <div class="creator" id="creator" hidden></div>
+  <nav class="dock" aria-label="Разделы">
+    <button data-open="chronicle"><span>📜</span>Хроника</button>
+    <button data-open="encyclopedia"><span>📖</span>Энциклопедия</button>
+    <button data-open="creator"><span>☄</span>Творец</button>
+    <button data-open="worlds"><span>🌍</span>Миры</button>
+  </nav>
+  <div class="intro" id="intro"><div class="intro-title">GENESIS</div><div class="intro-sub">Мир, который живёт сам</div></div>
+</div>
+<script type="module" src="./src/main.ts"></script>
+</body>
+</html>
